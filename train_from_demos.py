@@ -121,7 +121,8 @@ def build_snapshot(rows: list[dict[str, Any]], map_name: str) -> Optional[d.Snap
                 armor=int(row.get("armor") or 0), helmet=False,
                 flashed=0.0, burning=False, defusing=False,
                 pos=pos, forward=forward_from_angles(row.get("yaw"), row.get("pitch")),
-                weapons=[active], active_weapon=active, money=0, round_kills=0,
+                weapons=[active], active_weapon=active, money=0,
+                round_kills=0, round_totaldmg=0,
             )
         except Exception:
             continue
