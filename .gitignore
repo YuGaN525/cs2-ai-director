@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.ruff_cache/
+*.log
+learner.json
+config.json
+.DS_Store
