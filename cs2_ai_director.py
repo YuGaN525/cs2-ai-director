@@ -50,7 +50,7 @@ from typing import Any, Callable, Optional
 
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "CS2 AI 导播"
-VERSION = "1.7.0"
+VERSION = "1.8.0"
 IS_WINDOWS = os.name == "nt"
 
 GSI_CFG_NAME = "gamestate_integration_ai_director.cfg"
@@ -78,6 +78,8 @@ try:
 except Exception:  # pragma: no cover
     pygetwindow = None
     HAS_PYGETWINDOW = False
+
+import director_pro as pro_mod
 
 try:
     import tkinter as tk
@@ -140,6 +142,18 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "learning_rate": 0.03,
     "learning_l2": 0.001,
     "learning_blend": 0.25,      # 预测概率对规则分的最大加权比例
+    # ---- 专业导播：OBS / FFmpeg / 事件动作 / 玩家改名 ----
+    "obs_host": "127.0.0.1",
+    "obs_port": 4455,
+    "obs_password": "",
+    "obs_game_scene": "Game",
+    "obs_replay_scene": "Replay",
+    "obs_replay_source": "Replay",
+    "ffmpeg_path": "",
+    "replay_output_dir": "",
+    "event_actions_enabled": True,
+    "event_rules": [],
+    "player_api_base_url": "https://majo-cup.laffeynyaa.com",
     # ---- 视角切换 ----
     "manual_pause_seconds": 10.0,
     "loop_hz": 20,
@@ -2256,9 +2270,11 @@ class DirectorEngine:
     任何一条链路挂掉都只降级，不会让进程崩溃。
     """
 
-    def __init__(self, cfg: dict[str, Any], bus: LogBus) -> None:
+    def __init__(self, cfg: dict[str, Any], bus: LogBus,
+                 pro: Optional[pro_mod.ProDirector] = None) -> None:
         self.cfg = cfg
         self.bus = bus
+        self.pro = pro
         self.store = SnapshotStore()
         self.server: Optional[GSIServer] = None
         self.input = InputController(cfg, bus)
@@ -2298,6 +2314,8 @@ class DirectorEngine:
     def start(self) -> None:
         if self._running:
             return
+        if self.pro is not None:
+            self.pro.reset()
         port = int(self.cfg["gsi_port"])
         exe = str(self.cfg.get("cs2_exe") or "").strip()
         cfg_dir = derive_cfg_dir(exe) if exe else None
@@ -2433,6 +2451,8 @@ class DirectorEngine:
         if snap.seq != self._last_seq:
             self._update_damage(snap, now)
             self.learner.poll(snap, now)
+            if self.pro is not None:
+                self.pro.tick(snap, now)
             self._last_seq = snap.seq
 
         self._update_round_winner(snap)
@@ -2962,11 +2982,13 @@ class DirectorApp:
     def __init__(self, cfg: dict[str, Any]) -> None:
         self.cfg = cfg
         self.bus = LogBus()
+        self.pro = pro_mod.ProDirector(cfg)
         self.engine: Optional[DirectorEngine] = None
         self._closing = False
         self._detecting = False
         self._training = False
         self._last_gui_warn = 0.0
+        self._last_pro_log_refresh = 0.0
 
         self.root = tk.Tk()
         self.root.title(f"{APP_TITLE} v{VERSION}")
@@ -3008,6 +3030,17 @@ class DirectorApp:
         self.var_bomb_b_mode = tk.StringVar(
             value="双击" if str(cfg.get("hlae_bomb_b_mode", "double")).lower() == "double" else "单次"
         )
+        self.var_obs_host = tk.StringVar(value=str(cfg.get("obs_host", "127.0.0.1")))
+        self.var_obs_port = tk.StringVar(value=str(cfg.get("obs_port", 4455)))
+        self.var_obs_pwd = tk.StringVar(value=str(cfg.get("obs_password", "")))
+        self.var_game_scene = tk.StringVar(value=str(cfg.get("obs_game_scene", "Game")))
+        self.var_replay_scene = tk.StringVar(value=str(cfg.get("obs_replay_scene", "Replay")))
+        self.var_replay_source = tk.StringVar(value=str(cfg.get("obs_replay_source", "Replay")))
+        self.var_ffmpeg = tk.StringVar(value=str(cfg.get("ffmpeg_path", "")))
+        self.var_replay_out = tk.StringVar(value=str(cfg.get("replay_output_dir", "")))
+        self.var_pro_enabled = tk.BooleanVar(value=bool(cfg.get("event_actions_enabled", True)))
+        self.var_player_api = tk.StringVar(
+            value=str(cfg.get("player_api_base_url", "https://majo-cup.laffeynyaa.com")))
         self.var_api = tk.StringVar(value=str(cfg.get("deepseek_api_key", "")))
         self.var_model = tk.StringVar(value=str(cfg.get("deepseek_model", "deepseek-chat")))
         self.var_ai = tk.BooleanVar(value=bool(cfg.get("ai_enabled", True)))
@@ -3042,6 +3075,379 @@ class DirectorApp:
             pass
 
     # ---- 界面 ----
+    # ---- 专业导播页 ----
+    def _build_pro(self, parent: Any) -> None:
+        parent.columnconfigure(0, weight=1)
+
+        lf = ttk.LabelFrame(parent, text=" OBS WebSocket ", padding=8)
+        lf.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+        ttk.Label(lf, text="地址").grid(row=0, column=0, sticky="w")
+        ttk.Entry(lf, textvariable=self.var_obs_host, width=16).grid(
+            row=0, column=1, sticky="w", padx=4)
+        ttk.Label(lf, text="端口").grid(row=0, column=2, sticky="w")
+        ttk.Entry(lf, textvariable=self.var_obs_port, width=7).grid(
+            row=0, column=3, sticky="w", padx=4)
+        ttk.Label(lf, text="密码").grid(row=0, column=4, sticky="w")
+        ttk.Entry(lf, textvariable=self.var_obs_pwd, show="*", width=14).grid(
+            row=0, column=5, sticky="w", padx=4)
+        ttk.Button(lf, text="连接", width=7, command=self._pro_connect).grid(
+            row=0, column=6, padx=(8, 2))
+        ttk.Button(lf, text="断开", width=7, command=self._pro_disconnect).grid(
+            row=0, column=7)
+        self.lbl_obs = ttk.Label(lf, text="OBS：未连接", foreground="#555555")
+        self.lbl_obs.grid(row=1, column=0, columnspan=8, sticky="w", pady=(6, 0))
+
+        lf2 = ttk.LabelFrame(parent, text=" 录制 / FFmpeg 回放 ", padding=8)
+        lf2.grid(row=1, column=0, sticky="ew", pady=(0, 6))
+        lf2.columnconfigure(1, weight=1)
+        ttk.Label(lf2, text="ffmpeg.exe").grid(row=0, column=0, sticky="w")
+        ttk.Entry(lf2, textvariable=self.var_ffmpeg).grid(
+            row=0, column=1, sticky="ew", padx=4)
+        ttk.Button(lf2, text="浏览…", width=8, command=self._pro_browse_ffmpeg).grid(
+            row=0, column=2)
+        ttk.Label(lf2, text="回放输出目录").grid(row=1, column=0, sticky="w", pady=(6, 0))
+        ttk.Entry(lf2, textvariable=self.var_replay_out).grid(
+            row=1, column=1, sticky="ew", padx=4, pady=(6, 0))
+        ttk.Button(lf2, text="浏览…", width=8, command=self._pro_browse_out).grid(
+            row=1, column=2, pady=(6, 0))
+        row = ttk.Frame(lf2)
+        row.grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
+        ttk.Label(row, text="游戏场景").pack(side="left")
+        ttk.Entry(row, textvariable=self.var_game_scene, width=12).pack(side="left", padx=4)
+        ttk.Label(row, text="回放场景").pack(side="left", padx=(10, 0))
+        ttk.Entry(row, textvariable=self.var_replay_scene, width=12).pack(side="left", padx=4)
+        ttk.Label(row, text="回放源").pack(side="left", padx=(10, 0))
+        ttk.Entry(row, textvariable=self.var_replay_source, width=12).pack(side="left", padx=4)
+        row2 = ttk.Frame(lf2)
+        row2.grid(row=3, column=0, columnspan=3, sticky="w", pady=(6, 0))
+        ttk.Button(row2, text="开始录制", command=self._pro_start_record).pack(side="left")
+        ttk.Button(row2, text="记录击杀点", command=self._pro_kill_point).pack(
+            side="left", padx=6)
+        ttk.Button(row2, text="生成回放", command=self._pro_generate_replay).pack(side="left")
+
+        lf3 = ttk.LabelFrame(parent, text=" 事件动作（独立于 AI 决策） ", padding=8)
+        lf3.grid(row=2, column=0, sticky="ew", pady=(0, 6))
+        lf3.columnconfigure(0, weight=1)
+        top = ttk.Frame(lf3)
+        top.grid(row=0, column=0, sticky="ew")
+        ttk.Checkbutton(top, text="启用事件动作", variable=self.var_pro_enabled).pack(
+            side="left")
+        ttk.Button(top, text="添加", width=6, command=self._pro_add_rule).pack(
+            side="left", padx=(12, 2))
+        ttk.Button(top, text="编辑", width=6, command=self._pro_edit_rule).pack(side="left")
+        ttk.Button(top, text="删除", width=6, command=self._pro_delete_rule).pack(side="left")
+        ttk.Button(top, text="启用/禁用", width=9, command=self._pro_toggle_rule).pack(
+            side="left", padx=2)
+        ttk.Button(top, text="保存预设…", command=self._pro_save_preset).pack(
+            side="right", padx=2)
+        ttk.Button(top, text="加载预设…", command=self._pro_load_preset).pack(side="right")
+
+        cols = ("event", "name", "actions", "enabled")
+        self.rule_tree = ttk.Treeview(lf3, columns=cols, show="headings", height=5)
+        for col, text, width in (
+            ("event", "事件", 110), ("name", "规则名", 220),
+            ("actions", "动作", 330), ("enabled", "启用", 50),
+        ):
+            self.rule_tree.heading(col, text=text)
+            self.rule_tree.column(col, width=width, anchor="w")
+        self.rule_tree.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+
+        lf4 = ttk.LabelFrame(parent, text=" 玩家改名（赛事 API → HLAE 命令） ", padding=8)
+        lf4.grid(row=3, column=0, sticky="ew")
+        lf4.columnconfigure(1, weight=1)
+        ttk.Label(lf4, text="API BaseUrl").grid(row=0, column=0, sticky="w")
+        ttk.Entry(lf4, textvariable=self.var_player_api).grid(
+            row=0, column=1, sticky="ew", padx=4)
+        ttk.Button(lf4, text="获取命令并复制", command=self._pro_rename).grid(
+            row=0, column=2)
+        self.lbl_rename = ttk.Label(lf4, text="", foreground="#555555")
+        self.lbl_rename.grid(row=1, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        self._refresh_rules()
+
+    def _build_pro_logs(self, parent: Any) -> None:
+        parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(1, weight=1)
+        bar = ttk.Frame(parent)
+        bar.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+        ttk.Label(bar, text="类别").pack(side="left")
+        self.var_log_cat = tk.StringVar(value="全部")
+        ttk.Combobox(bar, textvariable=self.var_log_cat, state="readonly", width=12,
+                     values=("全部",) + pro_mod.ProLog.CATEGORIES).pack(
+            side="left", padx=4)
+        ttk.Label(bar, text="级别").pack(side="left", padx=(8, 0))
+        self.var_log_level = tk.StringVar(value="全部")
+        ttk.Combobox(bar, textvariable=self.var_log_level, state="readonly", width=7,
+                     values=("全部", "INFO", "WARN", "ERROR")).pack(side="left", padx=4)
+        ttk.Label(bar, text="时间").pack(side="left", padx=(8, 0))
+        self.var_log_window = tk.StringVar(value="全部")
+        ttk.Combobox(bar, textvariable=self.var_log_window, state="readonly", width=7,
+                     values=("全部", "1 分钟", "5 分钟", "30 分钟")).pack(
+            side="left", padx=4)
+        ttk.Label(bar, text="关键字").pack(side="left", padx=(8, 0))
+        self.var_log_kw = tk.StringVar()
+        ttk.Entry(bar, textvariable=self.var_log_kw, width=22).pack(side="left", padx=4)
+        ttk.Button(bar, text="刷新", command=self._refresh_pro_logs).pack(side="left", padx=6)
+        self.pro_log_text = scrolledtext.ScrolledText(
+            parent, height=20, wrap="word", font=("Consolas", 9))
+        self.pro_log_text.grid(row=1, column=0, sticky="nsew")
+        self.pro_log_text.configure(state="disabled")
+
+    def _refresh_pro_logs(self) -> None:
+        if not hasattr(self, "pro_log_text"):
+            return
+        window = {"1 分钟": 60, "5 分钟": 300, "30 分钟": 1800}.get(
+            self.var_log_window.get(), 0)
+        since = time.time() - window if window else 0.0
+        recs = self.pro.log.filtered(
+            self.var_log_cat.get(), self.var_log_kw.get(),
+            self.var_log_level.get(), since)
+        text = "\n".join(r.line() for r in recs[-800:])
+        self.pro_log_text.configure(state="normal")
+        self.pro_log_text.delete("1.0", "end")
+        self.pro_log_text.insert("end", text)
+        self.pro_log_text.see("end")
+        self.pro_log_text.configure(state="disabled")
+
+    def _refresh_rules(self) -> None:
+        if not hasattr(self, "rule_tree"):
+            return
+        for item in self.rule_tree.get_children():
+            self.rule_tree.delete(item)
+        for i, rule in enumerate(self.cfg.get("event_rules", [])):
+            if not isinstance(rule, dict):
+                continue
+            actions = "、".join(
+                pro_mod.ACTION_LABELS.get(str(a.get("type", "")), str(a.get("type", "")))
+                for a in rule.get("actions", []) if isinstance(a, dict)
+            )
+            self.rule_tree.insert("", "end", iid=str(i), values=(
+                pro_mod.EVENT_LABELS.get(str(rule.get("event", "")), rule.get("event", "")),
+                rule.get("name", ""), actions,
+                "是" if rule.get("enabled", True) else "否",
+            ))
+
+    # ---- 专业导播动作 ----
+    def _sync_pro_cfg(self) -> None:
+        c = self.pro.cfg
+        c["obs_host"] = self.var_obs_host.get().strip() or "127.0.0.1"
+        try:
+            c["obs_port"] = int(self.var_obs_port.get().strip())
+        except Exception:
+            c["obs_port"] = 4455
+        c["obs_password"] = self.var_obs_pwd.get()
+        c["obs_game_scene"] = self.var_game_scene.get().strip() or "Game"
+        c["obs_replay_scene"] = self.var_replay_scene.get().strip() or "Replay"
+        c["obs_replay_source"] = self.var_replay_source.get().strip() or "Replay"
+        c["ffmpeg_path"] = self.var_ffmpeg.get().strip()
+        c["replay_output_dir"] = self.var_replay_out.get().strip()
+        c["event_actions_enabled"] = bool(self.var_pro_enabled.get())
+        c["player_api_base_url"] = self.var_player_api.get().strip()
+
+    def _pro_thread(self, fn: Callable[[], None]) -> None:
+        threading.Thread(target=fn, daemon=True).start()
+
+    def _pro_connect(self) -> None:
+        self._sync_pro_cfg()
+        self._pro_thread(self._pro_connect_worker)
+
+    def _pro_connect_worker(self) -> None:
+        ok = self.pro.obs.connect()
+        self.root.after(0, lambda: self.lbl_obs.configure(
+            text=("OBS：已连接" if ok else f"OBS：连接失败 {self.pro.obs.last_error}"),
+            foreground=("#087f23" if ok else "#b00020")))
+
+    def _pro_disconnect(self) -> None:
+        self.pro.obs.disconnect()
+        self.lbl_obs.configure(text="OBS：未连接", foreground="#555555")
+
+    def _pro_browse_ffmpeg(self) -> None:
+        path = filedialog.askopenfilename(
+            title="选择 ffmpeg.exe", filetypes=[("ffmpeg", "ffmpeg.exe"), ("exe", "*.exe")])
+        if path:
+            self.var_ffmpeg.set(path)
+
+    def _pro_browse_out(self) -> None:
+        path = filedialog.askdirectory(title="选择回放输出目录")
+        if path:
+            self.var_replay_out.set(path)
+
+    def _pro_start_record(self) -> None:
+        self._sync_pro_cfg()
+        self._pro_thread(lambda: self.pro.replay.start_recording())
+
+    def _pro_kill_point(self) -> None:
+        self.pro.replay.record_kill()
+
+    def _pro_generate_replay(self) -> None:
+        self._sync_pro_cfg()
+        self._pro_thread(self.pro.replay.generate_replay)
+
+    def _pro_add_rule(self) -> None:
+        self._pro_rule_dialog(None)
+
+    def _pro_edit_rule(self) -> None:
+        sel = self.rule_tree.selection()
+        if not sel:
+            return
+        idx = int(sel[0])
+        rules = self.cfg.get("event_rules", [])
+        if 0 <= idx < len(rules):
+            self._pro_rule_dialog(rules[idx], idx)
+
+    def _pro_delete_rule(self) -> None:
+        sel = self.rule_tree.selection()
+        if not sel:
+            return
+        idx = int(sel[0])
+        rules = self.cfg.get("event_rules", [])
+        if 0 <= idx < len(rules):
+            del rules[idx]
+            self._refresh_rules()
+
+    def _pro_toggle_rule(self) -> None:
+        sel = self.rule_tree.selection()
+        if not sel:
+            return
+        idx = int(sel[0])
+        rules = self.cfg.get("event_rules", [])
+        if 0 <= idx < len(rules):
+            rules[idx]["enabled"] = not bool(rules[idx].get("enabled", True))
+            self._refresh_rules()
+
+    def _pro_save_preset(self) -> None:
+        path = filedialog.asksaveasfilename(
+            title="保存事件动作预设", defaultextension=".json",
+            filetypes=[("JSON", "*.json")])
+        if not path:
+            return
+        try:
+            Path(path).write_text(json.dumps(
+                self.cfg.get("event_rules", []), ensure_ascii=False, indent=2),
+                encoding="utf-8")
+            messagebox.showinfo("预设", "已保存")
+        except Exception as e:
+            messagebox.showerror("预设", str(e))
+
+    def _pro_load_preset(self) -> None:
+        path = filedialog.askopenfilename(
+            title="加载事件动作预设", filetypes=[("JSON", "*.json")])
+        if not path:
+            return
+        try:
+            data = json.loads(Path(path).read_text(encoding="utf-8"))
+            if not isinstance(data, list):
+                raise ValueError("预设必须是规则数组")
+            self.cfg["event_rules"] = data
+            self._refresh_rules()
+            messagebox.showinfo("预设", f"已加载 {len(data)} 条规则")
+        except Exception as e:
+            messagebox.showerror("预设", str(e))
+
+    def _pro_rule_dialog(self, rule: Optional[dict[str, Any]], idx: Optional[int] = None) -> None:
+        top = tk.Toplevel(self.root)
+        top.title("编辑事件动作" if rule else "添加事件动作")
+        top.transient(self.root)
+        top.grab_set()
+        top.columnconfigure(1, weight=1)
+        name_var = tk.StringVar(value=str((rule or {}).get("name", "")))
+        event_label = pro_mod.EVENT_LABELS.get(str((rule or {}).get("event", "")), "回合开始")
+        event_var = tk.StringVar(value=event_label)
+        enabled_var = tk.BooleanVar(value=bool((rule or {}).get("enabled", True)))
+        actions: list[dict[str, Any]] = [
+            dict(a) for a in (rule or {}).get("actions", []) if isinstance(a, dict)
+        ]
+
+        ttk.Label(top, text="规则名").grid(row=0, column=0, sticky="w", padx=8, pady=6)
+        ttk.Entry(top, textvariable=name_var).grid(
+            row=0, column=1, columnspan=3, sticky="ew", padx=8, pady=6)
+        ttk.Label(top, text="事件").grid(row=1, column=0, sticky="w", padx=8)
+        ttk.Combobox(top, textvariable=event_var, state="readonly",
+                     values=tuple(pro_mod.EVENT_LABELS.values())).grid(
+            row=1, column=1, sticky="w", padx=8)
+        ttk.Checkbutton(top, text="启用", variable=enabled_var).grid(
+            row=1, column=2, sticky="w", padx=8)
+
+        listbox = tk.Listbox(top, height=7, width=62)
+        listbox.grid(row=2, column=0, columnspan=4, sticky="ew", padx=8, pady=6)
+        for a in actions:
+            listbox.insert("end", f"{pro_mod.ACTION_LABELS.get(a.get('type'), a.get('type'))}  {a.get('target','')}")
+
+        ttk.Label(top, text="动作").grid(row=3, column=0, sticky="w", padx=8)
+        act_var = tk.StringVar(value="播放媒体源")
+        ttk.Combobox(top, textvariable=act_var, state="readonly",
+                     values=tuple(pro_mod.ACTION_LABELS.values())).grid(
+            row=3, column=1, sticky="w", padx=8)
+        target_var = tk.StringVar()
+        ttk.Entry(top, textvariable=target_var, width=26).grid(
+            row=3, column=2, sticky="w", padx=4)
+        act_rev = {v: k for k, v in pro_mod.ACTION_LABELS.items()}
+
+        def add_action() -> None:
+            typ = act_rev.get(act_var.get(), "")
+            actions.append({"type": typ, "target": target_var.get().strip()})
+            listbox.insert("end", f"{act_var.get()}  {target_var.get().strip()}")
+            target_var.set("")
+
+        def del_action() -> None:
+            sel = listbox.curselection()
+            if sel:
+                i = int(sel[0])
+                listbox.delete(i)
+                del actions[i]
+
+        ttk.Button(top, text="添加动作", command=add_action).grid(
+            row=3, column=3, sticky="w", padx=4)
+        ttk.Button(top, text="删除动作", command=del_action).grid(
+            row=4, column=0, sticky="w", padx=8, pady=(0, 6))
+
+        def save() -> None:
+            name = name_var.get().strip()
+            if not name:
+                messagebox.showwarning("规则", "请填写规则名", parent=top)
+                return
+            if not actions:
+                messagebox.showwarning("规则", "至少添加一个动作", parent=top)
+                return
+            ev = next((k for k, v in pro_mod.EVENT_LABELS.items() if v == event_var.get()),
+                      "round_started")
+            new_rule = {"name": name, "event": ev, "enabled": enabled_var.get(),
+                        "actions": actions}
+            rules = self.cfg.setdefault("event_rules", [])
+            if idx is None:
+                rules.append(new_rule)
+            else:
+                rules[idx] = new_rule
+            self._refresh_rules()
+            top.destroy()
+
+        ttk.Button(top, text="保存", command=save).grid(
+            row=4, column=3, sticky="e", padx=8, pady=(0, 6))
+
+    def _pro_rename(self) -> None:
+        self._sync_pro_cfg()
+        snap = self.pro.latest_snap
+        if snap is None or not getattr(snap, "players", None):
+            messagebox.showwarning("玩家改名", "还没有 GSI 玩家数据。")
+            return
+        self.lbl_rename.configure(text="正在查询赛事 API…")
+        players = dict(snap.players)
+        base = self.var_player_api.get().strip()
+
+        def worker() -> None:
+            cmds, failed = pro_mod.build_rename_commands(players, base)
+            text = "; ".join(cmds)
+            def done() -> None:
+                if text:
+                    self.root.clipboard_clear()
+                    self.root.clipboard_append(text)
+                    self.lbl_rename.configure(
+                        text=f"已生成 {len(cmds)} 条命令并复制；失败 {len(failed)} 人")
+                else:
+                    self.lbl_rename.configure(text="没有查到登记名（API/网络/SteamID 不匹配）")
+            self.root.after(0, done)
+
+        self._pro_thread(worker)
+
     def _build(self) -> None:
         outer = ttk.Frame(self.root, padding=8)
         outer.pack(fill="both", expand=True)
@@ -3050,12 +3456,19 @@ class DirectorApp:
 
         # 设置 / 日志分页：设置页保持紧凑，日志页占满剩余高度。
         notebook = ttk.Notebook(outer)
+        self.notebook = notebook
         notebook.grid(row=0, column=0, sticky="nsew")
         settings = ttk.Frame(notebook, padding=8)
+        pro_page = ttk.Frame(notebook, padding=8)
+        pro_logs = ttk.Frame(notebook, padding=6)
         logs = ttk.Frame(notebook, padding=6)
         notebook.add(settings, text=" 设置 ")
+        notebook.add(pro_page, text=" 专业导播 ")
+        notebook.add(pro_logs, text=" 导播日志 ")
         notebook.add(logs, text=" 日志 ")
         settings.columnconfigure(0, weight=1)
+        self._build_pro(pro_page)
+        self._build_pro_logs(pro_logs)
 
         # 1) 游戏与 GSI
         lf = ttk.LabelFrame(settings, text=" 1. 游戏与 GSI 配置 ", padding=8)
@@ -3464,6 +3877,7 @@ class DirectorApp:
 
     # ---- 启动 / 停止 ----
     def _collect_cfg(self) -> dict[str, Any]:
+        self._sync_pro_cfg()
         cfg = copy.deepcopy(self.cfg)
         cfg["cs2_exe"] = self.var_exe.get().strip()
 
@@ -3487,6 +3901,19 @@ class DirectorApp:
         cfg["hlae_round_mode"] = cfg["hlae_spawn_ct_mode"]
         cfg["hlae_bomb_key"] = cfg["hlae_bomb_a_key"]
         cfg["hlae_bomb_mode"] = cfg["hlae_bomb_a_mode"]
+        cfg["obs_host"] = self.var_obs_host.get().strip() or "127.0.0.1"
+        try:
+            cfg["obs_port"] = int(self.var_obs_port.get().strip())
+        except Exception:
+            cfg["obs_port"] = 4455
+        cfg["obs_password"] = self.var_obs_pwd.get()
+        cfg["obs_game_scene"] = self.var_game_scene.get().strip() or "Game"
+        cfg["obs_replay_scene"] = self.var_replay_scene.get().strip() or "Replay"
+        cfg["obs_replay_source"] = self.var_replay_source.get().strip() or "Replay"
+        cfg["ffmpeg_path"] = self.var_ffmpeg.get().strip()
+        cfg["replay_output_dir"] = self.var_replay_out.get().strip()
+        cfg["event_actions_enabled"] = bool(self.var_pro_enabled.get())
+        cfg["player_api_base_url"] = self.var_player_api.get().strip()
         cfg["deepseek_api_key"] = self.var_api.get().strip()
         cfg["deepseek_model"] = self.var_model.get().strip() or "deepseek-chat"
         cfg["ai_enabled"] = bool(self.var_ai.get())
@@ -3569,7 +3996,7 @@ class DirectorApp:
             self.bus.warning(f"配置保存失败（将继续启动）：{type(e).__name__}: {e}")
         self.cfg = cfg
         try:
-            engine = DirectorEngine(cfg, self.bus)
+            engine = DirectorEngine(cfg, self.bus, pro=self.pro)
             engine.start()
         except Exception as e:
             self.bus.error(f"启动失败：{type(e).__name__}: {e}")
@@ -3609,6 +4036,13 @@ class DirectorApp:
             return
         try:
             self._drain_logs()
+            now = time.monotonic()
+            if now - self._last_pro_log_refresh > 1.0:
+                self._last_pro_log_refresh = now
+                self._refresh_pro_logs()
+                obs = self.pro.status()
+                if obs.get("obs"):
+                    self.lbl_obs.configure(text="OBS：已连接", foreground="#087f23")
             status = self.engine.status() if self.engine else None
             if status and status.get("running"):
                 self._render_status(status)
@@ -3690,6 +4124,10 @@ class DirectorApp:
             if self.engine is not None:
                 self.engine.stop()
                 self.engine = None
+        except Exception:
+            pass
+        try:
+            self.pro.stop()
         except Exception:
             pass
         try:

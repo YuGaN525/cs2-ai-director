@@ -7,6 +7,7 @@
 - 炸弹剩余 ≤ 8 秒按 A/B 包点触发对应 HLAE 包点运镜宏；
 - 观察对象阵亡后自动切到离尸体最近的敌人（通常是击杀者），不会停在尸体视角；
 - 内置在线学习：按 `round_kills` 判断切过去后是否真的拿到击杀，微调候选排序；也可从你的 demo 离线训练同一模型；
+- 专业导播：独立导播日志、事件动作规则、OBS WebSocket、FFmpeg 击杀回放、玩家改名命令；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -122,6 +123,75 @@ GUI 的“从 demo 训练…”按钮也会后台执行同一脚本；训练完�
 
 ---
 
+## 4.5 专业导播（OBS / 回放 / 事件动作 / 改名）
+
+这部分按 CS2-Director-Tool 的行为独立重写，未复制其 C# 代码；入口是 GUI 的 **“专业导播”** 页。
+
+### 独立日志
+
+“导播日志”页与原来的 AI 日志分开，类别为：
+
+```text
+GSI / OBS / FFmpeg / Replay / EventAction / Player / App
+```
+
+支持按类别、级别、时间窗口（1/5/30 分钟）和关键字过滤。
+
+### 事件动作
+
+事件：
+
+```text
+比赛开始 / 回合开始 / 回合结束 / 比赛结束 / 热身开始 / 热身结束
+暂停开始 / 暂停结束 / 炸弹安装 / 炸弹拆除 / 炸弹爆炸
+玩家死亡 / 玩家击杀
+```
+
+动作：
+
+| 动作 | 目标 |
+|---|---|
+| 播放媒体源 | OBS 媒体源名 |
+| 停止媒体源 | OBS 媒体源名 |
+| 切换场景 | OBS 场景名（不存在会自动创建） |
+| 开始录制 | 无 |
+| 记录击杀点 | 无 |
+| 生成回放 | 无 |
+
+规则可添加多条、每条可含多个动作，支持启用/禁用；规则可保存为 JSON 预设并重新加载。
+典型配置：
+
+```text
+回合开始 → 开始录制
+玩家击杀 → 记录击杀点
+回合结束 → 生成回放
+暂停开始 → 播放媒体源（暂停音乐）
+暂停结束 → 停止媒体源（暂停音乐）
+```
+
+### OBS / FFmpeg 回放
+
+1. OBS 开启 WebSocket Server（默认 4455），在“专业导播”页填地址/端口/密码并连接；
+2. 选择 `ffmpeg.exe`；
+3. 配置游戏场景、回放场景、回放媒体源；
+4. 事件动作里用“开始录制 / 记录击杀点 / 生成回放”。
+
+回放规则：首个击杀取 `击杀点-4s` 起 5 秒，后续击杀取 `-1s` 起 2 秒，重叠片段自动合并；
+停止录制后用 FFmpeg 重编码为 `.ts` 片段并 concat，切换到回放场景播放，结束后切回游戏场景并恢复录制。
+
+### 玩家改名
+
+填赛事 API BaseUrl（默认 `https://majo-cup.laffeynyaa.com`），点击“获取命令并复制”：
+
+```text
+GET {BaseUrl}/api/v1/players/steam/{steam64}
+→ mirv_replace_name byXuid add "<steam64>" "<登记名>"
+```
+
+所有命令用 `;` 连接后复制到剪贴板，粘贴到 HLAE 控制台执行。
+
+> OBS/FFmpeg 是可选依赖；未配置时 AI 导播、GSI、HLAE 运镜不受影响。
+
 ## 5. 关键参数（config.json）
 
 | 键 | 默认 | 说明 |
@@ -153,6 +223,14 @@ GUI 的“从 demo 训练…”按钮也会后台执行同一脚本；训练完�
 | `learning_min_samples` | 20 | 少于该样本数时模型输出 0.5 |
 | `learning_rate` / `learning_l2` | 0.03 / 0.001 | 在线 SGD 学习率 / L2 |
 | `learning_blend` | 0.25 | 模型概率对规则分的最大加权比例 |
+| `obs_host` / `obs_port` / `obs_password` | 127.0.0.1 / 4455 / 空 | OBS WebSocket 连接（密码明文保存） |
+| `obs_game_scene` / `obs_replay_scene` | Game / Replay | 游戏与回放场景名 |
+| `obs_replay_source` | Replay | 回放媒体源名 |
+| `ffmpeg_path` | 空 | ffmpeg.exe 路径 |
+| `replay_output_dir` | 空 | 回放输出目录，空则用系统临时目录 |
+| `event_actions_enabled` | true | 事件动作总开关 |
+| `event_rules` | [] | 事件动作规则数组（GUI 编辑） |
+| `player_api_base_url` | majo-cup | 玩家登记名 API |
 | `auto_focus` | true | 按键前自动把 CS2 拉到前台 |
 | `dry_run` | false | 演练模式 |
 
@@ -226,14 +304,17 @@ GUI 的“从 demo 训练…”按钮也会后台执行同一脚本；训练完�
 14. 自动化输入是否符合你所在平台/比赛规则（本程序不碰内存与进程，但仍是模拟按键）。
 15. 在线学习需要至少 20 个击杀样本（约 4–6 个击杀窗口）；样本不足时不会改变排序。可先用 demo 训练。
 16. 从 demo 训练需要 `demoparser2`（`requirements-train.txt`），训练完成后重启导播加载 `learner.json`。
-17. 若显示器缩放不是 100%，检查窗口是否完整显示（GUI 采用“设置/日志”分页以适配较小高度）。
+17. 专业导播需要 OBS WebSocket 与 FFmpeg；先在“专业导播”页连接/选路径，再用事件动作或手动按钮测试录制、回放。
+18. 玩家改名 API 默认是魔女杯地址；换赛事时填自己的 BaseUrl，并确认返回 JSON 的 `name` 字段。
+19. 若显示器缩放不是 100%，检查窗口是否完整显示（GUI 采用分页以适配较小高度）。
 
 ---
 
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 77 项（不启动 GUI、不发真实按键）
+- `test_cs2_ai_director.py`：核心逻辑测试，共 81 项（不启动 GUI、不发真实按键）
+- `director_pro.py`：独立日志、事件动作、OBS、FFmpeg 回放、玩家改名
 - `train_from_demos.py`：从 `.dem` 离线训练 `learner.json`
 - `SELFCHECK.md`：自检清单、修复记录与仍需实机验证的步骤
 - `frozen_v1.0.0/`：优化前冻结基线（含 SHA256）

@@ -794,6 +794,78 @@ class TestKillLearner(unittest.TestCase):
                 d.learner_path = old  # type: ignore[assignment]
 
 
+class TestProDirectorModule(unittest.TestCase):
+    def _snap(self, phase="live", rnd=1, bomb="", players=None):
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            phase=phase, round_num=rnd, bomb=SimpleNamespace(state=bomb) if bomb else None,
+            players=players or {},
+        )
+
+    def _p(self, health=100, kills=0, name="p"):
+        from types import SimpleNamespace
+        return SimpleNamespace(health=health, round_kills=kills, name=name)
+
+    def test_pro_log_filter(self):
+        log = d.pro_mod.ProLog()
+        log.info("OBS", "connected")
+        log.error("FFmpeg", "failed")
+        self.assertEqual(len(log.filtered(category="OBS")), 1)
+        self.assertEqual(len(log.filtered(keyword="fail")), 1)
+        self.assertEqual(len(log.filtered(level="ERROR")), 1)
+
+    def test_event_detector_round_kill_bomb(self):
+        det = d.pro_mod.EventDetector()
+        p1 = self._p(kills=0)
+        det.poll(self._snap(players={"1": p1}))
+        evs = det.poll(self._snap(phase="freezetime", rnd=2, players={"1": p1}))
+        self.assertIn("round_started", [e.kind for e in evs])
+        p1.round_kills = 1
+        evs = det.poll(self._snap(phase="live", rnd=2, bomb="planted", players={"1": p1}))
+        kinds = [e.kind for e in evs]
+        self.assertIn("kill", kinds)
+        self.assertIn("bomb_planted", kinds)
+
+    def test_merge_clips(self):
+        clips = [d.pro_mod.ClipSegment(1, 2), d.pro_mod.ClipSegment(2, 3),
+                 d.pro_mod.ClipSegment(10, 2)]
+        merged = d.pro_mod.merge_clips(clips)
+        self.assertEqual(len(merged), 2)
+        self.assertEqual(merged[0].duration, 4)
+
+    def test_event_action_executes_actions(self):
+        class FakeObs:
+            def __init__(self):
+                self.calls = []
+            def media_action(self, target, action):
+                self.calls.append((target, action))
+            def switch_scene(self, target):
+                self.calls.append((target, "scene"))
+        class FakeReplay:
+            def __init__(self):
+                self.calls = []
+            def start_recording(self):
+                self.calls.append("start")
+            def record_kill(self):
+                self.calls.append("kill")
+            def generate_replay(self):
+                self.calls.append("gen")
+        cfg = dict(d.DEFAULT_CONFIG)
+        obs = FakeObs()
+        rep = FakeReplay()
+        eng = d.pro_mod.EventActionEngine(cfg, obs, rep, d.pro_mod.ProLog())
+        try:
+            eng.execute({"name": "r", "actions": [
+                {"type": "play_media", "target": "music"},
+                {"type": "switch_scene", "target": "Game"},
+                {"type": "record_kill"},
+            ]})
+            self.assertEqual(obs.calls, [("music", "restart"), ("Game", "scene")])
+            self.assertEqual(rep.calls, ["kill"])
+        finally:
+            eng.stop()
+
+
 class TestConfigPersistence(unittest.TestCase):
     def test_roundtrip(self):
         old = os.environ.get("APPDATA")
