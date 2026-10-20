@@ -6,7 +6,7 @@
 - `freezetime` 按上一回合胜方触发 CT 或 T 出生点运镜宏；
 - 炸弹剩余 ≤ 8 秒按 A/B 包点触发对应 HLAE 包点运镜宏；
 - 观察对象阵亡后自动切到离尸体最近的敌人（通常是击杀者），不会停在尸体视角；
-- 内置在线学习：按 `round_kills` 判断切过去后是否真的拿到击杀，微调候选排序；也可从你的 demo 离线训练同一模型；
+- 即时学习已移除；保留离线 demo 静态权重，并新增决策 CSV 记录 + 随机森林离线仲裁模型；
 - 专业导播：独立导播日志、事件动作规则、OBS WebSocket、FFmpeg 击杀回放、玩家改名命令；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
@@ -106,18 +106,29 @@ score(A, B) = prox^0.55
 超时/网络错误只请求一次（仅 `response_format` 不兼容时才去掉该参数重试一次），避免双倍等待与重复计费。
 AI 建议仍要通过阈值/迟滞/冷却检查，不能绕过安全约束。
 
-**在线学习（实验）**：切到某选手后 2.5 秒内，若该选手的 `state.round_kills` 增加 → 目标正样本；
-若击杀者是同一刻的其他候选 → 击杀者正样本、其他人负样本。用这些样本在线更新一个 8 特征逻辑回归，
-只对候选分数做 `1 ± learning_blend/2` 的小幅加权；样本少于 `learning_min_samples` 时输出 0.5，不改变规则。
-权重保存在 `%APPDATA%\CS2AIDirector\learner.json`，可在 GUI 关闭。
-
-**从 demo 训练**：同一套特征可以离线训练，样本量远大于在线学习：
+**即时学习已移除**：程序不再在运行中更新权重。原来的 demo 训练保留为**静态**权重模型：
 ```bat
 python -m pip install -r requirements-train.txt
 python train_from_demos.py --demos "D:\demos" --out "%APPDATA%\CS2AIDirector\learner.json"
 ```
-GUI 的“从 demo 训练…”按钮也会后台执行同一脚本；训练完成后重启导播加载新权重。
-脚本会把每个击杀回看 2.5 秒（默认 64tick×160），击杀者标 1、同刻其他候选标 0，并打印留出验证的 top-1。
+GUI 的“从 demo 训练…”按钮执行同一脚本；训练后重启导播加载，运行期间不再变化。
+
+**决策日志 + 随机森林仲裁**：每次真正切换（或按 1 秒节流记录一次保持）写一行 CSV：
+
+```text
+%APPDATA%\CS2AIDirector\decisions.csv
+```
+
+行内包含目标 slot、规则分、8 个候选特征；3 秒后按目标选手的 `round_totaldmg` / `round_kills`
+增量回填 `label`（1=造成伤害或击杀，0=没有）。样本达到 1000 条后：
+
+```bat
+python train_decision_model.py --min-samples 1000
+```
+
+生成 `decision_model.pkl` 并在验证集打印 AUC、混淆矩阵和特征重要性。
+只有当规则前两名分差 ≤ `decision_model_margin` 时，导播才用模型概率重排候选；
+模型推荐目标的规则分不得低于当前第一名的 `decision_model_min_factor`，随后仍走原有阈值/迟滞/冷却检查。
 
 **运镜去抖**：出生点运镜按 `map + round` 去重，包点运镜按回合去重；发送失败不标记完成，1 秒后重试。
 
@@ -218,11 +229,15 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 | `bomb_cam_grace` | 1.5 | 包点运镜后 AI 让位秒数，设 0 可让 AI 立刻接管 |
 | `ai_enabled` / `deepseek_api_key` | 开 / 空 | AI 仲裁开关与 Key（明文保存） |
 | `ai_min_interval` / `ai_max_per_minute` | 3.0 / 12 | 成本与频率限制 |
-| `learning_enabled` | true | 在线学习开关；样本少时不影响排序 |
-| `learning_window` | 2.5 | 切人后观察击杀的秒数 |
-| `learning_min_samples` | 20 | 少于该样本数时模型输出 0.5 |
-| `learning_rate` / `learning_l2` | 0.03 / 0.001 | 在线 SGD 学习率 / L2 |
-| `learning_blend` | 0.25 | 模型概率对规则分的最大加权比例 |
+| `demo_model_enabled` | true | 是否加载静态 demo 权重；不做在线更新 |
+| `demo_model_min_samples` | 20 | 少于该样本数时不使用 demo 权重 |
+| `demo_model_blend` | 0.25 | demo 模型对规则分的最大加权比例 |
+| `decision_log_enabled` | true | 是否记录 decisions.csv |
+| `decision_log_interval` | 1.0 | 保持决策的采样间隔（秒） |
+| `decision_label_window` | 3.0 | 切换后多久回填标签 |
+| `decision_model_enabled` | true | 是否加载随机森林仲裁模型 |
+| `decision_model_margin` | 0.08 | 规则前两名分差 ≤ 该值才让模型仲裁 |
+| `decision_model_min_factor` | 0.9 | 模型推荐目标的规则分下限系数 |
 | `obs_host` / `obs_port` / `obs_password` | 127.0.0.1 / 4455 / 空 | OBS WebSocket 连接（密码明文保存） |
 | `obs_game_scene` / `obs_replay_scene` | Game / Replay | 游戏与回放场景名 |
 | `obs_replay_source` | Replay | 回放媒体源名 |
@@ -302,8 +317,8 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 12. 是否接受 DeepSeek API 费用；Key 以明文保存在本机 JSON。
 13. `bomb_cam_grace=1.5` 是否合适：包点运镜触发后 AI 会让位 1.5 秒；想 AI 绝对优先就设为 0。
 14. 自动化输入是否符合你所在平台/比赛规则（本程序不碰内存与进程，但仍是模拟按键）。
-15. 在线学习需要至少 20 个击杀样本（约 4–6 个击杀窗口）；样本不足时不会改变排序。可先用 demo 训练。
-16. 从 demo 训练需要 `demoparser2`（`requirements-train.txt`），训练完成后重启导播加载 `learner.json`。
+15. 即时学习已移除；静态 demo 模型需要 `demoparser2`，训练后重启导播加载 `learner.json`。
+16. 决策模型需要至少 1000 条已标注 CSV；训练用 `scikit-learn`，生成 `decision_model.pkl`，重启导播加载。
 17. 专业导播需要 OBS WebSocket 与 FFmpeg；先在“专业导播”页连接/选路径，再用事件动作或手动按钮测试录制、回放。
 18. 玩家改名 API 默认是魔女杯地址；换赛事时填自己的 BaseUrl，并确认返回 JSON 的 `name` 字段。
 19. 若显示器缩放不是 100%，检查窗口是否完整显示（GUI 采用分页以适配较小高度）。
@@ -313,9 +328,11 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 81 项（不启动 GUI、不发真实按键）
+- `test_cs2_ai_director.py`：核心逻辑测试，共 80 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS、FFmpeg 回放、玩家改名
-- `train_from_demos.py`：从 `.dem` 离线训练 `learner.json`
+- `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁
+- `train_decision_model.py`：从 `decisions.csv` 训练随机森林
+- `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`
 - `SELFCHECK.md`：自检清单、修复记录与仍需实机验证的步骤
 - `frozen_v1.0.0/`：优化前冻结基线（含 SHA256）
 - `requirements.txt`：依赖

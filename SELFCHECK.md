@@ -9,8 +9,9 @@
 - **v1.4 增量（2026-10-21）**：修复“缺少 allplayers_position”（同端口 GSI 配置互相覆盖）；快捷键改为“长按 Alt + 短按两次”；有玩家存活时 POV 优先。
 - **v1.5 增量（2026-10-21）**：GSI cfg 改为 Valve KeyValues（JSON 会被 CS2 忽略，导致一直等待数据）；出生点按上一回合胜方分 CT/T。
 - **v1.6 增量（2026-10-21）**：移除观战判定；阵亡自动切最近敌人；运镜改为可选 ALT/SHIFT/CTRL + A–Z/0–9；时序 80/30/80/30/50ms；楼层/远距离无交火判定；胜率权重提高；200ms 硬间隔。
-- **v1.7 增量（2026-10-21）**：在线学习（round_kills 反馈）+ 从 demo 离线训练同一模型。
-- **v1.8 增量（2026-10-21）**：整合专业导播：独立日志、事件动作、OBS WebSocket、FFmpeg 击杀回放、玩家改名；当前测试 81 项。
+- **v1.7 增量（2026-10-21）**：在线学习（round_kills 反馈）+ 从 demo 离线训练同一模型；在线部分已在 v1.9 移除。
+- **v1.8 增量（2026-10-21）**：整合专业导播：独立日志、事件动作、OBS WebSocket、FFmpeg 击杀回放、玩家改名。
+- **v1.9 增量（2026-10-21）**：移除即时学习；新增 decisions.csv、3 秒标签回填、随机森林训练与模糊区间仲裁；当前测试 80 项。
 
 ---
 
@@ -284,7 +285,9 @@ ruff: All checks passed!
 
 ## 11. v1.7 增量：在线学习与 demo 训练
 
-### 11.1 在线学习
+> v1.9 已移除即时学习；本节只保留历史记录。当前静态 demo 模型仍可用。
+
+### 11.1 在线学习（已移除）
 
 - 数据：每个选手 `state.round_kills` 的增量；
 - 窗口：切人后 `learning_window=2.5s` 内；
@@ -325,8 +328,60 @@ ruff: All checks passed!
 
 新增测试：学习者正/负样本、无击杀不训练、权重持久化、在线学习样本门槛。
 
-仍需实机确认：在线学习是否会在你的对局里稳定提升；demo 训练样本量足够后 top-1 是否继续上升。
-建议先用 demo 训练，再让在线学习继续微调。
+仍需实机确认：demo 训练样本量足够后 top-1 是否继续上升。
+
+---
+
+## 13. v1.9：决策日志与随机森林仲裁
+
+### 13.1 即时学习移除
+
+- `KillLearner` 的 `poll/on_switch/_learn` 全部删除；
+- 不再在运行中修改权重，不写 `learner.json`；
+- 保留 `DemoModel`：只加载 `train_from_demos.py` 生成的静态权重；
+- GUI 文案改为“启用 demo 模型（离线权重，不即时更新）”。
+
+### 13.2 决策 CSV
+
+每次切换，以及每 1 秒一次的保持决策，写入：
+
+```text
+%APPDATA%\CS2AIDirector\decisions.csv
+```
+
+字段包含 map/round/action/target_slot/current_slot/reason/rule_score/目标血量/距离，
+以及 8 个特征：aim_self、aim_enemy、win、enemy_low_hp、self_low_hp、proximity、
+enemy_damaged、hp_advantage。
+
+### 13.3 3 秒标签
+
+- 记录时保存目标 `round_totaldmg` 与 `round_kills` 基线；
+- 3 秒后差值 > 0 → label=1（造成伤害或击杀）；
+- 回合切换则丢弃该待标注样本，避免 `round_totaldmg` 重置造成假标签。
+
+### 13.4 训练与仲裁
+
+```bash
+python -m pip install -r requirements-train.txt
+python train_decision_model.py --min-samples 1000
+```
+
+- 随机森林（300 棵树，max_depth=8，class_weight=balanced）；
+- 输出 AUC、混淆矩阵、分类报告、特征重要性；
+- 模型写入 `decision_model.pkl`；
+- 导播只在规则前两名分差 ≤ `decision_model_margin` 时用模型重排；
+- 模型推荐目标的规则分不得低于第一名 × `decision_model_min_factor`；
+- 之后仍走阈值/迟滞/200ms 硬间隔，模型不能绕过安全约束。
+
+### 13.5 回归
+
+```text
+Ran 80 tests ... OK
+ruff: All checks passed!
+```
+
+新增测试：决策 CSV 正/负标签、事件动作、日志过滤。
+仍需实机确认：至少积累 1000 条样本后训练，检查 AUC 与线上仲裁是否真的减少误切。
 
 ---
 

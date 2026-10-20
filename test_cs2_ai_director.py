@@ -18,7 +18,7 @@ import cs2_ai_director as d
 
 def player(slot, team, hp=100, pos=(0, 0, 0), fwd=(1, 0, 0),
            weapon="weapon_ak47", typ="Rifle", ammo=30, armor=100,
-           flashed=0, defusing=False, name=None, round_kills=0):
+           flashed=0, defusing=False, name=None, round_kills=0, round_totaldmg=0):
     return {
         "name": name or f"P{slot}",
         "observer_slot": slot,
@@ -28,7 +28,7 @@ def player(slot, team, hp=100, pos=(0, 0, 0), fwd=(1, 0, 0),
         "state": {
             "health": hp, "armor": armor, "helmet": True,
             "flashed": flashed, "defusing": defusing,
-            "round_kills": round_kills,
+            "round_kills": round_kills, "round_totaldmg": round_totaldmg,
         },
         "weapons": {"weapon_0": {"name": weapon, "type": typ,
                                  "state": "active", "ammo_clip": ammo}},
@@ -724,76 +724,6 @@ class TestVerticalEngagement(unittest.TestCase):
         self.assertFalse(d.has_possible_engagement(snap, d.DEFAULT_CONFIG))
 
 
-class TestKillLearner(unittest.TestCase):
-    def _learner(self):
-        cfg = dict(d.DEFAULT_CONFIG)
-        cfg["learning_min_samples"] = 1
-        cfg["learning_window"] = 5.0
-        return cfg, d.KillLearner(cfg, d.LogBus())
-
-    def _snap(self, kills=(0, 0), rnd=1):
-        data = payload(
-            players=[
-                player(1, "CT", round_kills=kills[0]),
-                player(2, "T", pos=(600, 0, 0), fwd=(-1, 0, 0), round_kills=kills[1]),
-            ],
-            round_no=rnd,
-        )
-        snap = d.parse_snapshot(data, time.monotonic())
-        assert snap is not None
-        return snap
-
-    def test_target_kill_is_positive_sample(self):
-        cfg, learner = self._learner()
-        with tempfile.TemporaryDirectory() as tmp:
-            old = d.learner_path
-            d.learner_path = lambda: Path(tmp) / "learner.json"  # type: ignore[assignment]
-            try:
-                snap = self._snap()
-                learner.poll(snap, 10.0)
-                cands = d.score_candidates(snap, cfg, None, 10.0)
-                learner.on_switch(snap, cands, 1, 10.0)
-                learner.poll(self._snap((1, 0)), 11.0)
-                self.assertEqual(learner.attempts, 1)
-                self.assertEqual(learner.hits, 1)
-                self.assertGreater(learner.samples, 0)
-                self.assertTrue((Path(tmp) / "learner.json").is_file())
-            finally:
-                d.learner_path = old  # type: ignore[assignment]
-
-    def test_other_killer_is_negative_for_target(self):
-        cfg, learner = self._learner()
-        with tempfile.TemporaryDirectory() as tmp:
-            old = d.learner_path
-            d.learner_path = lambda: Path(tmp) / "learner.json"  # type: ignore[assignment]
-            try:
-                snap = self._snap()
-                learner.poll(snap, 10.0)
-                cands = d.score_candidates(snap, cfg, None, 10.0)
-                learner.on_switch(snap, cands, 1, 10.0)
-                learner.poll(self._snap((0, 1)), 11.0)
-                self.assertEqual(learner.attempts, 1)
-                self.assertEqual(learner.hits, 0)
-            finally:
-                d.learner_path = old  # type: ignore[assignment]
-
-    def test_no_kill_does_not_train(self):
-        cfg, learner = self._learner()
-        with tempfile.TemporaryDirectory() as tmp:
-            old = d.learner_path
-            d.learner_path = lambda: Path(tmp) / "learner.json"  # type: ignore[assignment]
-            try:
-                snap = self._snap()
-                learner.poll(snap, 10.0)
-                cands = d.score_candidates(snap, cfg, None, 10.0)
-                learner.on_switch(snap, cands, 1, 10.0)
-                learner.poll(snap, 16.0)  # 超过 5s 窗口，且没有击杀
-                self.assertEqual(learner.samples, 0)
-                self.assertEqual(learner.attempts, 0)
-            finally:
-                d.learner_path = old  # type: ignore[assignment]
-
-
 class TestProDirectorModule(unittest.TestCase):
     def _snap(self, phase="live", rnd=1, bomb="", players=None):
         from types import SimpleNamespace
@@ -864,6 +794,48 @@ class TestProDirectorModule(unittest.TestCase):
             self.assertEqual(rep.calls, ["kill"])
         finally:
             eng.stop()
+
+
+class TestDecisionModel(unittest.TestCase):
+    def _snap(self, dmg=0):
+        data = payload(players=[
+            player(1, "CT", round_totaldmg=dmg),
+            player(2, "T", pos=(600, 0, 0), fwd=(-1, 0, 0)),
+        ])
+        snap = d.parse_snapshot(data, time.monotonic())
+        assert snap is not None
+        return snap
+
+    def test_logger_labels_damage_after_window(self):
+        import csv as _csv
+        import tempfile
+        cfg = dict(d.DEFAULT_CONFIG)
+        cfg["decision_label_window"] = 3.0
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "decisions.csv"
+            logger = d.dm.DecisionLogger(cfg, path)
+            snap = self._snap(dmg=0)
+            cands = d.score_candidates(snap, cfg, None, 10.0)
+            logger.record(snap, cands, 1, "switch", "test", None, 10.0)
+            logger.poll(self._snap(dmg=60), 13.1)
+            with path.open(encoding="utf-8-sig") as f:
+                rows = list(_csv.DictReader(f))
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["label"], "1")
+            self.assertEqual(rows[0]["label_damage"], "60")
+
+    def test_logger_negative_when_no_damage(self):
+        import tempfile
+        cfg = dict(d.DEFAULT_CONFIG)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "decisions.csv"
+            logger = d.dm.DecisionLogger(cfg, path)
+            snap = self._snap(dmg=0)
+            cands = d.score_candidates(snap, cfg, None, 10.0)
+            logger.record(snap, cands, 1, "switch", "test", None, 10.0)
+            logger.poll(self._snap(dmg=0), 13.1)
+            self.assertEqual(logger.rows, 1)
+            self.assertEqual(logger.positive, 0)
 
 
 class TestConfigPersistence(unittest.TestCase):

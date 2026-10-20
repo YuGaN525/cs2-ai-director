@@ -50,7 +50,7 @@ from typing import Any, Callable, Optional
 
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "CS2 AI 导播"
-VERSION = "1.8.0"
+VERSION = "1.9.0"
 IS_WINDOWS = os.name == "nt"
 
 GSI_CFG_NAME = "gamestate_integration_ai_director.cfg"
@@ -79,6 +79,7 @@ except Exception:  # pragma: no cover
     pygetwindow = None
     HAS_PYGETWINDOW = False
 
+import decision_model as dm
 import director_pro as pro_mod
 
 try:
@@ -135,13 +136,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "ai_max_per_minute": 12,
     "ai_result_ttl": 2.5,       # AI 建议的有效期（秒）
     "ai_ambiguity_margin": 0.08,  # 规则前两名分差小于该值才请求 AI
-    # ---- 在线学习（按击杀反馈微调排序，样本少时不影响）----
-    "learning_enabled": True,
-    "learning_window": 2.5,      # 切人后观察多久内的击杀
-    "learning_min_samples": 20,  # 少于该样本数时输出中性 0.5
-    "learning_rate": 0.03,
-    "learning_l2": 0.001,
-    "learning_blend": 0.25,      # 预测概率对规则分的最大加权比例
+    # ---- 离线 demo 模型（静态权重，不在线更新）----
+    "demo_model_enabled": True,
+    "demo_model_min_samples": 20,
+    "demo_model_blend": 0.25,
     # ---- 专业导播：OBS / FFmpeg / 事件动作 / 玩家改名 ----
     "obs_host": "127.0.0.1",
     "obs_port": 4455,
@@ -154,6 +152,13 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "event_actions_enabled": True,
     "event_rules": [],
     "player_api_base_url": "https://majo-cup.laffeynyaa.com",
+    # ---- 决策日志 + 轻量模型 ----
+    "decision_log_enabled": True,
+    "decision_log_interval": 1.0,
+    "decision_label_window": 3.0,
+    "decision_model_enabled": True,
+    "decision_model_margin": 0.08,
+    "decision_model_min_factor": 0.9,
     # ---- 视角切换 ----
     "manual_pause_seconds": 10.0,
     "loop_hz": 20,
@@ -249,6 +254,13 @@ def load_config() -> dict[str, Any]:
                                 cfg[k][map_name] = ref
                     else:
                         cfg[k] = v
+                # v1.9：旧的在线学习配置迁移为静态 demo 模型开关
+                if "learning_enabled" in raw and "demo_model_enabled" not in raw:
+                    cfg["demo_model_enabled"] = bool(raw["learning_enabled"])
+                if "learning_min_samples" in raw and "demo_model_min_samples" not in raw:
+                    cfg["demo_model_min_samples"] = raw["learning_min_samples"]
+                if "learning_blend" in raw and "demo_model_blend" not in raw:
+                    cfg["demo_model_blend"] = raw["learning_blend"]
         except Exception:
             # 配置损坏不应阻止启动
             pass
@@ -442,6 +454,7 @@ class Player:
     active_weapon: Optional[dict[str, Any]]
     money: int
     round_kills: int
+    round_totaldmg: int
 
 
 @dataclass
@@ -578,6 +591,7 @@ def parse_snapshot(payload: Any, received_at: float) -> Optional[Snapshot]:
                 active_weapon=active,
                 money=_i(state.get("money"), 0) or 0,
                 round_kills=_i(state.get("round_kills"), 0) or 0,
+                round_totaldmg=_i(state.get("round_totaldmg"), 0) or 0,
             )
 
     bomb_raw = payload.get("bomb")
@@ -2045,7 +2059,7 @@ class AIArbiter:
 
 
 # --------------------------------------------------------------------------
-# 11.5 在线学习：根据“切过去后是否发生击杀”微调排序
+# 11.5 离线 demo 模型：静态权重，不做在线更新
 # --------------------------------------------------------------------------
 
 LEARN_FEATURE_NAMES = (
@@ -2071,39 +2085,26 @@ def _candidate_features(c: Candidate) -> list[float]:
     ]
 
 
-class KillLearner:
-    """
-    轻量在线逻辑回归。
-
-    样本 = 一次“导播切到某人”后 2.5 秒内发生的第一次击杀：
-      - 击杀者 = 1，其余同时刻候选 = 0；
-      - 没发生击杀 → 丢弃（避免把“没打起来”当负样本）；
-      - 样本少于 learning_min_samples 时输出 0.5，完全不影响原规则。
-
-    只对候选分数做 ±learning_blend/2 的小幅调整，避免模型早期把导播带偏。
-    """
+class DemoModel:
+    """加载 train_from_demos.py 生成的静态 demo 权重；不再做任何在线更新。"""
 
     def __init__(self, cfg: dict[str, Any], log: LogBus) -> None:
         self.cfg = cfg
         self.log = log
-        self._lock = threading.Lock()
         self.weights = [0.0] * len(LEARN_FEATURE_NAMES)
         self.bias = 0.0
         self.samples = 0
         self.attempts = 0
         self.hits = 0
-        self._pending: Optional[dict[str, Any]] = None
-        self._kills: dict[str, int] = {}
-        self._round_key: Optional[tuple[str, Optional[int]]] = None
         self.load()
 
     @property
     def enabled(self) -> bool:
-        return bool(self.cfg.get("learning_enabled", True))
+        return bool(self.cfg.get("demo_model_enabled", True))
 
     def _min_samples(self) -> int:
         try:
-            return max(1, int(self.cfg.get("learning_min_samples", 20)))
+            return max(1, int(self.cfg.get("demo_model_min_samples", 20)))
         except (TypeError, ValueError):
             return 20
 
@@ -2122,128 +2123,26 @@ class KillLearner:
             self.attempts = max(0, int(raw.get("attempts", 0)))
             self.hits = max(0, int(raw.get("hits", 0)))
         except Exception:
-            self.log.warning("学习数据损坏，已从零开始。")
-
-    def save(self) -> None:
-        try:
-            data = {
-                "version": 1,
-                "features": list(LEARN_FEATURE_NAMES),
-                "weights": [round(x, 6) for x in self.weights],
-                "bias": round(self.bias, 6),
-                "samples": self.samples,
-                "attempts": self.attempts,
-                "hits": self.hits,
-            }
-            path = learner_path()
-            tmp = path.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-            tmp.replace(path)
-        except Exception:
-            pass
+            self.log.warning("demo 模型数据损坏，已忽略。")
 
     def _predict_vec(self, x: list[float]) -> float:
         z = self.bias + sum(w * v for w, v in zip(self.weights, x))
         z = max(-30.0, min(30.0, z))
         return 1.0 / (1.0 + math.exp(-z))
 
-    def probability(self, c: Candidate) -> float:
-        if not self.enabled or self.samples < self._min_samples():
-            return 0.5
-        return self._predict_vec(_candidate_features(c))
-
     def adjust(self, cands: list[Candidate]) -> None:
-        """按学习到的概率小幅调整候选分数并重新排序。"""
+        """按离线 demo 模型的概率小幅调整候选分数；不更新权重。"""
         if not self.enabled or not cands or self.samples < self._min_samples():
             return
         try:
-            blend = max(0.0, min(0.6, float(self.cfg.get("learning_blend", 0.25))))
+            blend = max(0.0, min(0.6, float(
+                self.cfg.get("demo_model_blend", 0.25))))
         except (TypeError, ValueError):
             blend = 0.25
         for c in cands:
             p = self._predict_vec(_candidate_features(c))
             c.score *= 1.0 + blend * (p - 0.5)
         cands.sort(key=lambda c: c.score, reverse=True)
-
-    def on_switch(self, snap: Snapshot, cands: list[Candidate],
-                  target_slot: int, now: float) -> None:
-        if not self.enabled or not cands:
-            return
-        try:
-            window = max(0.5, min(10.0, float(self.cfg.get("learning_window", 2.5))))
-        except (TypeError, ValueError):
-            window = 2.5
-        items = [
-            (c.slot, c.name, _candidate_features(c))
-            for c in cands if c.slot is not None
-        ]
-        if not items:
-            return
-        with self._lock:
-            self._pending = {
-                "expires": now + window,
-                "round_key": (snap.map_name, snap.round_num),
-                "target": int(target_slot),
-                "items": items,
-            }
-
-    def poll(self, snap: Snapshot, now: float) -> None:
-        if not self.enabled:
-            return
-        round_key = (snap.map_name, snap.round_num)
-        with self._lock:
-            if self._round_key != round_key:
-                self._round_key = round_key
-                self._kills = {sid: p.round_kills for sid, p in snap.players.items()}
-                self._pending = None
-                return
-
-            kills = []
-            for sid, p in snap.players.items():
-                prev = self._kills.get(sid)
-                if prev is not None and p.round_kills > prev:
-                    kills.append(p)
-                self._kills[sid] = p.round_kills
-
-            pending = self._pending
-            if pending is not None and now > float(pending["expires"]):
-                self._pending = None
-                pending = None
-            if not kills or pending is None:
-                return
-
-            killer = kills[0]
-            items = pending["items"]
-            if any(slot == killer.slot for slot, _, _ in items):
-                self._learn(items, killer.slot, int(pending["target"]))
-            self._pending = None
-
-    def _learn(self, items: list[tuple[int, str, list[float]]],
-               killer_slot: Optional[int], target_slot: int) -> None:
-        try:
-            lr = max(0.001, min(0.2, float(self.cfg.get("learning_rate", 0.03))))
-            l2 = max(0.0, min(0.1, float(self.cfg.get("learning_l2", 0.001))))
-        except (TypeError, ValueError):
-            lr, l2 = 0.03, 0.001
-        for slot, _name, x in items:
-            label = 1.0 if slot == killer_slot else 0.0
-            p = self._predict_vec(x)
-            g = p - label
-            for i in range(len(self.weights)):
-                self.weights[i] -= lr * (g * x[i] + l2 * self.weights[i])
-                self.weights[i] = max(-3.0, min(3.0, self.weights[i]))
-            self.bias = max(-5.0, min(5.0, self.bias - lr * g))
-            self.samples += 1
-        self.attempts += 1
-        if killer_slot == target_slot:
-            self.hits += 1
-        self.save()
-        if self.samples % 10 < len(items):
-            rate = (self.hits / self.attempts * 100.0) if self.attempts else 0.0
-            self.log.info(
-                f"在线学习：样本 {self.samples}，命中 {self.hits}/{self.attempts}"
-                f"（{rate:.0f}%）"
-            )
 
     def status(self) -> dict[str, Any]:
         rate = (self.hits / self.attempts * 100.0) if self.attempts else 0.0
@@ -2253,6 +2152,7 @@ class KillLearner:
             "attempts": self.attempts,
             "hits": self.hits,
             "hit_rate": round(rate, 1),
+            "online": False,
         }
 
 
@@ -2271,15 +2171,19 @@ class DirectorEngine:
     """
 
     def __init__(self, cfg: dict[str, Any], bus: LogBus,
-                 pro: Optional[pro_mod.ProDirector] = None) -> None:
+                 pro: Optional[pro_mod.ProDirector] = None,
+                 decision_logger: Optional[dm.DecisionLogger] = None,
+                 model_arbiter: Optional[dm.ModelArbiter] = None) -> None:
         self.cfg = cfg
         self.bus = bus
         self.pro = pro
+        self.decision_logger = decision_logger
+        self.model_arbiter = model_arbiter
         self.store = SnapshotStore()
         self.server: Optional[GSIServer] = None
         self.input = InputController(cfg, bus)
         self.arbiter = AIArbiter(cfg, bus)
-        self.learner = KillLearner(cfg, bus)
+        self.learner = DemoModel(cfg, bus)
         self.triggers = TriggerTracker(cfg)
         self.watcher: Optional[ManualKeyWatcher] = None
 
@@ -2366,7 +2270,6 @@ class DirectorEngine:
             self.watcher.stop()
             self.watcher = None
         self.arbiter.stop()
-        self.learner.save()
         if self.server is not None:
             self.server.stop()
             self.server = None
@@ -2419,7 +2322,11 @@ class DirectorEngine:
             "paused_for": max(0.0, self._manual_until - now),
             "bomb_cam_for": max(0.0, self._bomb_cam_until - now),
             "ai": self.arbiter.status(),
-            "learning": self.learner.status(),
+            "demo_model": self.learner.status(),
+            "decision": (self.decision_logger.stats()
+                         if self.decision_logger else {}),
+            "model": (self.model_arbiter.status()
+                      if self.model_arbiter else {}),
             "triggers": dict(self.triggers.counts),
             "spectating": False,
             "candidates": 0,
@@ -2450,7 +2357,8 @@ class DirectorEngine:
 
         if snap.seq != self._last_seq:
             self._update_damage(snap, now)
-            self.learner.poll(snap, now)
+            if self.decision_logger is not None:
+                self.decision_logger.poll(snap, now)
             if self.pro is not None:
                 self.pro.tick(snap, now)
             self._last_seq = snap.seq
@@ -2663,6 +2571,15 @@ class DirectorEngine:
 
         cands = score_candidates(snap, self.cfg, self._damage_recent, now)
         self.learner.adjust(cands)
+        # 规则前两名分数接近时，用离线随机森林模型仲裁；强规则不交给模型。
+        model_slot: Optional[int] = None
+        if (self.model_arbiter is not None and len(cands) >= 2
+                and cands[0].score >= float(self.cfg["switch_min_score"])):
+            model_slot = self.model_arbiter.arbitrate(cands, cands[0].score)
+            if model_slot is not None:
+                idx = next((i for i, c in enumerate(cands) if c.slot == model_slot), None)
+                if idx is not None and idx > 0:
+                    cands = [cands[idx]] + cands[:idx] + cands[idx + 1:]
         status["candidates"] = len(cands)
         death_slot = self._death_fallback_slot(snap, cands)
         if not cands:
@@ -2746,8 +2663,6 @@ class DirectorEngine:
             if ok:
                 self._last_switch_at = now
                 self._last_switch_slot = decision.slot
-                if decision.source != "death":
-                    self.learner.on_switch(snap, cands, decision.slot, now)
                 status["target"] = decision.slot
                 status["target_name"] = cand.name if cand else ""
                 if decision.source == "death":
@@ -2755,11 +2670,17 @@ class DirectorEngine:
                         f"切换视角 → slot={decision.slot}（观战对象已阵亡，切到最近敌人）"
                     )
                 else:
-                    source = "AI" if (hint and hint[0] == decision.slot) else "规则"
+                    source = ("AI" if (hint and hint[0] == decision.slot)
+                              else ("模型" if model_slot == decision.slot else "规则"))
                     self.bus.info(
                         f"切换视角 → slot={decision.slot} {cand.name if cand else '?'}"
                         f" [{source}] " + (format_candidate(cand) if cand else "")
                     )
+                    if self.decision_logger is not None:
+                        self.decision_logger.record(
+                            snap, cands, decision.slot, "switch",
+                            decision.reason, snap.observer_slot, now,
+                        )
                 self._last_reason = decision.reason
             else:
                 self._press_retry_after = now + 1.0
@@ -2777,6 +2698,13 @@ class DirectorEngine:
                 status["target"] = shown
                 status["target_name"] = next(
                     (c.name for c in cands if c.slot == shown), "")
+            if (self.decision_logger is not None
+                    and decision.source != "death"):
+                target_slot = shown if shown is not None else snap.observer_slot
+                self.decision_logger.record(
+                    snap, cands, target_slot, "hold",
+                    decision.reason, snap.observer_slot, now,
+                )
 
         # 规则前两名接近时才请求 AI，控制成本与延迟
         if self.arbiter.enabled and len(cands) >= 2:
@@ -2983,6 +2911,8 @@ class DirectorApp:
         self.cfg = cfg
         self.bus = LogBus()
         self.pro = pro_mod.ProDirector(cfg)
+        self.decision_logger = dm.DecisionLogger(cfg)
+        self.model_arbiter = dm.ModelArbiter(cfg)
         self.engine: Optional[DirectorEngine] = None
         self._closing = False
         self._detecting = False
@@ -3044,7 +2974,7 @@ class DirectorApp:
         self.var_api = tk.StringVar(value=str(cfg.get("deepseek_api_key", "")))
         self.var_model = tk.StringVar(value=str(cfg.get("deepseek_model", "deepseek-chat")))
         self.var_ai = tk.BooleanVar(value=bool(cfg.get("ai_enabled", True)))
-        self.var_learn = tk.BooleanVar(value=bool(cfg.get("learning_enabled", True)))
+        self.var_learn = tk.BooleanVar(value=bool(cfg.get("demo_model_enabled", True)))
         self.var_dry = tk.BooleanVar(value=bool(cfg.get("dry_run", False)))
         self.var_port = tk.StringVar(value=str(cfg.get("gsi_port", 3000)))
         self.var_score = tk.StringVar(value=str(cfg.get("switch_min_score", 0.30)))
@@ -3552,7 +3482,7 @@ class DirectorApp:
                         variable=self.var_ai).grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
         ttk.Checkbutton(lf3, text="演练模式（不实际发送按键）",
                         variable=self.var_dry).grid(row=2, column=2, columnspan=2, sticky="w", pady=(6, 0))
-        ttk.Checkbutton(lf3, text="启用在线学习（按击杀反馈微调排序）",
+        ttk.Checkbutton(lf3, text="启用 demo 模型（离线权重，不即时更新）",
                         variable=self.var_learn).grid(
             row=3, column=0, columnspan=2, sticky="w", pady=(6, 0))
         self.btn_train = ttk.Button(
@@ -3917,7 +3847,7 @@ class DirectorApp:
         cfg["deepseek_api_key"] = self.var_api.get().strip()
         cfg["deepseek_model"] = self.var_model.get().strip() or "deepseek-chat"
         cfg["ai_enabled"] = bool(self.var_ai.get())
-        cfg["learning_enabled"] = bool(self.var_learn.get())
+        cfg["demo_model_enabled"] = bool(self.var_learn.get())
         cfg["dry_run"] = bool(self.var_dry.get())
         try:
             cfg["gsi_port"] = int(self.var_port.get().strip())
@@ -3931,6 +3861,8 @@ class DirectorApp:
             cfg["manual_pause_seconds"] = max(0.0, min(120.0, float(self.var_pause.get().strip())))
         except Exception:
             cfg["manual_pause_seconds"] = DEFAULT_CONFIG["manual_pause_seconds"]
+        self.decision_logger.cfg = cfg
+        self.model_arbiter.cfg = cfg
         return cfg
 
     def _validate_cfg(self, cfg: dict[str, Any]) -> bool:
@@ -3996,7 +3928,11 @@ class DirectorApp:
             self.bus.warning(f"配置保存失败（将继续启动）：{type(e).__name__}: {e}")
         self.cfg = cfg
         try:
-            engine = DirectorEngine(cfg, self.bus, pro=self.pro)
+            engine = DirectorEngine(
+                cfg, self.bus, pro=self.pro,
+                decision_logger=self.decision_logger,
+                model_arbiter=self.model_arbiter,
+            )
             engine.start()
         except Exception as e:
             self.bus.error(f"启动失败：{type(e).__name__}: {e}")
@@ -4086,12 +4022,17 @@ class DirectorApp:
 
         ai = st.get("ai") or {}
         ai_txt = "关闭" if not ai.get("enabled") else f"开启 调用{ai.get('calls', 0)}/失败{ai.get('errors', 0)}"
-        learn = st.get("learning") or {}
+        learn = st.get("demo_model") or {}
         learn_txt = ("关闭" if not learn.get("enabled")
                      else f"{learn.get('samples', 0)} 样本 / 命中 {learn.get('hit_rate', 0)}%")
+        decision = st.get("decision") or {}
+        model = st.get("model") or {}
+        model_txt = "已加载" if model.get("loaded") else "未加载"
         trig = st.get("triggers") or {}
         self.lbl_ai.configure(
-            text=f"AI：{ai_txt}    学习：{learn_txt}"
+            text=f"AI：{ai_txt}    Demo模型：{learn_txt}"
+                 f"    决策样本：{decision.get('rows', 0)}（正 {decision.get('positive', 0)}）"
+                 f"    随机森林：{model_txt}"
                  f"    运镜：出生点 {trig.get('round', 0)} 次 / 包点 {trig.get('bomb', 0)} 次"
                  + (f"    运镜保护 {st.get('bomb_cam_for', 0):.1f}s" if st.get("bomb_cam_for", 0) > 0 else "")
         )
