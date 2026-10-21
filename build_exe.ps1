@@ -18,5 +18,7 @@ python -m PyInstaller `
   --exclude-module matplotlib `
   cs2_ai_director.py
 
+$exe = Join-Path $PSScriptRoot "dist\CS2AIDirector.exe"
+if (!(Test-Path $exe)) { throw "Build failed: $exe not found" }
 Write-Host ""
-Write-Host "Built: $PSScriptRoot\dist\CS2AIDirector.exe"
+Write-Host "Built: $exe"
