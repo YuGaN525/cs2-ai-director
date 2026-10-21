@@ -101,13 +101,20 @@ def fit_platt(y: list[int], p: list[float]) -> tuple[float, float]:
     return float(a), float(b)
 
 
-def load_labelled_rows(csv_path: Path) -> tuple[list[list[float]], list[int], list[str]]:
+def load_labelled_rows(csv_path: Path, min_timestamp: float = 0.0) -> tuple[
+        list[list[float]], list[int], list[str]]:
     xs: list[list[float]] = []
     ys: list[int] = []
     groups: list[str] = []
     with Path(csv_path).open("r", newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for idx, row in enumerate(reader, 1):
+            try:
+                ts = float(row.get("timestamp") or 0.0)
+            except (TypeError, ValueError):
+                ts = 0.0
+            if min_timestamp > 0 and ts and ts < min_timestamp:
+                continue
             label = str(row.get("label", "")).strip()
             if label not in ("0", "1"):
                 continue
@@ -175,12 +182,20 @@ def save_calibration(path: Path, a: float, b: float,
 def calibrate_csv(csv_path: Path, model_path: Path, out_path: Path,
                   min_samples: int = 500, test_size: float = 0.3,
                   cfg: Optional[dict[str, Any]] = None,
-                  min_improvement: float = 0.01) -> dict[str, Any]:
+                  min_improvement: float = 0.01,
+                  min_timestamp: Optional[float] = None) -> dict[str, Any]:
     """从线上 decisions.csv 拟合 Platt 校准；不达标不写文件。"""
     cfg = cfg or {"decision_model_enabled": True}
-    xs, ys, groups = load_labelled_rows(csv_path)
+    if min_timestamp is None:
+        try:
+            min_timestamp = Path(model_path).stat().st_mtime
+        except OSError:
+            min_timestamp = 0.0
+    xs, ys, groups = load_labelled_rows(csv_path, float(min_timestamp or 0.0))
     if len(xs) < min_samples:
-        return {"ok": False, "reason": f"样本不足 {len(xs)} < {min_samples}"}
+        return {"ok": False,
+                "reason": f"模型训练后样本不足 {len(xs)} < {min_samples}",
+                "min_timestamp": min_timestamp}
     if len(set(ys)) < 2:
         return {"ok": False, "reason": "只有一个类别"}
     arb = ModelArbiter(cfg, path=model_path)
@@ -209,7 +224,7 @@ def calibrate_csv(csv_path: Path, model_path: Path, out_path: Path,
         "brier_before": round(before, 6), "brier_after": round(after, 6),
         "logloss_before": round(ll_before, 6), "logloss_after": round(ll_after, 6),
         "auc": round(auc, 6), "source": str(csv_path),
-        "model": str(model_path),
+        "model": str(model_path), "min_timestamp": float(min_timestamp or 0.0),
         "model_mtime": (Path(model_path).stat().st_mtime
                         if Path(model_path).is_file() else 0.0),
     }

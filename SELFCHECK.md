@@ -24,7 +24,8 @@
 - **v1.10.9 增量（2026-10-21）**：修复 map.phase=gameover 被 countdowns.phase=over 覆盖；增加 GSI 阶段切换日志。
 - **v1.10.10 增量（2026-10-21）**：GSI 无暂停状态，新增暂停热键/按钮手动派发 pause_started/pause_over。
 - **v1.10.11 增量（2026-10-22）**：修复 over 阶段提前改 round 导致下一回合 live=0 空行/真实指标丢失。
-- **v1.10.12 增量（2026-10-22）**：新增 Platt 在线概率校准；训练器增加校准按钮、top-1/模糊样本诊断；当前测试 107 项。
+- **v1.10.12 增量（2026-10-22）**：新增 Platt 在线概率校准；训练器增加校准按钮、top-1/模糊样本诊断。
+- **v1.10.13 增量（2026-10-22）**：校准只使用模型训练后的线上样本；用 5 张 demo 重训，top-1 67.3%；当前测试 107 项。
 
 ---
 
@@ -1077,7 +1078,7 @@ SHA256：C3E40F98FA1E6B389536C717A8E27A0B96B0A98EFB9CC85B71632B2D372014FC
 
 ---
 
-## 27. v1.10.12：在线概率校准
+## 27. v1.10.12–13：在线概率校准与 5 图重训
 
 ### 27.1 数据结论
 
@@ -1114,16 +1115,32 @@ logloss 0.473 → 0.172
 - ambiguous=0 时提示重新从 .dem 导入；
 - CLI：--cli --calibrate ...
 
-### 27.5 产物
+### 27.5 5 图重训（2026-10-22）
+
+使用 gwd-yyp-m1/m2、5ad-gwd-m1/m2/m3 五张 demo：
 
 ```text
-Yuzi_CS2_AIDirector.exe v1.10.12
-大小：35,969,393 字节
-SHA256：8DBEDAB7C275070D911EE9709DCFF84163D9EF2CB64AA265B8D06E306A71152C
+2955 候选行 / 586 击杀事件 / 1189 正例
+模糊样本 1359
+训练 2219 / 验证 736（147 组）
+RandomForest：CV AUC 0.7205，验证 AUC 0.7175，top-1 67.3%
+ExtraTrees：top-1 68.7%，AUC 0.7130
+最终选择 RandomForest
+```
 
-Yuzi_CS2_AIDecisionTrainer.exe v1.1.4
-大小：179,802,315 字节
-SHA256：8F05CA7F77E885AE2AB88F9651D4F54C1BC024C34858CDF03B2745A7C4F29516
+旧模型/旧校准已备份到 `backup_20261022_025609`。
+新模型写入 APPDATA；旧校准因 model_mtime 不匹配自动失效。
+
+### 27.6 产物
+
+```text
+Yuzi_CS2_AIDirector.exe v1.10.13
+大小：35,968,408 字节
+SHA256：A700D6165C99F6A4C5E25AA870654EE1F30C7CF1A6F8EA1E20045B5870008DCD
+
+Yuzi_CS2_AIDecisionTrainer.exe v1.1.5
+大小：179,804,203 字节
+SHA256：CAF67EBCB39CCDF76FBE345F7B18AFF0D8CEAA04F5E94B241EF4C3068E737D12
 ```
 
 ## 12. v1.8：专业导播整合
