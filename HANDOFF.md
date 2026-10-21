@@ -65,7 +65,7 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：以 `git log` 中 `Optimize runtime hot paths` 为准
+- 最新提交：`a69432a Optimize runtime hot paths`
 - Release：`v1.1.6`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
 - 大小：179,810,090 字节（约 179 MB）
