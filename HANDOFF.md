@@ -51,7 +51,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.12 在线校准：`022772c Add online probability calibration`
 - v1.10.13 校准窗口修复：`4ff7177 Calibrate only on post-model samples`
 - v1.10.14 回合叙事：`f8a3860 Add round narrative hint`
-- v1.10.15 性能优化：以 `git log` 中 `Optimize runtime hot paths` 为准
+- v1.10.15 性能优化：`ee4c5b5 Optimize runtime hot paths`
 - Release：`v1.10.15`
 - 资产：`Yuzi_CS2_AIDirector.exe`
 - 大小：35,976,527 字节（约 36.0 MB）
