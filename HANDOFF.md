@@ -48,7 +48,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.9 GSI 阶段修复：`8ecf010 Fix GSI gameover phase priority`
 - v1.10.10 暂停兜底：`a948704 Add manual pause fallback`
 - v1.10.11 回合边界修复：`ee05a1d Fix round boundary during over`
-- v1.10.12 在线校准：以 `git log` 中 `Add online probability calibration` 为准
+- v1.10.12 在线校准：`022772c Add online probability calibration`
 - Release：`v1.10.12`
 - 资产：`Yuzi_CS2_AIDirector.exe`
 - 大小：35,969,393 字节（约 36.0 MB）
