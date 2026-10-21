@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.14"
+VERSION = "1.10.15"
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -2307,6 +2307,10 @@ class DirectorEngine:
         self._last_seq = -1
         self._hp: dict[str, int] = {}
         self._damage_at: dict[str, float] = {}
+        self._damage_generation = 0
+        self._candidate_cache: list[Candidate] = []
+        self._candidate_cache_key: Optional[tuple[int, int, int]] = None
+        self._candidate_cache_at = 0.0
         self._manual_until = 0.0
         self._last_switch_at: Optional[float] = None
         self._last_switch_slot: Optional[int] = None
@@ -2681,6 +2685,8 @@ class DirectorEngine:
             if prev_hp is not None:
                 if p.health < prev_hp - 2:
                     self._damage_at[sid] = now
+                if p.health < prev_hp:
+                    self._damage_generation += 1
                 if p.health < prev_hp and slot is not None:
                     victims.append(int(slot))
                 if prev_hp > 0 and p.health <= 0 and slot is not None:
@@ -2731,6 +2737,21 @@ class DirectorEngine:
             self._hp = {k: v for k, v in self._hp.items() if k in keep}
             self._dmg_dealt = {k: v for k, v in self._dmg_dealt.items() if k in keep}
             self._round_kills = {k: v for k, v in self._round_kills.items() if k in keep}
+
+    def _score_candidates(self, snap: Snapshot, now: float) -> list[Candidate]:
+        """按快照缓存候选；不改变评分/调整结果，只避免同帧重复计算。"""
+        key = (int(getattr(snap, "seq", 0) or 0),
+               self._damage_generation,
+               int(getattr(self.learner, "samples", 0) or 0))
+        if (self._candidate_cache_key == key
+                and now - self._candidate_cache_at <= 0.25):
+            return list(self._candidate_cache)
+        cands = score_candidates(snap, self.cfg, self._damage_recent, now)
+        self.learner.adjust(cands)
+        self._candidate_cache = list(cands)
+        self._candidate_cache_key = key
+        self._candidate_cache_at = now
+        return list(cands)
 
     def _damage_recent(self, sid: str) -> bool:
         return (time.monotonic() - self._damage_at.get(sid, -999.0)) <= 1.6
@@ -3013,8 +3034,7 @@ class DirectorEngine:
             status["reason"] = "缺少 allplayers_position，无法判断距离（请重装 GSI 配置）"
             return
 
-        cands = score_candidates(snap, self.cfg, self._damage_recent, now)
-        self.learner.adjust(cands)
+        cands = self._score_candidates(snap, now)
         # 规则前两名分数接近时，用离线随机森林模型仲裁；强规则不交给模型。
         model_slot: Optional[int] = None
         if (self.model_arbiter is not None and len(cands) >= 2
@@ -4843,22 +4863,27 @@ class DirectorApp:
         self.lbl_pro_metrics.configure(text="专业指标：" + metrics_txt)
 
     def _drain_logs(self) -> None:
-        for _ in range(80):
+        lines: list[tuple[str, str]] = []
+        for _ in range(120):
             try:
-                level, msg = self.bus.queue.get_nowait()
+                lines.append(self.bus.queue.get_nowait())
             except queue.Empty:
                 break
-            self._append_log(level, msg)
-
-    def _append_log(self, level: str, msg: str) -> None:
+        if not lines:
+            return
         stamp = datetime.now().strftime("%H:%M:%S")
         self.txt.configure(state="normal")
-        self.txt.insert("end", f"[{stamp}] {msg}\n", level if level in ("WARN", "ERROR") else "INFO")
-        # 控制日志长度，避免长时间运行后卡顿
-        if int(self.txt.index("end-1c").split(".")[0]) > 800:
-            self.txt.delete("1.0", "200.0")
-        self.txt.see("end")
-        self.txt.configure(state="disabled")
+        try:
+            for level, msg in lines:
+                self.txt.insert(
+                    "end", f"[{stamp}] {msg}\n",
+                    level if level in ("WARN", "ERROR") else "INFO")
+            # 每个批次只裁剪/滚动一次，避免每行都触发 Tk 布局。
+            if int(self.txt.index("end-1c").split(".")[0]) > 800:
+                self.txt.delete("1.0", "200.0")
+            self.txt.see("end")
+        finally:
+            self.txt.configure(state="disabled")
 
     # ---- 关闭 ----
     def _on_close(self) -> None:

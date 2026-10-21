@@ -51,19 +51,25 @@ def _brier(y: list[int], p: list[float]) -> float:
 
 
 def _auc(y: list[int], p: list[float]) -> float:
-    """带并列处理的 ROC AUC（成对比较，避免排序 rank 的边界错误）。"""
-    pos = [pi for yi, pi in zip(y, p) if yi == 1]
-    neg = [pi for yi, pi in zip(y, p) if yi == 0]
+    """带并列处理的 ROC AUC，O(n log n)。"""
+    n = len(p)
+    pos = sum(y)
+    neg = n - pos
     if not pos or not neg:
         return 0.5
-    wins = 0.0
-    for a in pos:
-        for b in neg:
-            if a > b:
-                wins += 1.0
-            elif a == b:
-                wins += 0.5
-    return wins / (len(pos) * len(neg))
+    order = sorted(range(n), key=lambda i: p[i])
+    ranks = [0.0] * n
+    i = 0
+    while i < n:
+        j = i + 1
+        while j < n and p[order[j]] == p[order[i]]:
+            j += 1
+        rank = (i + 1 + j) / 2.0
+        for k in range(i, j):
+            ranks[order[k]] = rank
+        i = j
+    rank_sum = sum(ranks[i] for i, v in enumerate(y) if v)
+    return (rank_sum - pos * (pos + 1) / 2.0) / (pos * neg)
 
 
 def fit_platt(y: list[int], p: list[float]) -> tuple[float, float]:
@@ -198,10 +204,23 @@ def calibrate_csv(csv_path: Path, model_path: Path, out_path: Path,
                 "min_timestamp": min_timestamp}
     if len(set(ys)) < 2:
         return {"ok": False, "reason": "只有一个类别"}
-    arb = ModelArbiter(cfg, path=model_path)
-    if not arb.loaded:
-        return {"ok": False, "reason": f"模型未加载：{arb.error or model_path}"}
-    raw = [arb.probability_from_features(x) for x in xs]
+    raw: list[float] = []
+    # 训练器环境有 sklearn，批量 predict 比纯 Python 森林快一个数量级；
+    # 导播 exe 不打包 sklearn，ImportError 时自动回退纯 JSON 森林。
+    try:
+        import joblib
+        import numpy as np
+        model = joblib.load(model_path)
+        n = int(getattr(model, "n_features_in_", len(DECISION_FEATURES)))
+        if n == len(DECISION_FEATURES):
+            raw = model.predict_proba(np.asarray(xs, dtype=float))[:, 1].tolist()
+    except Exception:
+        raw = []
+    if not raw:
+        arb = ModelArbiter(cfg, path=model_path)
+        if not arb.loaded:
+            return {"ok": False, "reason": f"模型未加载：{arb.error or model_path}"}
+        raw = [arb.probability_from_features(x) for x in xs]
     train_idx, test_idx, split = split_groups(groups, test_size)
     y_train = [ys[i] for i in train_idx]
     p_train = [raw[i] for i in train_idx]
