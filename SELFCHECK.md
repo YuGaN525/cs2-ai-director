@@ -20,7 +20,8 @@
 - **v1.10.5 增量（2026-10-21）**：移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名。
 - **v1.10.6 增量（2026-10-21）**：品牌化 Yuzi_CS2_AIDirector / Yuzi_CS2_AIDecisionTrainer，鱼籽杯图标与 UI 美化。
 - **v1.10.7 增量（2026-10-21）**：训练器分组切分/模糊样本加权/top-1/伤害窗口标签；仲裁概率边际。
-- **v1.10.8 增量（2026-10-21）**：勾选框改原生 √；修复事件规则/OBS 配置同步；新增测试规则与 OBS 源/场景校验；当前测试 100 项。
+- **v1.10.8 增量（2026-10-21）**：勾选框改原生 √；修复事件规则/OBS 配置同步；新增测试规则与 OBS 源/场景校验。
+- **v1.10.9 增量（2026-10-21）**：修复 map.phase=gameover 被 countdowns.phase=over 覆盖；增加 GSI 阶段切换日志；当前测试 104 项。
 
 ---
 
@@ -922,6 +923,54 @@ OBS 实测：连接成功；current_scene/scenes/inputs 可读；
 Yuzi_CS2_AIDirector.exe v1.10.8
 大小：35,952,388 字节
 SHA256：FDC37BFE3C018AE810E0C3DCE0F43667F5FBC978A297E5133EAB42C22CDD1C7C
+```
+
+---
+
+## 24. v1.10.9：GSI 比赛结束/暂停阶段
+
+### 24.1 比赛结束不触发
+
+原逻辑：
+
+```python
+phase = countdowns.phase or round.phase or map.phase
+```
+
+比赛结束时 `phase_countdowns.phase` 仍可能是 `"over"`，它会覆盖
+`map.phase="gameover"`，导致 `game_over` 事件永远不生成。
+
+修复：`map.phase` 先处理 `gameover/intermission/warmup/paused`，
+其余阶段才用 `phase_countdowns/round.phase`。
+
+### 24.2 暂停阶段
+
+标准 GSI 的 `MapPhase` 没有独立的 `paused` 值；客户端如果发
+`map.phase="paused"`，现在会被保留并触发 `pause_started`。
+如果实际 GSI 在暂停时仍报告 `"live"`，则单靠 GSI 无法识别暂停，
+需要另加手动触发/外部信号。
+
+v1.10.9 在导播日志增加阶段切换记录：
+
+```text
+阶段切换：live → gameover（round=24）
+```
+
+### 24.3 验证
+
+```text
+Python 单元测试：104 项通过
+新增：map.phase=gameover 优先于 countdown=over
+      map.phase=paused → pause_started
+      EventDetector 发出 game_over / pause_started
+```
+
+### 24.4 产物
+
+```text
+Yuzi_CS2_AIDirector.exe v1.10.9
+大小：35,953,471 字节
+SHA256：14BAB363668BF3EE403FBB63456596E2A870E42725FCC4B48117E3887F86C74A
 ```
 
 ## 12. v1.8：专业导播整合

@@ -42,13 +42,16 @@ def player(slot, team, hp=100, pos=(0, 0, 0), fwd=(1, 0, 0),
 
 
 def payload(players, phase="live", round_no=1, bomb=None, player_slot=0,
-            map_name="de_mirage", scores=(0, 0)):
+            map_name="de_mirage", scores=(0, 0), map_phase=None,
+            round_phase=None, countdown_phase=None):
     return {
         "provider": {"steamid": "observer", "name": "obs"},
-        "map": {"name": map_name, "round": round_no, "phase": phase,
+        "map": {"name": map_name, "round": round_no,
+                "phase": map_phase if map_phase is not None else phase,
                 "team_ct": {"score": scores[0]}, "team_t": {"score": scores[1]}},
-        "round": {"phase": phase},
-        "phase_countdowns": {"phase": phase},
+        "round": {"phase": round_phase if round_phase is not None else phase},
+        "phase_countdowns": {
+            "phase": countdown_phase if countdown_phase is not None else phase},
         "player": {"steamid": "observer", "observer_slot": player_slot},
         "allplayers": {f"sid{p['observer_slot']}": p for p in players},
         "bomb": bomb,
@@ -108,6 +111,34 @@ class TestParsing(unittest.TestCase):
         self.assertEqual(snap.bomb.state, "planted")
         self.assertAlmostEqual(snap.bomb.countdown, 7.5)
         self.assertEqual(snap.bomb.position, (100.0, 200.0, 0.0))
+
+    def test_gameover_map_phase_wins_over_countdown_over(self):
+        snap = snapshot(players=[], phase="live", map_phase="gameover",
+                        round_phase="over", countdown_phase="over")
+        self.assertEqual(snap.phase, "gameover")
+
+    def test_pause_map_phase_is_kept(self):
+        snap = snapshot(players=[], phase="live", map_phase="paused",
+                        round_phase="live", countdown_phase="live")
+        self.assertEqual(snap.phase, "paused")
+
+    def test_detector_emits_game_over(self):
+        det = d.pro_mod.EventDetector()
+        live = snapshot(players=[], phase="live")
+        gameover = snapshot(players=[], phase="live", map_phase="gameover",
+                            round_phase="over", countdown_phase="over")
+        self.assertEqual(det.poll(live), [])
+        kinds = [e.kind for e in det.poll(gameover)]
+        self.assertIn("game_over", kinds)
+
+    def test_detector_emits_pause_started(self):
+        det = d.pro_mod.EventDetector()
+        live = snapshot(players=[], phase="live")
+        paused = snapshot(players=[], phase="live", map_phase="paused",
+                          round_phase="live", countdown_phase="live")
+        self.assertEqual(det.poll(live), [])
+        kinds = [e.kind for e in det.poll(paused)]
+        self.assertIn("pause_started", kinds)
 
 
 class TestScoring(unittest.TestCase):

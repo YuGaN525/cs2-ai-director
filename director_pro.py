@@ -487,11 +487,18 @@ class ProDirector:
         self.detector = EventDetector()
         self.latest_snap: Any = None
         self.last_events: list[GsiEvent] = []
+        self._last_phase = ""
         self._lock = threading.Lock()
 
     def tick(self, snap: Any, _now: float) -> None:
         with self._lock:
             self.latest_snap = snap
+            phase = str(getattr(snap, "phase", "") or "")
+            if phase != self._last_phase:
+                self.log.info(
+                    "GSI", f"阶段切换：{self._last_phase or '?'} → {phase or '?'}"
+                    f"（round={getattr(snap, 'round_num', '?')}）")
+                self._last_phase = phase
             events = self.detector.poll(snap)
             self.last_events = events[-20:]
         if events:
@@ -503,6 +510,7 @@ class ProDirector:
     def reset(self) -> None:
         self.detector = EventDetector()
         self.last_events = []
+        self._last_phase = ""
 
     def stop(self) -> None:
         self.actions.stop()

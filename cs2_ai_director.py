@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.8"
+VERSION = "1.10.9"
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -697,14 +697,25 @@ def parse_snapshot(payload: Any, received_at: float) -> Optional[Snapshot]:
     local_alive = bool(local and local.health > 0)
     is_spectating = obs_slot is not None and not local_alive
 
-    phase = str(
-        countdowns.get("phase")
-        or roundinfo.get("phase")
-        or mapinfo.get("phase")
-        or ""
-    ).lower()
-    if phase == "freezetime" or phase == "freeze_time":
-        phase = "freezetime"
+    # map.phase 负责 gameover/intermission/warmup/paused；
+    # round/phase_countdowns 负责 freezetime/live/over。
+    # 之前优先取 countdowns.phase，比赛结束时它仍可能是 "over"，
+    # 会把 map.phase="gameover" 吞掉，导致 game_over 永远不触发。
+    map_phase = str(mapinfo.get("phase") or "").lower()
+    round_phase = str(roundinfo.get("phase") or "").lower()
+    countdown_phase = str(countdowns.get("phase") or "").lower()
+    if map_phase == "freeze_time":
+        map_phase = "freezetime"
+    if round_phase == "freeze_time":
+        round_phase = "freezetime"
+    if countdown_phase == "freeze_time":
+        countdown_phase = "freezetime"
+    if map_phase == "pause":
+        map_phase = "paused"
+    if map_phase in ("gameover", "intermission", "warmup", "paused"):
+        phase = map_phase
+    else:
+        phase = countdown_phase or round_phase or map_phase
 
     team_ct = mapinfo.get("team_ct") or {}
     team_t = mapinfo.get("team_t") or {}
