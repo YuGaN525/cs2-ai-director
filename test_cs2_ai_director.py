@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest import mock
 
 import cs2_ai_director as d
+import director_narrative as narrative
 import director_story as st
 
 
@@ -867,6 +868,30 @@ class TestDecisionModel(unittest.TestCase):
             logger.poll(self._snap(dmg=0), 13.1)
             self.assertEqual(logger.rows, 1)
             self.assertEqual(logger.positive, 0)
+
+
+class TestNarrative(unittest.TestCase):
+    def test_freeze_and_round_end_text(self):
+        from types import SimpleNamespace
+        players = {
+            "a": SimpleNamespace(health=100, team="CT", pos=(0.0, 0.0, 0.0)),
+            "b": SimpleNamespace(health=100, team="CT", pos=(10.0, 0.0, 0.0)),
+            "c": SimpleNamespace(health=100, team="T", pos=(100.0, 0.0, 0.0)),
+            "e": SimpleNamespace(health=100, team="T", pos=(110.0, 0.0, 0.0)),
+        }
+        snap = SimpleNamespace(players=players, round_win_team="T", phase="freezetime", round_num=3)
+        story = SimpleNamespace(
+            round_num=3, score_ct=2, score_t=3, economy_ct="full",
+            economy_t="eco", match_point=False, match_point_team="",
+            clutch="", round_key="de_mirage#3")
+        text = narrative.freeze_text(snap, story, "T")
+        self.assertIn("第3回合", text)
+        self.assertIn("上回合T胜", text)
+        self.assertIn("出生点", text)
+        self.assertIn("CT 2:3 T", text)
+        over = narrative.round_end_text(snap, story, "T")
+        self.assertIn("T 胜", over)
+        self.assertIn("比分", over)
 
 
 class TestCalibration(unittest.TestCase):

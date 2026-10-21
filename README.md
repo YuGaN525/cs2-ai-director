@@ -21,6 +21,7 @@
 - **v1.10.11**：修复 CS2 在 over 阶段提前改 round 导致下一回合被立即结算、真实指标丢失；新增回合边界回归测试；
 - **v1.10.12**：新增 Platt 在线概率校准（比赛结束自动拟合/验证/回滚保护），训练器增加“校准线上模型”和 top-1/模糊样本诊断；
 - **v1.10.13**：校准只使用模型训练之后的线上样本，避免用训练 demo 自我校准；
+- **v1.10.14**：新增回合叙事提示（freeze 比分/经济/出生位参考，回合结束胜方/比分），可选推送 OBS 文本源，不自动切镜；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -33,9 +34,9 @@
 
 | 程序 | 用途 |
 |---|---|
-| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.13，约 36 MB（Release v1.10.13） |
+| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.14，约 36 MB（Release v1.10.14） |
 
-当前本地构建：35,968,408 字节，SHA256 `A700D6165C99F6A4C5E25AA870654EE1F30C7CF1A6F8EA1E20045B5870008DCD`。
+当前本地构建：35,974,402 字节，SHA256 `B0EF9BAA0F9779B15F429F5BE8F460A811FF6FF0249C5BCF368E6D72D0235ECA`。
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -388,6 +389,9 @@ story         当时的回合故事快照
 
 | `event_actions_enabled` | true | 事件动作总开关 |
 | `event_rules` | [] | 事件动作规则数组（GUI 编辑） |
+| `narrative_enabled` | true | freeze/回合结束叙事提示 |
+| `obs_narrative_enabled` | false | 是否把叙事推送到 OBS 文本源 |
+| `obs_narrative_source` | 空 | OBS 文本源名（text_gdiplus / text_ft2） |
 | `auto_focus` | true | 按键前自动把 CS2 拉到前台 |
 | `dry_run` | false | 演练模式 |
 
@@ -474,9 +478,10 @@ story         当时的回合故事快照
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 107 项（不启动 GUI、不发真实按键）
+- `test_cs2_ai_director.py`：核心逻辑测试，共 108 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS WebSocket 场景/媒体控制
 - `director_story.py`：镜头时间线、六项专业指标、回合故事状态（Phase 1）
+- `director_narrative.py`：freeze/回合结束叙事文案；可选 OBS 文本源
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁
 - `decision_calibration.py`：线上 Platt 概率校准、分组验证、自动写入/失效保护
 - `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`（主程序旧 demo 模型）

@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.13"
+VERSION = "1.10.14"
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -103,6 +103,7 @@ except Exception:  # pragma: no cover
 
 import decision_calibration as cal_mod
 import decision_model as dm
+import director_narrative as narrative_mod
 import director_pro as pro_mod
 import director_story as story_mod
 
@@ -176,6 +177,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "event_actions_enabled": True,
     "event_rules": [],
     "pause_hotkey": "ctrl+alt+p",
+    "narrative_enabled": True,
+    "obs_narrative_enabled": False,
+    "obs_narrative_source": "",
     # ---- 决策日志 + 轻量模型 ----
     "decision_log_enabled": True,
     "decision_log_interval": 1.0,
@@ -2329,6 +2333,9 @@ class DirectorEngine:
         self._calibration_running = False
         self._calibration_gameover_seen = False
         self._last_calibration_result = ""
+        self._narrative_text = ""
+        self._narrative_round_key = ""
+        self._narrative_over_key = ""
 
     # ---- 生命周期 ----
     def start(self) -> None:
@@ -2485,6 +2492,36 @@ class DirectorEngine:
         finally:
             self._calibration_running = False
 
+    # ---- 回合叙事 ----
+    def _update_narrative(self, snap: Snapshot, story: Any, now: float) -> None:
+        if not bool(self.cfg.get("narrative_enabled", True)):
+            return
+        phase = str(getattr(snap, "phase", "") or "").lower()
+        key = str(getattr(story, "round_key", "") or "")
+        if phase == "freezetime" and key and key != self._narrative_round_key:
+            self._narrative_round_key = key
+            self._narrative_text = narrative_mod.freeze_text(
+                snap, story, self._last_round_winner or "")
+            self._emit_narrative(self._narrative_text)
+        elif phase in ("over", "gameover") and key and key != self._narrative_over_key:
+            self._narrative_over_key = key
+            self._narrative_text = narrative_mod.round_end_text(
+                snap, story, self._last_round_winner or "")
+            self._emit_narrative(self._narrative_text)
+
+    def _emit_narrative(self, text: str) -> None:
+        if not text:
+            return
+        self.bus.info(f"叙事：{text}")
+        if not bool(self.cfg.get("obs_narrative_enabled", False)):
+            return
+        source = str(self.cfg.get("obs_narrative_source", "") or "").strip()
+        if not source or self.pro is None:
+            return
+        threading.Thread(
+            target=self.pro.obs.set_text, args=(source, text),
+            daemon=True, name="obs-narrative").start()
+
     # ---- 主循环 ----
     def _loop(self) -> None:
         hz = max(5.0, min(60.0, float(self.cfg["loop_hz"])))
@@ -2528,6 +2565,7 @@ class DirectorEngine:
             "cuts_10s": self._recent_cut_count(now),
             "story": self.story.state.to_dict(),
             "story_text": self.story.state.story,
+            "narrative": self._narrative_text,
             "metrics": (self.timeline.session_metrics()
                         if self.timeline is not None else {}),
             "current_shot": (
@@ -2570,6 +2608,8 @@ class DirectorEngine:
             except Exception:
                 bomb_site = None
         story = self.story.update(snap, now, bomb_site)
+        self._update_narrative(snap, story, now)
+        status["narrative"] = self._narrative_text
         status["story"] = story.to_dict()
         status["story_text"] = story.story
         for ev in story.events:
@@ -3444,6 +3484,12 @@ class DirectorApp:
         self.var_obs_host = tk.StringVar(value=str(cfg.get("obs_host", "127.0.0.1")))
         self.var_obs_port = tk.StringVar(value=str(cfg.get("obs_port", 4455)))
         self.var_obs_pwd = tk.StringVar(value=str(cfg.get("obs_password", "")))
+        self.var_narrative_enabled = tk.BooleanVar(
+            value=bool(cfg.get("narrative_enabled", True)))
+        self.var_obs_narrative_enabled = tk.BooleanVar(
+            value=bool(cfg.get("obs_narrative_enabled", False)))
+        self.var_obs_narrative_source = tk.StringVar(
+            value=str(cfg.get("obs_narrative_source", "")))
         self.var_pro_enabled = tk.BooleanVar(value=bool(cfg.get("event_actions_enabled", True)))
         self.var_pause_hotkey = tk.StringVar(value=str(cfg.get("pause_hotkey", "ctrl+alt+p")))
         self._pause_hotkey_handle: Any = None
@@ -3609,6 +3655,17 @@ class DirectorApp:
             row=0, column=7)
         self.lbl_obs = ttk.Label(lf, text="OBS：未连接", foreground="#555555")
         self.lbl_obs.grid(row=1, column=0, columnspan=8, sticky="w", pady=(6, 0))
+        narr = ttk.Frame(lf)
+        narr.grid(row=2, column=0, columnspan=8, sticky="w", pady=(4, 0))
+        self._checkbutton(narr, "启用回合叙事", self.var_narrative_enabled).pack(
+            side="left")
+        self._checkbutton(narr, "推送 OBS", self.var_obs_narrative_enabled).pack(
+            side="left", padx=(12, 4))
+        ttk.Label(narr, text="文本源").pack(side="left")
+        ttk.Entry(narr, textvariable=self.var_obs_narrative_source, width=18).pack(
+            side="left", padx=4)
+        ttk.Label(narr, text="（OBS 文本源名，可留空只显示在应用内）",
+                  foreground=UI_MUTED).pack(side="left")
 
         lf3 = ttk.LabelFrame(parent, text=" 事件动作（独立于 AI 决策） ", padding=8)
         lf3.grid(row=1, column=0, sticky="ew", pady=(0, 6))
@@ -3758,6 +3815,9 @@ class DirectorApp:
             c["obs_port"] = 4455
         c["obs_password"] = self.var_obs_pwd.get()
         c["event_actions_enabled"] = bool(self.var_pro_enabled.get())
+        c["narrative_enabled"] = bool(self.var_narrative_enabled.get())
+        c["obs_narrative_enabled"] = bool(self.var_obs_narrative_enabled.get())
+        c["obs_narrative_source"] = self.var_obs_narrative_source.get().strip()
         # 规则编辑只更新 self.cfg；事件线程读的是 pro.cfg，必须同步，
         # 否则“保存配置/启动”后新增的规则不会生效。
         c["event_rules"] = copy.deepcopy(self.cfg.get("event_rules", []))
@@ -4206,9 +4266,12 @@ class DirectorApp:
         self.lbl_story = ttk.Label(status_box, text="故事：-", foreground="#444444",
                                    justify="left", wraplength=940)
         self.lbl_story.grid(row=3, column=0, sticky="w", pady=(3, 0))
+        self.lbl_narrative = ttk.Label(status_box, text="叙事：-", foreground=UI_GOLD_DARK,
+                                        justify="left", wraplength=940)
+        self.lbl_narrative.grid(row=4, column=0, sticky="w", pady=(3, 0))
         self.lbl_metrics = ttk.Label(status_box, text="专业指标：-", foreground="#666666",
                                      justify="left", wraplength=940)
-        self.lbl_metrics.grid(row=4, column=0, sticky="w", pady=(3, 0))
+        self.lbl_metrics.grid(row=5, column=0, sticky="w", pady=(3, 0))
 
         # 8) 日志页
         logs.rowconfigure(0, weight=1)
@@ -4518,6 +4581,9 @@ class DirectorApp:
         cfg["obs_password"] = self.var_obs_pwd.get()
         cfg["event_actions_enabled"] = bool(self.var_pro_enabled.get())
         cfg["pause_hotkey"] = self.var_pause_hotkey.get().strip() or "ctrl+alt+p"
+        cfg["narrative_enabled"] = bool(self.var_narrative_enabled.get())
+        cfg["obs_narrative_enabled"] = bool(self.var_obs_narrative_enabled.get())
+        cfg["obs_narrative_source"] = self.var_obs_narrative_source.get().strip()
         cfg["deepseek_api_key"] = self.var_api.get().strip()
         cfg["deepseek_model"] = self.var_model.get().strip() or "deepseek-chat"
         cfg["ai_enabled"] = bool(self.var_ai.get())
@@ -4751,6 +4817,8 @@ class DirectorApp:
             shot_txt = "-"
         self.lbl_story.configure(
             text=f"故事：{story_txt}    当前镜头：{shot_txt}")
+        self.lbl_narrative.configure(
+            text=f"叙事：{st.get('narrative') or '等待回合开始…'}")
         self.lbl_pro_shot.configure(
             text=f"当前镜头：{shot_txt}    故事：{story_txt}")
 

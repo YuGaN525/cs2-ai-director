@@ -241,6 +241,7 @@ class ObsController:
         self.client: Any = None
         self._lock = threading.Lock()
         self.last_error = ""
+        self._text_warned: set[str] = set()
 
     @property
     def connected(self) -> bool:
@@ -352,6 +353,41 @@ class ObsController:
             return True
         except Exception as e:
             self.log.error("OBS", f"切换场景失败：{e}")
+            return False
+
+    def set_text(self, source: str, text: str) -> bool:
+        """更新 OBS 文本源；不存在/不是文本源时只警告一次。"""
+        source = str(source or "").strip()
+        if not source:
+            return False
+        items = self.inputs()
+        found = next(
+            (i for i in items if str(i.get("inputName", "")) == source), None)
+        if found is None:
+            if source not in self._text_warned:
+                self._text_warned.add(source)
+                self.log.warning(
+                    "OBS", f"叙事文本源不存在：{source}；请创建文本源或修改配置")
+            return False
+        kind = str(found.get("inputKind", ""))
+        if kind not in ("text_gdiplus_v3", "text_gdiplus",
+                        "text_ft2_source_v2", "text_ft2_source"):
+            if source not in self._text_warned:
+                self._text_warned.add(source)
+                self.log.warning(
+                    "OBS", f"「{source}」不是文本源（kind={kind}）")
+            return False
+        try:
+            resp = self._call("get_input_settings", source)
+            settings = self._attr(resp, "input_settings", {}) or {}
+            if not isinstance(settings, dict):
+                return False
+            settings = dict(settings)
+            settings["text"] = str(text)
+            self._call("set_input_settings", source, settings, True)
+            return True
+        except Exception as e:
+            self.log.error("OBS", f"更新叙事文本失败：{e}")
             return False
 
     def media_action(self, source: str, action: str) -> bool:
