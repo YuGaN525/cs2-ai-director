@@ -47,7 +47,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.8 OBS/UI 修复：`e8b9199 Fix checkbox checkmark and OBS event sync`
 - v1.10.9 GSI 阶段修复：`8ecf010 Fix GSI gameover phase priority`
 - v1.10.10 暂停兜底：`a948704 Add manual pause fallback`
-- v1.10.11 回合边界修复：以 `git log` 中 `Fix round boundary during over` 为准
+- v1.10.11 回合边界修复：`ee05a1d Fix round boundary during over`
 - Release：`v1.10.11`
 - 资产：`Yuzi_CS2_AIDirector.exe`
 - 大小：35,955,842 字节（约 36.0 MB）
