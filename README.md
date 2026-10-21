@@ -45,7 +45,7 @@ https://github.com/YuGaN525/cs2-ai-decision-trainer
 训练器支持 `decisions.csv` 和 `.dem`，输出 `decision_model.json.gz`。
 主程序每 5 秒检测文件更新，训练完无需重启；也可在“专业导播 → 重新加载模型”。
 
-v1.10.6 的共享核心（`director_story.py` / `cs2_ai_director.py`）已同步到训练器仓库；
+v1.10.7 的共享核心（`director_story.py` / `cs2_ai_director.py` / `decision_model.py`）已同步到训练器仓库；
 但 `kill_coverage` 等六项指标只用于评估，不进入 8 特征击杀预测模型，也不需要重训。
 
 自行重新打包主程序：
