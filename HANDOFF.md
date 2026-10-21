@@ -63,7 +63,7 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：以 `git log` 中 `Calibrate only on post-model samples` 为准
+- 最新提交：`2523297 Calibrate only on post-model samples`
 - Release：`v1.1.5`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
 - 大小：179,804,203 字节（约 179 MB）
