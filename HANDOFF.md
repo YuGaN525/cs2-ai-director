@@ -50,7 +50,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.11 回合边界修复：`ee05a1d Fix round boundary during over`
 - v1.10.12 在线校准：`022772c Add online probability calibration`
 - v1.10.13 校准窗口修复：`4ff7177 Calibrate only on post-model samples`
-- v1.10.14 回合叙事：以 `git log` 中 `Add round narrative hint` 为准
+- v1.10.14 回合叙事：`f8a3860 Add round narrative hint`
 - Release：`v1.10.14`
 - 资产：`Yuzi_CS2_AIDirector.exe`
 - 大小：35,974,402 字节（约 36.0 MB）
