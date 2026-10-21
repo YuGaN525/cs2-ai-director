@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.9"
+VERSION = "1.10.10"
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -174,6 +174,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "obs_password": "",
     "event_actions_enabled": True,
     "event_rules": [],
+    "pause_hotkey": "ctrl+alt+p",
     # ---- 决策日志 + 轻量模型 ----
     "decision_log_enabled": True,
     "decision_log_interval": 1.0,
@@ -3379,6 +3380,8 @@ class DirectorApp:
         self.var_obs_port = tk.StringVar(value=str(cfg.get("obs_port", 4455)))
         self.var_obs_pwd = tk.StringVar(value=str(cfg.get("obs_password", "")))
         self.var_pro_enabled = tk.BooleanVar(value=bool(cfg.get("event_actions_enabled", True)))
+        self.var_pause_hotkey = tk.StringVar(value=str(cfg.get("pause_hotkey", "ctrl+alt+p")))
+        self._pause_hotkey_handle: Any = None
         self.var_api = tk.StringVar(value=str(cfg.get("deepseek_api_key", "")))
         self.var_model = tk.StringVar(value=str(cfg.get("deepseek_model", "deepseek-chat")))
         self.var_ai = tk.BooleanVar(value=bool(cfg.get("ai_enabled", True)))
@@ -3389,6 +3392,7 @@ class DirectorApp:
         self.var_pause = tk.StringVar(value=str(cfg.get("manual_pause_seconds", 10.0)))
 
         self._build()
+        self._register_pause_hotkey()
         self._update_model_label()
         self._refresh_deps()
         self._refresh_gsi_status()
@@ -3474,6 +3478,35 @@ class DirectorApp:
             selectcolor="#ffffff", bd=0, highlightthickness=0,
             font=("Microsoft YaHei UI", 9), anchor="w", **kwargs)
 
+    def _unregister_pause_hotkey(self) -> None:
+        if self._pause_hotkey_handle is None:
+            return
+        try:
+            keyboard.remove_hotkey(self._pause_hotkey_handle)
+        except Exception:
+            pass
+        self._pause_hotkey_handle = None
+
+    def _register_pause_hotkey(self) -> None:
+        self._unregister_pause_hotkey()
+        hotkey = self.var_pause_hotkey.get().strip()
+        if not hotkey or not HAS_KEYBOARD or keyboard is None:
+            return
+        try:
+            self._pause_hotkey_handle = keyboard.add_hotkey(
+                hotkey, self._on_pause_hotkey, suppress=False)
+            self.bus.info(f"暂停热键已注册：{hotkey}（按一次开始，再按一次结束）")
+        except Exception as e:
+            self._pause_hotkey_handle = None
+            self.bus.warning(f"暂停热键注册失败：{hotkey}：{type(e).__name__}: {e}")
+
+    def _on_pause_hotkey(self) -> None:
+        try:
+            paused = self.pro.toggle_pause()
+            self.bus.info(f"暂停热键：{'暂停开始' if paused else '暂停结束'}")
+        except Exception as e:
+            self.bus.warning(f"暂停热键执行失败：{type(e).__name__}: {e}")
+
     def _set_window_icon(self) -> None:
         try:
             ico = asset_path("yuzi.ico")
@@ -3531,6 +3564,18 @@ class DirectorApp:
             side="right", padx=2)
         ttk.Button(top, text="加载预设…", command=self._pro_load_preset).pack(side="right")
 
+        hot = ttk.Frame(lf3)
+        hot.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+        ttk.Label(hot, text="暂停热键").pack(side="left")
+        ttk.Entry(hot, textvariable=self.var_pause_hotkey, width=16).pack(
+            side="left", padx=4)
+        ttk.Button(hot, text="暂停开始", command=lambda: self._pro_pause(True)).pack(
+            side="left", padx=(8, 2))
+        ttk.Button(hot, text="暂停结束", command=lambda: self._pro_pause(False)).pack(
+            side="left")
+        ttk.Label(hot, text="CS2 GSI 不提供暂停状态；用热键/按钮触发暂停规则",
+                  foreground=UI_MUTED).pack(side="left", padx=8)
+
         cols = ("event", "name", "actions", "enabled")
         self.rule_tree = ttk.Treeview(lf3, columns=cols, show="headings", height=5)
         for col, text, width in (
@@ -3539,7 +3584,7 @@ class DirectorApp:
         ):
             self.rule_tree.heading(col, text=text)
             self.rule_tree.column(col, width=width, anchor="w")
-        self.rule_tree.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+        self.rule_tree.grid(row=2, column=0, sticky="ew", pady=(6, 0))
 
         lf5 = ttk.LabelFrame(parent, text=" 决策模型（独立训练器） ", padding=8)
         lf5.grid(row=2, column=0, sticky="ew", pady=(6, 0))
@@ -3734,6 +3779,13 @@ class DirectorApp:
         if 0 <= idx < len(rules):
             rules[idx]["enabled"] = not bool(rules[idx].get("enabled", True))
             self._refresh_rules()
+
+    def _pro_pause(self, paused: bool) -> None:
+        try:
+            self.pro.set_pause(paused)
+            self.bus.info(f"手动暂停：{'暂停开始' if paused else '暂停结束'}")
+        except Exception as e:
+            self.bus.warning(f"暂停事件触发失败：{type(e).__name__}: {e}")
 
     def _pro_test_rule(self) -> None:
         """不依赖 GSI 事件，直接执行选中规则，用于排查 OBS 源/场景问题。"""
@@ -4371,6 +4423,7 @@ class DirectorApp:
             cfg["obs_port"] = 4455
         cfg["obs_password"] = self.var_obs_pwd.get()
         cfg["event_actions_enabled"] = bool(self.var_pro_enabled.get())
+        cfg["pause_hotkey"] = self.var_pause_hotkey.get().strip() or "ctrl+alt+p"
         cfg["deepseek_api_key"] = self.var_api.get().strip()
         cfg["deepseek_model"] = self.var_model.get().strip() or "deepseek-chat"
         cfg["ai_enabled"] = bool(self.var_ai.get())
@@ -4459,6 +4512,7 @@ class DirectorApp:
             # 配置写不进去（只读目录/杀软拦截）不应该阻止本次运行
             self.bus.warning(f"配置保存失败（将继续启动）：{type(e).__name__}: {e}")
         self.cfg = cfg
+        self._register_pause_hotkey()
         try:
             engine = DirectorEngine(
                 cfg, self.bus, pro=self.pro,
@@ -4493,6 +4547,7 @@ class DirectorApp:
         try:
             save_config(cfg)
             self.cfg = cfg
+            self._register_pause_hotkey()
             self.bus.info(f"配置已保存：{config_path()}")
             self._refresh_gsi_status()
             messagebox.showinfo("保存配置", f"已保存到：\n{config_path()}")
@@ -4646,6 +4701,7 @@ class DirectorApp:
     # ---- 关闭 ----
     def _on_close(self) -> None:
         self._closing = True
+        self._unregister_pause_hotkey()
         try:
             if self.engine is not None:
                 self.engine.stop()

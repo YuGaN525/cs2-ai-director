@@ -488,6 +488,7 @@ class ProDirector:
         self.latest_snap: Any = None
         self.last_events: list[GsiEvent] = []
         self._last_phase = ""
+        self.manual_paused = False
         self._lock = threading.Lock()
 
     def tick(self, snap: Any, _now: float) -> None:
@@ -511,6 +512,19 @@ class ProDirector:
         self.detector = EventDetector()
         self.last_events = []
         self._last_phase = ""
+        self.manual_paused = False
+
+    def set_pause(self, paused: bool) -> None:
+        """GSI 不提供暂停状态时，由热键/按钮手动派发暂停事件。"""
+        self.manual_paused = bool(paused)
+        ev = GsiEvent("pause_started" if paused else "pause_over")
+        self.last_events = (self.last_events + [ev])[-20:]
+        self.log.info("GSI", f"手动暂停事件：{ev.label}")
+        self.actions.dispatch([ev])
+
+    def toggle_pause(self) -> bool:
+        self.set_pause(not self.manual_paused)
+        return self.manual_paused
 
     def stop(self) -> None:
         self.actions.stop()
