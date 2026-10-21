@@ -843,6 +843,7 @@ ruff F/E9: All checks passed!
 - 训练按 group 切分（在线 map|round，demo 击杀事件），避免泄漏；
 - is_ambiguous=1 样本权重 +2，switch 样本 +0.25；
 - demo 标签改为“回看窗口内造成过伤害/击杀”，与在线 label 对齐；
+- v1.1.3 用 player_hurt 重算 demo 的 damage_recent，并写入 rule_gap/is_ambiguous，避免 enemy_damaged 恒为 0、模糊加权不生效；
 - 输出 AUC + top-1（候选组内概率最高者是否命中）；
 - 仲裁新增 decision_model_min_prob=0.55、decision_model_prob_margin=0.05。
 
@@ -857,6 +858,10 @@ ruff F/E9：通过
   RandomForest CV AUC 0.6945，验证 AUC 0.6735，top-1 70.5%
 ```
 
+用户用 v1.1.2 实跑 32,111 样本：AUC 0.7180，top-1 60.8%（1,513 组），ExtraTrees；
+但指标里 ambiguous=0、enemy_damaged 重要性=0，说明 demo 仍未写入模糊元数据、damage_recent 未还原。
+v1.1.3 已修复；需要重新生成 demo_decisions.csv 后重训，旧 CSV 不会自动补出这两个信息。
+
 注意：这是单 demo 烟测，不是正式泛化结论；正式训练仍需多场 demo / 1000+ 线上样本。
 
 ### 22.4 产物
@@ -866,9 +871,9 @@ Yuzi_CS2_AIDirector.exe v1.10.7
 大小：35,949,026 字节
 SHA256：33F056FF75B404BD0930C0B759DC17E41C2BDF0D8AAC609EDB95963C8050A169
 
-Yuzi_CS2_AIDecisionTrainer.exe v1.1.2
-大小：179,782,124 字节
-SHA256：0EBB0881F3395CC48C27BFC4C4D4185D6D48442B2723761EAC63F1FEC228C582
+Yuzi_CS2_AIDecisionTrainer.exe v1.1.3
+大小：179,784,415 字节
+SHA256：679634328964DE6BDD1E38E3107F28399C0EC252C3C96FB2AC2FECE0BDDE4A66
 ```
 
 ## 12. v1.8：专业导播整合

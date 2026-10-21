@@ -2,7 +2,7 @@
 
 最后更新：2026-10-21  
 当前主程序源码：**v1.10.7（Yuzi_CS2_AIDirector；训练/仲裁对齐当前导播逻辑）**  
-当前训练器：**v1.1.2（Yuzi_CS2_AIDecisionTrainer；分组切分/加权/top-1/伤害标签）**  
+当前训练器：**v1.1.3（Yuzi_CS2_AIDecisionTrainer；demo 特征/模糊元数据对齐）**  
 现有通用交接：`HANDOFF.md`
 
 > **v1.10.5 已移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名。**
@@ -509,7 +509,7 @@ manual_override
 - README.md
 
 当前系统：
-- 主程序源码 v1.10.7，训练器 v1.1.2；
+- 主程序源码 v1.10.7，训练器 v1.1.3；
 - 已具备 GSI/POV/HLAE/事件动作/OBS/决策日志/RF-ExtraTrees；
 - v1.10 Phase 1 已有镜头 timeline、六项指标、回合故事状态；
 - 仍是反应式 POV 切换器，没有镜头候选/调度器；
@@ -584,7 +584,7 @@ reason / end_reason / source / manual / story`。
    `OVERVIEW` 只定义类型，尚未接入实际机位；FFmpeg 回放已移除。
 2. 经济分档是近似：freezetime 用金钱（可能在买入过程中），live 用武器+护甲平均档位。
 3. 指标是启发式统计，未经真实比赛人工标注校准；不要用它直接下“比 v1.9 更好”的结论。
-4. 训练器仓库已同步 v1.10.7 共享核心并发布 v1.1.2 训练优化 exe；指标仍未进入训练特征。
+4. 训练器仓库已同步 v1.10.7 共享核心并发布 v1.1.3 demo 对齐 exe；指标仍未进入训练特征。
 
 ### 14.5 v1.10.2：observer_slot/按键映射修正
 

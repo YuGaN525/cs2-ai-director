@@ -2,7 +2,7 @@
 
 最后更新：2026-10-21  
 当前主程序源码版本：**v1.10.7（Yuzi_CS2_AIDirector；训练器/仲裁对齐当前导播逻辑）**  
-当前训练器版本：**v1.1.2（Yuzi_CS2_AIDecisionTrainer；分组切分/加权/top-1/伤害窗口标签）**  
+当前训练器版本：**v1.1.3（Yuzi_CS2_AIDecisionTrainer；demo 特征/模糊元数据对齐）**  
 专业导播新目标：见 `PRO_DIRECTOR_HANDOFF.md`
 
 ---
@@ -57,12 +57,12 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`2fc7c94 Align trainer with director arbitration`
-- Release：`v1.1.2`
+- 最新提交：`9dd71fb Align demo features and ambiguity metadata`
+- Release：`v1.1.3`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
-- 大小：179,782,124 字节（约 179 MB）
-- SHA256：`0EBB0881F3395CC48C27BFC4C4D4185D6D48442B2723761EAC63F1FEC228C582`
-- Release 页面：https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.1.2
+- 大小：179,784,415 字节（约 179 MB）
+- SHA256：`679634328964DE6BDD1E38E3107F28399C0EC252C3C96FB2AC2FECE0BDDE4A66`
+- Release 页面：https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.1.3
 
 ### 本地产物
 
@@ -355,7 +355,7 @@ event_actions_enabled / event_rules
 Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
 模拟 GSI 序列验证镜头/指标/故事落盘
-两个 exe 启动成功（Yuzi_CS2_AIDirector v1.10.7 / Yuzi_CS2_AIDecisionTrainer v1.1.2）
+两个 exe 启动成功（Yuzi_CS2_AIDirector v1.10.7 / Yuzi_CS2_AIDecisionTrainer v1.1.3）
 训练器 CSV 训练 exit=0
 训练器 .dem 训练 exit=0（544 行 / 105 击杀事件）
 导播加载 ExtraTrees JSON 成功
@@ -397,7 +397,7 @@ Python 编译通过（cs2_ai_director.py / director_story.py）
 18. **经济分档是近似**：freezetime 用金钱（可能买到一半）、live 用武器+护甲平均档位；不读装备价值。
 19. **残局/阶段判定依赖 GSI 字段**：若 `allplayers` 缺失、`observer_slot` 延迟，镜头目标会以 GSI 实际值为准，指标可能少算。
 20. **回合切换/中途停止会产生 partial 行**：`round_metrics.csv` 用 `completed=1/0` 区分；累计指标会包含 partial 行。
-21. **训练器仓库已同步 v1.10.7 共享核心**；训练器 exe 已重建为 v1.1.2（分组切分/加权/top-1/伤害标签）。
+21. **训练器仓库已同步 v1.10.7 共享核心**；训练器 exe 已重建为 v1.1.3（demo damage_recent + rule_gap/is_ambiguous 对齐）。
 22. **observer_slot 映射依赖实测**：v1.10.2 按完整表修正为“键 N→slot (N-1) mod 10”；v1.10.3/v1.10.4 未改映射；若 CS2 更新后映射变化，需重新实测。
 
 ---
@@ -439,7 +439,7 @@ python demo_dataset.py --demos "D:\demos" --out demo_decisions.csv
 
 ## 10.1 共享核心同步清单（v1.10）
 
-训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 已同步 v1.10.7 共享核心，并发布 v1.1.2 训练优化 exe。
+训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 已同步 v1.10.7 共享核心，并发布 v1.1.3 demo 对齐 exe。
 评分核心没有改，但主程序新增了 `import director_story`，因此**复制新的 `cs2_ai_director.py` 时必须同时复制
 `director_story.py`**，否则训练器的 demo 解析会 ImportError。
 
@@ -585,14 +585,14 @@ YuGaN525/cs2-ai-decision-trainer
 继续开发 CS2 AI 导播项目。请先阅读仓库根目录的 HANDOFF.md 和 README.md。
 
 当前状态：
-- 主程序源码 v1.10.7（Yuzi_CS2_AIDirector），训练器 v1.1.2；
+- 主程序源码 v1.10.7（Yuzi_CS2_AIDirector），训练器 v1.1.3；
 - 主仓库 YuGaN525/cs2-ai-director，训练器仓库 YuGaN525/cs2-ai-decision-trainer，均为私密；
 - 主程序 exe：dist/Yuzi_CS2_AIDirector.exe（v1.10.7，已重新打包）；
 - 训练器 exe：dist/Yuzi_CS2_AIDecisionTrainer.exe；
 - 99 项测试通过；OBS 尚未实机联调；Phase 1 只有模拟 GSI 序列验证；
 - 模型使用 RF/ExtraTrees 交叉验证选择，导出纯 JSON，导播自动重载；
 - 决策样本 decisions.csv 尚未达到 1000 条；
-- 训练器仓库已同步 director_story.py 与训练优化；训练器 exe 为 v1.1.2。
+- 训练器仓库已同步 director_story.py 与训练优化；训练器 exe 为 v1.1.3。
 
 硬性约束：
 - 只读 GSI，不读内存/不注入/不发控制台命令；
