@@ -1131,7 +1131,31 @@ ExtraTrees：top-1 68.7%，AUC 0.7130
 旧模型/旧校准已备份到 `backup_20261022_025609`。
 新模型写入 APPDATA；旧校准因 model_mtime 不匹配自动失效。
 
-### 27.6 产物
+### 27.6 用导播实际对局重训（2026-10-22）
+
+这五张图是导播工具实际运行的对局，不是训练器自己生成的 demo 样本。
+因此不能只用 .dem 解析，必须用运行时写出的 decisions.csv：
+
+```text
+7,131 行 / 86 个 group / 647 正例 / 6,484 负例
+模糊样本 2,707
+switch 1,201
+按 group 切分：训练 5,309 / 验证 1,822 / 23 个验证组
+RandomForest：CV AUC 0.9169，验证 AUC 0.8054
+top-1：不可用（每行只有一个最终目标，不是候选组）
+```
+
+模型：
+
+```text
+decision_model.pkl      11,653,113 字节
+decision_model.json.gz   1,905,556 字节
+```
+
+这次没有用同一批 decisions 做校准，避免训练/校准泄漏；旧 5-demo 模型备份到
+`backup_5demo_20261022_030431`。
+
+### 27.7 产物
 
 ```text
 Yuzi_CS2_AIDirector.exe v1.10.13

@@ -229,6 +229,11 @@ Yuzi_CS2_AIDecisionTrainer.exe --cli --csv decisions.csv --min-samples 1000
 Yuzi_CS2_AIDecisionTrainer.exe --cli --demos "D:\demos" --min-samples 1000
 ```
 
+- **数据来源不要混淆**：`.dem` 是训练器自己构造候选，不等于导播当时的实际选择；
+  要学导播实际行为，用运行时写出的 `decisions.csv`；
+- 2026-10-22 用五张导播实际对局的 `decisions.csv` 重训：
+  7,131 行 / 86 group / 647 正例 / 2,707 模糊样本；
+  RandomForest CV AUC 0.9169、验证 AUC 0.8054；每行只有一个最终目标，top-1 不可用；
 - 内置 scikit-learn、joblib、demoparser2、pandas；
 - PyInstaller onefile 下 `n_jobs=1`，避免 joblib 多进程卡死。
 
