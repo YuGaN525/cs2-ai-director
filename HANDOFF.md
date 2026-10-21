@@ -44,7 +44,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.5 功能精简提交：`0156527 Remove FFmpeg replay and player rename`
 - v1.10.6 品牌化提交：`ebcb74c Brand as Yuzi_CS2_AIDirector`
 - v1.10.7 训练/仲裁优化：`a49ddc3 Align trainer with director arbitration`
-- v1.10.8 OBS/UI 修复：以 `git log` 中 `Fix checkbox checkmark and OBS event sync` 为准
+- v1.10.8 OBS/UI 修复：`e8b9199 Fix checkbox checkmark and OBS event sync`
 - Release：`v1.10.8`
 - 资产：`Yuzi_CS2_AIDirector.exe`
 - 大小：35,952,388 字节（约 36.0 MB）
