@@ -49,7 +49,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.10 暂停兜底：`a948704 Add manual pause fallback`
 - v1.10.11 回合边界修复：`ee05a1d Fix round boundary during over`
 - v1.10.12 在线校准：`022772c Add online probability calibration`
-- v1.10.13 校准窗口修复：以 `git log` 中 `Calibrate only on post-model samples` 为准
+- v1.10.13 校准窗口修复：`4ff7177 Calibrate only on post-model samples`
 - Release：`v1.10.13`
 - 资产：`Yuzi_CS2_AIDirector.exe`
 - 大小：35,968,408 字节（约 36.0 MB）
