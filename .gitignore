@@ -4,6 +4,10 @@ __pycache__/
 *.log
 learner.json
 config.json
+shot_timeline.csv
+shot_events.csv
+round_metrics.csv
+director_metrics.json
 .DS_Store
 build/
 dist/

@@ -8,6 +8,7 @@
 - 观察对象阵亡后自动切到离尸体最近的敌人（通常是击杀者），不会停在尸体视角；
 - 即时学习已移除；保留离线 demo 静态权重，并新增决策 CSV 记录 + 随机森林离线仲裁模型；
 - 专业导播：独立导播日志、事件动作规则、OBS WebSocket、FFmpeg 击杀回放、玩家改名命令；
+- **v1.10 Phase 1**：镜头时间线（ShotTimeline）+ 六项专业指标 + 回合故事状态（阶段/经济/残局/下包/比分），不参与评分；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -20,11 +21,13 @@
 
 | 程序 | 用途 |
 |---|---|
-| `CS2AIDirector.exe` | AI 导播主程序，约 35 MB |
+| `CS2AIDirector.exe` | AI 导播主程序 v1.10.0，约 35 MB |
+
+当前本地构建：35,036,402 字节，SHA256 `A5E5104470C8D79CCBE56A7D4310AE9F74873E3CD5EF752B6A601AB053604F17`。
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
-- 配置、日志、`decisions.csv`、`learner.json` 仍在 `%APPDATA%\CS2AIDirector\`；
+- 配置、日志、`decisions.csv`、`learner.json`、`shot_timeline.csv`、`round_metrics.csv` 仍在 `%APPDATA%\CS2AIDirector\`；
 - 主程序内置 OBS WebSocket 依赖，但不打包 scikit-learn；它读取训练器生成的
   `decision_model.json.gz`；
 - 未签名，Windows SmartScreen 可能提示，选择“更多信息 → 仍要运行”。
@@ -239,6 +242,63 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 
 > OBS/FFmpeg 是可选依赖；未配置时 AI 导播、GSI、HLAE 运镜不受影响。
 
+## 4.6 镜头时间线、专业指标与回合故事（v1.10 Phase 1）
+
+这一版不训练新模型，也不改评分公式；只把“导播到底拍了什么”变成可记录、可统计的数据。
+
+### 镜头时间线
+
+每个镜头写入 `shot_timeline.csv`：
+
+```text
+shot_type     POV / BOMB / SPAWN / OVERVIEW / REPLAY
+target        slot=3 P3 / site=A / side=CT
+start / end   开始与结束时间
+duration      停留秒数
+reason        导演/决策原因（切换、阵亡回切、人工接管、运镜…）
+source        rule / ai / model / death / manual / bomb_cam / spawn_cam / observed
+manual        是否人工接管
+story         当时的回合故事快照
+```
+
+同一目录还有：
+
+- `shot_events.csv`：击杀、死亡、每段交火首次伤害、人工接管、下包/拆包；
+- `round_metrics.csv`：每回合一行，故事状态 + 六项指标 + 分子/分母；
+- `director_metrics.json`：本机累计指标与上一回合指标（重启后从 CSV 恢复累计）。
+
+默认在 `%APPDATA%\CS2AIDirector\`，可在“专业导播”页点“打开数据目录”。
+
+### 六项专业指标
+
+| 指标 | 口径 | 方向 |
+|---|---|---|
+| `kill_coverage` | 击杀前 `metric_kill_lookback`（默认 2.5s）内，POV 是否在击杀者 | 越高越好 |
+| `pre_fight_coverage` | 每段交火“首次伤害”前 2.5s 内，POV 是否在当事人（攻击者或受害者） | 越高越好 |
+| `corpse_time` | POV 停在已阵亡选手身上的总秒数；另有 `corpse_ratio` | 越低越好 |
+| `cut_rate` | 每 live 分钟的镜头切换次数（镜头数 − 1） | 有上限 |
+| `shot_duration` | POV 镜头平均/中位停留秒数；另记全镜头均长 | 目标 2–5s |
+| `manual_takeover` | 人工裸 0–9 接管次数；`manual_confirmed` 为 GSI 确认次数 | 越低越好 |
+
+补充字段：`round_first_damage_coverage`、`shot_count`、`pov_shots`、`kills`、`first_damages`、`live_seconds`。
+所有指标都基于**实际 GSI `observer_slot`** 与导演意图的确认结果，不是“按键次数”。
+
+### 回合故事状态
+
+`StoryTracker` 从 GSI 推断：
+
+- 阶段：`freezetime / opening / control / engage / post_plant / clutch / round_over / warmup / paused`；
+- 经济：`full / force / eco`（live 时按已买到的武器+护甲；freezetime 按金钱，尽量在买入前采样）；
+- 残局：`1v1 / 1v2 / 1v3…` 与残局方；
+- 下包：A/B、倒计时、拆包中；
+- 比分、分差、赛点（MR12，先到 12 分）。
+
+故事状态会显示在“运行状态”和“专业导播”页，并在每次阶段/经济/下包/残局/比分变化时写日志。
+它目前**不参与** `score_candidates` / `choose_slot`，也不影响模型；这是 Phase 2 镜头调度器的输入。
+
+> 已知边界：GSI 不直接告诉程序 HLAE 当前是哪个机位，所以 `SPAWN/BOMB` 镜头按“已发送运镜 + 预计归还时间”记录；
+> 真实 OBS/FFmpeg 回放机位暂未接入 timeline 的 `REPLAY` 类型。指标是启发式统计，需用真实比赛录像校准。
+
 ## 5. 关键参数（config.json）
 
 | 键 | 默认 | 说明 |
@@ -274,6 +334,17 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 | `decision_model_enabled` | true | 是否加载随机森林仲裁模型 |
 | `decision_model_margin` | 0.08 | 规则前两名分差 ≤ 该值才让模型仲裁 |
 | `decision_model_min_factor` | 0.9 | 模型推荐目标的规则分下限系数 |
+| `shot_timeline_enabled` | true | 是否记录镜头时间线/指标 |
+| `shot_timeline_dir` | 空 | 时间线输出目录，空则 `%APPDATA%\CS2AIDirector` |
+| `metric_kill_lookback` | 2.5 | 击杀覆盖回看窗口（秒） |
+| `metric_prefight_lookback` | 2.5 | 交火前覆盖回看窗口（秒） |
+| `metric_engagement_gap` | 3.0 | 多久没有伤害算新的一段交火 |
+| `metric_min_live_seconds` | 5.0 | live 时间少于此值不计算 cut_rate |
+| `story_opening_seconds` | 12.0 | 开局阶段时长 |
+| `story_engage_recent_seconds` | 3.0 | 最近伤害多久内算“交火中” |
+| `economy_full_avg` / `economy_force_avg` | 3500 / 2000 | freezetime 金钱兜底分档 |
+| `economy_equip_full` / `economy_equip_force` | 1.5 / 0.8 | live 装备平均档位分档 |
+| `match_point_score` | 12 | MR12 赛点分数 |
 | `obs_host` / `obs_port` / `obs_password` | 127.0.0.1 / 4455 / 空 | OBS WebSocket 连接（密码明文保存） |
 | `obs_game_scene` / `obs_replay_scene` | Game / Replay | 游戏与回放场景名 |
 | `obs_replay_source` | Replay | 回放媒体源名 |
@@ -364,8 +435,9 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 80 项（不启动 GUI、不发真实按键）
+- `test_cs2_ai_director.py`：核心逻辑测试，共 86 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS、FFmpeg 回放、玩家改名
+- `director_story.py`：镜头时间线、六项专业指标、回合故事状态（Phase 1）
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁
 - `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`（主程序旧 demo 模型）
 - `build_exe.ps1`：主程序 exe 的打包脚本

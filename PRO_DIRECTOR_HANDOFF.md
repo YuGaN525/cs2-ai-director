@@ -1,8 +1,8 @@
 # CS2 AI 专业导播 — 目标、开发日志与关键词
 
 最后更新：2026-10-21  
-当前主程序：**v1.9.0**  
-当前训练器：**v1.1.0**  
+当前主程序源码：**v1.10.0（Phase 0/1 已实现；exe 已重新打包，窗口标题 v1.10.0）**  
+当前训练器：**v1.1.0（未改模型/特征）**  
 现有通用交接：`HANDOFF.md`
 
 ---
@@ -298,6 +298,9 @@ manual_override_active
 
 ## 8. 开发阶段
 
+> 实现状态（v1.10，2026-10-21）：**Phase 0 与 Phase 1 已完成**，Phase 2 尚未开始。
+> 已完成部分只观测、不改变评分/模型；具体文件、指标口径与限制见第 14 节。
+
 ### Phase 0：可观测性（优先）
 
 - 记录完整 **shot timeline**：
@@ -395,17 +398,21 @@ transition_quality: 切点是否自然
 - 观察对象阵亡回切；
 - 独立日志、事件动作、OBS、FFmpeg 回放；
 - 决策 CSV、RF/ExtraTrees、自动重载；
-- 独立训练器、demo 导入。
+- 独立训练器、demo 导入；
+- **v1.10：镜头 timeline / 镜头类型**（POV/BOMB/SPAWN，OVERVIEW/REPLAY 预留）；
+- **v1.10：回合故事状态**（阶段/经济/残局/下包/比分/赛点）；
+- **v1.10：六项专业指标与数据落盘**（shot/round/event/summary）。
 
-缺少：
+仍然缺少：
 
-- 镜头 timeline / 镜头类型；
-- 回合故事状态；
-- 镜头调度器；
-- 多机位 HLAE 宏库；
-- 人工偏好标签；
-- 专业导播评估体系；
+- 镜头调度器（候选 + 约束 + “不切”）；
+- 多机位 HLAE 宏库 / OVERVIEW / REPLAY 实际机位接入；
+- 人工偏好标签（好/坏镜头、A/B）；
+- 用真实比赛校准指标与镜头语言；
 - 真实 OBS/FFmpeg 联调。
+
+> 当前 v1.10 仍是“反应式 POV 切换器 + 专业观测层”；
+> 故事状态和时间线已经是 Phase 2 调度器的输入，但调度器尚未接入决策。
 
 ---
 
@@ -499,9 +506,10 @@ manual_override
 - README.md
 
 当前系统：
-- 主程序 v1.9.0，训练器 v1.1.0；
+- 主程序源码 v1.10.0，训练器 v1.1.0；
 - 已具备 GSI/POV/HLAE/事件动作/OBS/FFmpeg/决策日志/RF-ExtraTrees；
-- 当前是反应式 POV 切换器，没有镜头 timeline、故事状态、镜头调度器；
+- v1.10 Phase 1 已有镜头 timeline、六项指标、回合故事状态；
+- 仍是反应式 POV 切换器，没有镜头候选/调度器；
 - OBS/FFmpeg 尚未实机联调；
 - 训练样本不足 1000 条。
 
@@ -525,5 +533,62 @@ manual_override
 ## 13. 一句话总结
 
 > **专业导播 = 预判 + 叙事 + 镜头语言 + 节奏 + 人工反馈。**
+
+---
+
+## 14. v1.10 Phase 1 实现记录
+
+### 14.1 新增/修改
+
+| 文件 | 内容 |
+|---|---|
+| `director_story.py`（新增） | `ShotTimeline`、`Shot`、`StoryTracker`、`StoryState`、指标计算与 CSV/JSON 落盘 |
+| `cs2_ai_director.py` | 引擎编排：故事更新、伤害/击杀/死亡采集、切换/运镜/人工接管写入 timeline、GUI 状态 |
+| `test_cs2_ai_director.py` | 新增 6 项测试：故事 2、timeline 3、引擎集成 1 |
+
+**没有改**：`score_candidates`、`Candidate`、`choose_slot`、`DECISION_FEATURES`、模型仲裁、阈值/迟滞/硬间隔、按键路径。
+
+### 14.2 输出
+
+```text
+%APPDATA%\CS2AIDirector\
+  shot_timeline.csv
+  shot_events.csv
+  round_metrics.csv
+  director_metrics.json
+```
+
+`shot_timeline.csv` 字段：`shot_type / target / target_slot / start / end / duration /
+reason / end_reason / source / manual / story`。
+
+回合指标行同时保存指标分子/分母（`kill_hits/kills`、`prefight_hits/first_damages`、
+`pov_duration_sum/count` 等），方便换口径重算。
+
+### 14.3 口径
+
+- `kill_coverage`：每个 `round_kills` 增量算一次击杀；击杀前 `metric_kill_lookback` 秒内
+  是否存在目标为击杀者的 POV 镜头。
+- `pre_fight_coverage`：`round_totaldmg` 增量 + 血量下降定位攻击者/受害者；
+  两段伤害间隔 ≥ `metric_engagement_gap` 视为新交火，只取每段首次伤害。
+- `corpse_time`：POV 镜头与“该 slot 死亡时刻 → 回合 live 结束”的重叠秒数。
+- `cut_rate`：`(镜头数 − 1) / (live_seconds / 60)`；live 不足 `metric_min_live_seconds` 时为空。
+- `shot_duration`：POV 镜头平均/中位；另记全镜头均长。
+- `manual_takeover`：裸 0–9 接管次数；`manual_confirmed` 为随后 GSI `observer_slot` 确认的次数。
+
+### 14.4 已知限制
+
+1. GSI 不提供 HLAE 当前机位：`SPAWN/BOMB` 按“已发送运镜 + 预计归还”记录；
+   `OVERVIEW/REPLAY` 只定义类型，尚未接入实际机位/OBS 回放。
+2. 经济分档是近似：freezetime 用金钱（可能在买入过程中），live 用武器+护甲平均档位。
+3. 指标是启发式统计，未经真实比赛人工标注校准；不要用它直接下“比 v1.9 更好”的结论。
+4. 训练器仓库尚未同步；复制新 `cs2_ai_director.py` 时必须同时复制 `director_story.py`。
+
+### 14.5 下一步（Phase 2）
+
+- 把 `StoryState` + `ShotTimeline` 作为输入，生成 `ShotCandidate`（POV/BOMB/OVERVIEW/REPLAY/不切）；
+- 先实现最短停留、最大切率、切换成本、事件优先级；
+- 仍然不改 RF/ExtraTrees 模型；等镜头偏好样本足够再做效用学习。
+
+
 
 当前项目已经有“眼睛”（GSI）、“手”（HLAE/OBS）和“反应”（POV 评分），下一步要补的是“导演的大脑”：**故事状态、镜头候选、调度器和评估体系**。

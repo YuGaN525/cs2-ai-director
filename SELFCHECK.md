@@ -11,7 +11,8 @@
 - **v1.6 增量（2026-10-21）**：移除观战判定；阵亡自动切最近敌人；运镜改为可选 ALT/SHIFT/CTRL + A–Z/0–9；时序 80/30/80/30/50ms；楼层/远距离无交火判定；胜率权重提高；200ms 硬间隔。
 - **v1.7 增量（2026-10-21）**：在线学习（round_kills 反馈）+ 从 demo 离线训练同一模型；在线部分已在 v1.9 移除。
 - **v1.8 增量（2026-10-21）**：整合专业导播：独立日志、事件动作、OBS WebSocket、FFmpeg 击杀回放、玩家改名。
-- **v1.9 增量（2026-10-21）**：移除即时学习；新增 decisions.csv、3 秒标签回填、随机森林训练与模糊区间仲裁；当前测试 80 项。
+- **v1.9 增量（2026-10-21）**：移除即时学习；新增 decisions.csv、3 秒标签回填、随机森林训练与模糊区间仲裁。
+- **v1.10 增量（2026-10-21）**：Phase 1 专业导播观测层：镜头时间线、六项专业指标、回合故事状态；不改评分/模型；当前测试 86 项。
 
 ---
 
@@ -477,6 +478,71 @@ Ran 80 tests ... OK
 ```
 
 ---
+
+---
+
+## 16. v1.10 Phase 1：镜头时间线 / 专业指标 / 回合故事
+
+### 16.1 结果
+
+```text
+python -m unittest test_cs2_ai_director
+Ran 86 tests ... OK
+
+python -m ruff check --select F,E9 cs2_ai_director.py director_story.py test_cs2_ai_director.py
+All checks passed!
+
+python -m py_compile cs2_ai_director.py director_story.py
+OK
+```
+
+新增 6 项测试：
+
+- `TestStoryTracker.test_economy_clutch_post_plant_match_point`；
+- `TestStoryTracker.test_phase_transitions_and_events`；
+- `TestShotTimeline.test_timeline_kill_coverage_corpse_cut_rate_manual`；
+- `TestShotTimeline.test_kill_coverage_zero_when_watching_other_player`；
+- `TestShotTimeline.test_disabled_does_not_create_files`；
+- `TestEngineTimelineIntegration.test_tick_updates_story_timeline_and_damage_events`。
+
+### 16.2 已验证
+
+- 模拟 GSI 序列：POV 切换 → 首次伤害 → 击杀 → 阵亡回切 → 人工接管 → 回合结束；
+- `round_metrics.csv` 的 `kill_coverage=1.0`、`pre_fight_coverage=1.0`、`corpse_time=0.5`、
+  `shot_duration_mean=2.0`、`cut_rate=36/min`、`manual_takeover=1` 与手算一致；
+- 镜头不是被观察时击杀者 → `kill_coverage=0.0`；
+- `shot_timeline.csv` / `shot_events.csv` / `round_metrics.csv` / `director_metrics.json` 均生成；
+- `shot_timeline_enabled=false` 时不创建文件；
+- 引擎 `_tick` 能在不传 `timeline` 时保持旧行为（原有 80 项测试全过）。
+
+### 16.3 未验证 / 限制
+
+- 真实 GSI + HLAE 下的镜头类型/归还时间（GSI 不提供 HLAE 当前机位）；
+- 真实比赛的经济分档与残局判定；
+- `pre_fight_coverage` 与人工标注的一致性；
+- OBS/FFmpeg 的 `REPLAY` 机位尚未接入 timeline；
+- 回合中停止/重开会产生 `completed=0` 的 partial 行，累计指标包含这些行；
+- 训练器仓库尚未同步 v1.10（需复制 `director_story.py`）。
+
+### 16.4 exe
+
+已重新打包：
+
+```text
+PyInstaller 6.22.3 / Python 3.14.0 / Windows x64
+dist\CS2AIDirector.exe
+大小：35,036,402 字节
+SHA256：A5E5104470C8D79CCBE56A7D4310AE9F74873E3CD5EF752B6A601AB053604F17
+启动窗口标题：CS2 AI 导播 v1.10.0
+```
+
+构建命令：
+
+```bat
+powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
+```
+
+> `dist/` 被 .gitignore 排除；exe 是否上传 GitHub Release 需单独操作。
 
 ## 12. v1.8：专业导播整合
 

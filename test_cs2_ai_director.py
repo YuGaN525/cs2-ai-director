@@ -3,6 +3,7 @@
 """cs2_ai_director 的核心逻辑测试（不启动 GUI、不发送真实按键）。"""
 
 import concurrent.futures
+import csv
 import json
 import os
 import tempfile
@@ -14,11 +15,13 @@ import urllib.request
 from pathlib import Path
 
 import cs2_ai_director as d
+import director_story as st
 
 
 def player(slot, team, hp=100, pos=(0, 0, 0), fwd=(1, 0, 0),
            weapon="weapon_ak47", typ="Rifle", ammo=30, armor=100,
-           flashed=0, defusing=False, name=None, round_kills=0, round_totaldmg=0):
+           flashed=0, defusing=False, name=None, round_kills=0, round_totaldmg=0,
+           money=0):
     return {
         "name": name or f"P{slot}",
         "observer_slot": slot,
@@ -29,6 +32,7 @@ def player(slot, team, hp=100, pos=(0, 0, 0), fwd=(1, 0, 0),
             "health": hp, "armor": armor, "helmet": True,
             "flashed": flashed, "defusing": defusing,
             "round_kills": round_kills, "round_totaldmg": round_totaldmg,
+            "money": money,
         },
         "weapons": {"weapon_0": {"name": weapon, "type": typ,
                                  "state": "active", "ammo_clip": ammo}},
@@ -1125,6 +1129,239 @@ class TestEngineSafety(unittest.TestCase):
         self.assertGreaterEqual(len(count), 3)
         logs = [msg for _, msg in list(bus.queue.queue)]
         self.assertTrue(any("异常" in m for m in logs))
+
+
+class TestStoryTracker(unittest.TestCase):
+    """回合故事状态：阶段/经济/残局/下包/比分/赛点。"""
+
+    def setUp(self):
+        self.cfg = dict(d.DEFAULT_CONFIG)
+        self.tracker = st.StoryTracker(self.cfg)
+
+    def test_economy_clutch_post_plant_match_point(self):
+        ct = [player(i, "CT", weapon="weapon_ak47", money=5000)
+              for i in range(1, 6)]
+        t = [player(i, "T", weapon="weapon_glock", typ="Pistol", armor=0, money=800)
+             for i in range(6, 11)]
+        snap = snapshot(players=ct + t, phase="freezetime", round_no=22,
+                        scores=(12, 10), player_slot=1)
+        state = self.tracker.update(snap, 100.0)
+        self.assertEqual(state.economy_ct, "full")
+        self.assertEqual(state.economy_t, "eco")
+        self.assertTrue(state.match_point)
+        self.assertEqual(state.match_point_team, "CT")
+        self.assertEqual(state.score_ct, 12)
+        self.assertEqual(state.score_t, 10)
+        self.assertIn("赛点", state.story)
+
+        # live：CT 只剩 1 人、T 剩 2 人 → CT 1v2 残局
+        snap = snapshot(players=[
+            player(1, "CT", weapon="weapon_ak47"),
+            player(2, "T"), player(3, "T"),
+        ], phase="live", round_no=22, scores=(12, 10), player_slot=1)
+        state = self.tracker.update(snap, 110.0)
+        self.assertEqual(state.clutch, "1v2")
+        self.assertEqual(state.clutch_side, "CT")
+        self.assertEqual(state.phase, "clutch")
+        self.assertEqual(state.alive_ct, 1)
+        self.assertEqual(state.alive_t, 2)
+
+        # 下包后：阶段优先 post_plant，同时保留残局字段
+        snap = snapshot(players=[
+            player(1, "CT", weapon="weapon_ak47"),
+            player(2, "T"), player(3, "T"),
+        ], phase="live", round_no=22, scores=(12, 10), player_slot=1,
+            bomb={"state": "planted", "countdown": "12.5",
+                  "position": "[100, 200, 0]"})
+        state = self.tracker.update(snap, 115.0, bomb_site="A")
+        self.assertEqual(state.phase, "post_plant")
+        self.assertTrue(state.bomb_planted)
+        self.assertEqual(state.bomb_site, "A")
+        self.assertAlmostEqual(state.bomb_time_left, 12.5)
+        self.assertEqual(state.clutch, "1v2")
+
+        # 回合结束：包点/残局记忆保留，指标行不会丢掉“下包 A / 曾 1v2”
+        snap = snapshot(players=[
+            player(1, "CT", weapon="weapon_ak47"),
+            player(2, "T"), player(3, "T"),
+        ], phase="over", round_no=22, scores=(13, 10), player_slot=1,
+            bomb={"state": "exploded", "countdown": "0",
+                  "position": "[100, 200, 0]"})
+        state = self.tracker.update(snap, 120.0, bomb_site="A")
+        self.assertEqual(state.bomb_site, "A")
+        self.assertEqual(state.clutch, "1v2")
+        self.assertEqual(state.phase, "round_over")
+        self.assertTrue(state.match_point)
+
+    def test_phase_transitions_and_events(self):
+        snap = snapshot(players=[
+            player(1, "CT"), player(2, "CT"),
+            player(3, "T", pos=(600, 0, 0)), player(4, "T", pos=(900, 0, 0)),
+        ], phase="live", round_no=1, player_slot=1)
+        state = self.tracker.update(snap, 100.0)
+        self.assertEqual(state.phase, "opening")
+        self.assertIn("回合开始", state.events)
+        # 12 秒后进入地图控制
+        state = self.tracker.update(snap, 120.0)
+        self.assertEqual(state.phase, "control")
+        self.assertTrue(any(e.startswith("阶段") for e in state.events))
+
+
+class TestShotTimeline(unittest.TestCase):
+    """镜头时间线 + 六项专业指标。"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.cfg = dict(d.DEFAULT_CONFIG)
+        self.cfg["metric_kill_lookback"] = 2.5
+        self.cfg["metric_prefight_lookback"] = 2.5
+        self.cfg["metric_engagement_gap"] = 3.0
+        self.cfg["metric_min_live_seconds"] = 5.0
+        self.story = st.StoryTracker(self.cfg)
+        self.timeline = st.ShotTimeline(self.cfg, base_dir=Path(self.tmp.name))
+
+    def tearDown(self):
+        self.timeline.close(999.0, "测试结束")
+        self.tmp.cleanup()
+
+    def _tick(self, players, phase, round_no, slot, now, scores=(0, 0), bomb=None):
+        snap = snapshot(players=players, phase=phase, round_no=round_no,
+                        scores=scores, player_slot=slot, bomb=bomb)
+        state = self.story.update(snap, now)
+        self.timeline.tick(snap, state, now)
+        return snap, state
+
+    def test_timeline_kill_coverage_corpse_cut_rate_manual(self):
+        players = [player(1, "CT"), player(2, "T", pos=(600, 0, 0)),
+                   player(3, "T", pos=(800, 0, 0))]
+        self._tick(players, "live", 1, 1, 100.0)
+        self.assertEqual(self.timeline.current.target_slot, 1)
+
+        self.timeline.expect_switch(2, "切到交火点", "rule", 102.0)
+        self._tick(players, "live", 1, 2, 103.0)
+        self.assertEqual(self.timeline.current.target_slot, 2)
+        self.assertEqual(self.timeline.current.reason, "切到交火点")
+
+        # T2 在 104.5 首次打中 CT1，105 击杀；当前镜头在 T2。
+        self.timeline.note_damage([2], [1], 104.5, 100)
+        self.timeline.note_kill([2], [1], 105.0)
+        self.timeline.note_death(1, 105.0)
+
+        # 观察者切到已阵亡的 CT1，停留 0.5s（尸体时间）。
+        players_dead = [player(1, "CT", hp=0), player(2, "T", pos=(600, 0, 0)),
+                        player(3, "T", pos=(800, 0, 0))]
+        self._tick(players_dead, "live", 1, 1, 106.0)
+        self.assertEqual(self.timeline.current.target_slot, 1)
+
+        # 人工按 3 接管：GSI 在 106.5 确认。
+        self.timeline.note_manual(3, 1, 106.2, 10.0)
+        players_manual = [player(1, "CT", hp=0), player(2, "T", pos=(600, 0, 0)),
+                          player(3, "T", pos=(800, 0, 0))]
+        self._tick(players_manual, "live", 1, 3, 106.5)
+        self.assertEqual(self.timeline.current.target_slot, 3)
+        self.assertTrue(self.timeline.current.manual)
+
+        # 回合结束 → 计算并落盘
+        self._tick(players_manual, "over", 1, 3, 108.0)
+        m = self.timeline._last_round_metrics
+        self.assertIsNotNone(m)
+        self.assertEqual(m["kills"], 1)
+        self.assertAlmostEqual(m["kill_coverage"], 1.0)
+        self.assertEqual(m["first_damages"], 1)
+        self.assertAlmostEqual(m["pre_fight_coverage"], 1.0)
+        self.assertAlmostEqual(m["corpse_time"], 0.5)
+        self.assertAlmostEqual(m["shot_duration_mean"], 2.0)
+        self.assertEqual(m["manual_takeover"], 1)
+        self.assertEqual(m["manual_confirmed"], 1)
+        self.assertAlmostEqual(m["live_seconds"], 8.0)
+        # 4 个镜头 = 3 次切换；8 秒 live → 22.5 次/分钟
+        self.assertAlmostEqual(m["cut_rate"], 22.5)
+
+        self.assertTrue(self.timeline.shot_path.is_file())
+        self.assertTrue(self.timeline.round_path.is_file())
+        self.assertTrue(self.timeline.summary_path.is_file())
+        with self.timeline.shot_path.open("r", newline="", encoding="utf-8-sig") as f:
+            rows = list(csv.DictReader(f))
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(rows[-1]["manual"], "1")
+        with self.timeline.round_path.open("r", newline="", encoding="utf-8-sig") as f:
+            rounds = list(csv.DictReader(f))
+        self.assertEqual(len(rounds), 1)
+        self.assertEqual(rounds[0]["kill_coverage"], "1.0000")
+        self.assertEqual(rounds[0]["phase"], "round_over")
+        summary = json.loads(self.timeline.summary_path.read_text(encoding="utf-8"))
+        self.assertEqual(summary["session"]["rounds"], 1)
+        self.assertAlmostEqual(summary["session"]["kill_coverage"], 1.0)
+
+        # 重启后从 round_metrics.csv 恢复累计指标
+        self.timeline.close(109.0, "测试结束")
+        tl2 = st.ShotTimeline(self.cfg, base_dir=Path(self.tmp.name))
+        self.assertEqual(tl2.session_metrics()["rounds"], 1)
+        self.assertEqual(tl2.session_metrics()["kills"], 1)
+        self.assertAlmostEqual(tl2.session_metrics()["kill_coverage"], 1.0)
+
+    def test_kill_coverage_zero_when_watching_other_player(self):
+        players = [player(1, "CT"), player(2, "T", pos=(600, 0, 0))]
+        self._tick(players, "freezetime", 2, 1, 200.0)
+        # freezetime 不抢在出生点运镜前记 0 秒 POV
+        self.assertIsNone(self.timeline.current)
+        self._tick(players, "live", 2, 1, 201.0)
+        self.assertEqual(self.timeline.current.target_slot, 1)
+        # 击杀者是 T2，但镜头一直在 CT1。
+        self.timeline.note_damage([2], [1], 202.0, 100)
+        self.timeline.note_kill([2], [1], 202.5)
+        self.timeline.note_death(1, 202.5)
+        players_dead = [player(1, "CT", hp=0), player(2, "T", pos=(600, 0, 0))]
+        self._tick(players_dead, "over", 2, 1, 203.0)
+        m = self.timeline._last_round_metrics
+        self.assertEqual(m["kill_coverage"], 0.0)
+        # 首次伤害的当事人包含 CT1（受害者），所以交火前覆盖仍为 1。
+        self.assertAlmostEqual(m["pre_fight_coverage"], 1.0)
+
+    def test_disabled_does_not_create_files(self):
+        cfg = dict(self.cfg)
+        cfg["shot_timeline_enabled"] = False
+        base = Path(self.tmp.name) / "disabled"
+        base.mkdir()
+        tl = st.ShotTimeline(cfg, base_dir=base)
+        snap = snapshot(players=[player(1, "CT")], phase="live", round_no=3)
+        state = st.StoryTracker(cfg).update(snap, 300.0)
+        tl.tick(snap, state, 300.0)
+        self.assertFalse(tl.enabled)
+        self.assertEqual(list(base.iterdir()), [])
+
+
+class TestEngineTimelineIntegration(unittest.TestCase):
+    """DirectorEngine 只做编排：故事/时间线不影响评分与按键安全。"""
+
+    def test_tick_updates_story_timeline_and_damage_events(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg = dict(d.DEFAULT_CONFIG)
+            cfg["dry_run"] = True
+            cfg["shot_timeline_enabled"] = True
+            timeline = st.ShotTimeline(cfg, base_dir=Path(tmp))
+            eng = d.DirectorEngine(cfg, d.LogBus(), timeline=timeline)
+            snap = snapshot(players=[
+                player(1, "CT"), player(2, "T", pos=(600, 0, 0)),
+            ], phase="live", round_no=1, player_slot=1)
+            eng.store.update(snap)
+            eng._tick()
+            status = eng.status()
+            self.assertEqual(status["gsi"], "ok")
+            self.assertTrue(status.get("story_text"))
+            self.assertEqual(status["current_shot"]["target_slot"], 1)
+            self.assertIn("kill_coverage", status["metrics"])
+
+            snap2 = snapshot(players=[
+                player(1, "CT", hp=50),
+                player(2, "T", pos=(600, 0, 0), round_totaldmg=50),
+            ], phase="live", round_no=1, player_slot=1)
+            eng.store.update(snap2)
+            eng._tick()
+            self.assertTrue(any(ev["attackers"] == [2] for ev in timeline._damages))
+            self.assertTrue(timeline.shot_path.is_file())
+            timeline.close(time.monotonic())
+            eng.timeline = None  # 避免 eng 析构/后续状态影响
 
 
 class TestGSIConcurrency(unittest.TestCase):

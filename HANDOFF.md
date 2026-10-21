@@ -1,8 +1,8 @@
 # CS2 AI 导播 — 开发交接日志
 
 最后更新：2026-10-21  
-当前主程序版本：**v1.9.0**  
-当前训练器版本：**v1.1.0**  
+当前主程序源码版本：**v1.10.0（Phase 1 已完成，已重新打包 exe）**  
+当前训练器版本：**v1.1.0（未改模型/特征，无需重训）**  
 专业导播新目标：见 `PRO_DIRECTOR_HANDOFF.md`
 
 ---
@@ -17,7 +17,8 @@ CS2 观战/转播导播工具，核心目标：
 4. 观察对象阵亡后自动切到离尸体最近的敌人；
 5. 专业导播：独立日志、事件动作、OBS WebSocket、FFmpeg 击杀回放、玩家改名；
 6. 决策日志 + 离线随机森林仲裁模型；
-7. 独立训练器支持 `decisions.csv` 和 `.dem`。
+7. 独立训练器支持 `decisions.csv` 和 `.dem`；
+8. v1.10 Phase 1：镜头时间线、六项专业指标、回合故事状态（只观测，不参与评分）。
 
 硬边界：
 
@@ -34,11 +35,15 @@ CS2 观战/转播导播工具，核心目标：
 
 https://github.com/YuGaN525/cs2-ai-director
 
-- 最新提交：`6d34178 Harden exe build script`
-- Release：`v1.9.0`
-- 资产：`CS2AIDirector.exe`
-- 大小：34,991,208 字节（约 35 MB）
-- SHA256：`7D19FF279A0198109D0FEDE191882F8348A528F46CB47A77087BAAB1B4B341A8`
+- 当前源码版本：`v1.10.0`（Phase 1）
+- 最新提交：以 `git log -1` 为准（v1.10.0 提交见仓库历史）
+- 上一 Release：`v1.9.0`（v1.10.0 exe 尚未上传 Release 资产）
+- 本地产物：`dist\CS2AIDirector.exe`
+- 大小：35,036,402 字节（约 35.0 MB）
+- SHA256：`A5E5104470C8D79CCBE56A7D4310AE9F74873E3CD5EF752B6A601AB053604F17`
+
+> v1.10.0 已用 PyInstaller 6.22.3 / Python 3.14 重新打包并通过启动验证（窗口标题 `CS2 AI 导播 v1.10.0`）。
+> GitHub Release 仍保留 v1.9.0 资产；如需把 v1.10.0 exe 作为 Release 资产发布，需要额外的 Release 上传步骤。
 
 ### 训练器仓库（私密）
 
@@ -65,6 +70,7 @@ dist\CS2AIDecisionTrainer.exe
 
 ```text
 cs2_ai_director.py        # 单文件主程序（GUI/GSI/评分/切换/HLAE）
+director_story.py         # 镜头时间线/六项专业指标/回合故事状态（v1.10）
 director_pro.py           # 独立日志/事件动作/OBS/FFmpeg 回放/玩家改名
 decision_model.py         # 决策 CSV、3 秒标签、纯 JSON 森林加载/仲裁
 train_from_demos.py       # 旧静态 demo 模型（learner.json）
@@ -201,6 +207,30 @@ CS2AIDecisionTrainer.exe --cli --demos "D:\demos" --min-samples 1000
 
 ---
 
+### 5.7 专业导播 Phase 1（v1.10）
+
+文件：`director_story.py`
+
+- `ShotTimeline`：按实际 `observer_slot` + 导演意图记录每个镜头
+  （类型/目标/开始/结束/原因/来源/人工接管/故事快照）；
+- 镜头类型：`POV / BOMB / SPAWN / OVERVIEW / REPLAY`；当前实际使用
+  `POV`、`BOMB`、`SPAWN`，`OVERVIEW/REPLAY` 已预留；
+- 六项指标：
+  - `kill_coverage`：击杀前 2.5s 镜头在击杀者；
+  - `pre_fight_coverage`：每段交火首次伤害前 2.5s 镜头在当事人；
+  - `corpse_time`：镜头停在尸体上的秒数；
+  - `cut_rate`：每 live 分钟切换次数；
+  - `shot_duration`：POV 平均/中位停留；
+  - `manual_takeover`：人工裸 0–9 接管次数（另记 GSI 确认次数）；
+- `StoryTracker`：阶段/经济/残局/下包/比分/赛点；
+- 输出：
+  - `shot_timeline.csv`
+  - `shot_events.csv`
+  - `round_metrics.csv`
+  - `director_metrics.json`
+- GUI：“运行状态”和“专业导播”页显示故事/指标；可打开数据目录；
+- **不参与** `score_candidates` / `choose_slot` / 模型仲裁；评分特征不变。
+
 ## 6. 当前配置与路径
 
 配置：
@@ -222,6 +252,10 @@ CS2AIDecisionTrainer.exe --cli --demos "D:\demos" --min-samples 1000
 %APPDATA%\CS2AIDirector\learner.json
 %APPDATA%\CS2AIDirector\decision_model.json.gz
 %APPDATA%\CS2AIDirector\decision_model_metrics.json
+%APPDATA%\CS2AIDirector\shot_timeline.csv
+%APPDATA%\CS2AIDirector\shot_events.csv
+%APPDATA%\CS2AIDirector\round_metrics.csv
+%APPDATA%\CS2AIDirector\director_metrics.json
 ```
 
 本机当前状态（交接时）：
@@ -247,6 +281,11 @@ max_vertical_diff
 demo_model_enabled / demo_model_min_samples / demo_model_blend
 decision_log_enabled / decision_log_interval / decision_label_window
 decision_model_enabled / decision_model_margin / decision_model_min_factor
+shot_timeline_enabled / shot_timeline_dir
+metric_kill_lookback / metric_prefight_lookback / metric_engagement_gap / metric_min_live_seconds
+story_opening_seconds / story_engage_recent_seconds
+economy_full_avg / economy_force_avg / economy_equip_full / economy_equip_force
+match_point_score
 obs_host / obs_port / obs_password / obs_scene...
 ffmpeg_path / replay_output_dir
 event_actions_enabled / event_rules
@@ -266,7 +305,8 @@ player_api_base_url
 - v1.7：在线学习 + demo 静态模型（在线部分后来移除）；
 - v1.8：整合专业导播（独立日志/事件动作/OBS/FFmpeg/改名）；
 - v1.9：移除即时学习、决策 CSV/标签、随机森林、纯 JSON 加载、独立训练器、`.dem` 导入、RF/ExtraTrees CV 优化；
-- v1.9.1：训练器独立私密仓库、主程序清理训练器源码。
+- v1.9.1：训练器独立私密仓库、主程序清理训练器源码；
+- v1.10（Phase 1）：新增 `director_story.py`：镜头时间线、六项专业指标、回合故事状态；评分/模型/特征不变。
 
 ---
 
@@ -275,11 +315,12 @@ player_api_base_url
 已验证：
 
 ```text
-主仓库 80 项测试通过
-训练器仓库 80 项测试通过
-Python 编译通过
+主仓库 86 项测试通过（v1.10；新增 6 项 timeline/story/integration）
+训练器仓库 80 项测试通过（v1.1.0，未同步 v1.10）
+Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
-两个 exe 启动成功
+模拟 GSI 序列验证镜头/指标/故事落盘
+两个 exe 启动成功（主程序 v1.10.0 / 训练器 v1.1.0）
 训练器 CSV 训练 exit=0
 训练器 .dem 训练 exit=0（544 行 / 105 击杀事件）
 导播加载 ExtraTrees JSON 成功
@@ -293,7 +334,10 @@ Python 编译通过
 - 正式比赛/多 demo 模型效果；
 - 长时间运行稳定性；
 - 非 100% 显示器缩放下的最终布局；
-- exe 数字签名/杀软误报。
+- exe 数字签名/杀软误报；
+- v1.10 时间线在真实 GSI/HL AE 运镜下的准确性（目前只有模拟 GSI 序列测试）；
+- `pre_fight_coverage` 与真实导播人工标注的一致性；
+- `shot_duration` / `corpse_time` 在真实 HLAE 包点/出生点镜头下的口径。
 
 ---
 
@@ -315,6 +359,11 @@ Python 编译通过
 14. **主程序未打包 sklearn**，旧 `.pkl` 模型在 exe 内不能加载，必须用 `.json.gz`。
 15. **ruff 完整规则**仍有大量风格/宽泛异常提示，仅保证 F/E9 核心检查。
 16. **主程序 `_open_trainer`** 要求 `CS2AIDecisionTrainer.exe` 与主程序同目录；否则手动运行。
+17. **v1.10 时间线是启发式观测**：GSI 不提供 HLAE 当前机位，`SPAWN/BOMB` 按“已发送 + 预计归还”记录；`OVERVIEW/REPLAY` 仅预留，尚未接入实际机位。
+18. **经济分档是近似**：freezetime 用金钱（可能买到一半）、live 用武器+护甲平均档位；不读装备价值。
+19. **残局/阶段判定依赖 GSI 字段**：若 `allplayers` 缺失、`observer_slot` 延迟，镜头目标会以 GSI 实际值为准，指标可能少算。
+20. **回合切换/中途停止会产生 partial 行**：`round_metrics.csv` 用 `completed=1/0` 区分；累计指标会包含 partial 行。
+21. **训练器仓库尚未同步 v1.10**：见下方同步清单；未同步时训练器仍可运行旧 `cs2_ai_director.py`。
 
 ---
 
@@ -353,20 +402,46 @@ python demo_dataset.py --demos "D:\demos" --out demo_decisions.csv
 
 ---
 
+## 10.1 共享核心同步清单（v1.10）
+
+训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 尚未同步 v1.10。评分核心没有改，但主程序新增了
+`import director_story`，因此**如果复制新的 `cs2_ai_director.py`，必须同时复制 `director_story.py`**，
+否则训练器的 demo 解析会 ImportError。
+
+| 文件 | 主仓库状态 | 训练器仓库动作 |
+|---|---|---|
+| `cs2_ai_director.py` | v1.10 引擎集成 + 新增配置默认值 | 复制；评分函数未变 |
+| `director_story.py` | 新增 | **必须复制** |
+| `director_pro.py` | 未改 | 可保持旧版 |
+| `decision_model.py` | 未改 | 保持 |
+| `test_cs2_ai_director.py` | 新增 6 项测试 | 建议复制 |
+
+不需要重新训练模型：`DECISION_FEATURES`、`score_candidates`、`choose_slot` 都没改。
+同步后建议在训练器仓库执行：
+
+```bat
+python -m py_compile cs2_ai_director.py director_story.py
+python -m unittest test_cs2_ai_director
+```
+
+---
+
 ## 11. 推荐下一步
 
 优先级从高到低：
 
-1. **实机联调 OBS/FFmpeg**：连接 OBS WebSocket，验证场景/媒体源/录制/回放/恢复录制；
-2. **积累 1000+ 真实决策样本**，训练并观察 AUC 与线上误切；
-3. **多 demo 训练**：至少 5–10 场完整 demo，按比赛留出验证，避免同场泄漏；
-4. **同步两个仓库的共享核心**，最好抽成独立包，消除副本；
-5. **实现回合上下文特征**：alive 数、炸弹、时间、比分、经济；
-6. **模型校准/阈值**：可靠性曲线、按概率分桶评估；
-7. **修复 DecisionLogger positive 恢复**；
-8. **给训练器加模型对比 UI**（RF/ExtraTrees 的 CV/测试 AUC 表格）；
-9. **exe 签名/安装包**；
-10. **清理历史 SELFCHECK 段落**，保持文档与当前版本一致。
+1. **Phase 2 镜头调度器**：把 `StoryState` + `ShotTimeline` 接入 `ShotCandidate/ShotScheduler`，先做“不切”候选与最短停留，不改模型；
+2. **实机验证 Phase 1**：用真实 GSI + HLAE 跑 1–2 场，校准 `corpse_time` / `shot_duration` / `pre_fight_coverage` 口径；
+3. **同步训练器仓库**：按 10.1 清单复制 `director_story.py` + `cs2_ai_director.py`；
+4. **实机联调 OBS/FFmpeg**：连接 OBS WebSocket，验证场景/媒体源/录制/回放/恢复录制；
+5. **积累 1000+ 真实决策样本**，训练并观察 AUC 与线上误切；
+6. **多 demo 训练**：至少 5–10 场完整 demo，按比赛留出验证，避免同场泄漏；
+7. **实现回合上下文特征**：alive 数、炸弹、时间、比分、经济；
+8. **模型校准/阈值**：可靠性曲线、按概率分桶评估；
+9. **修复 DecisionLogger positive 恢复**；
+10. **给训练器加模型对比 UI**（RF/ExtraTrees 的 CV/测试 AUC 表格）；
+11. **exe 签名/安装包**；
+12. **清理历史 SELFCHECK 段落**，保持文档与当前版本一致。
 
 ---
 
@@ -396,6 +471,19 @@ demoparser2
 .dem 训练
 独立训练器
 PyInstaller onefile
+镜头时间线
+镜头类型
+击杀覆盖
+交火前覆盖
+尸体时间
+切换频率
+镜头停留
+人工接管
+回合故事
+经济局
+强起
+残局
+赛点
 ```
 
 ### 英文
@@ -420,14 +508,30 @@ demoparser2
 demo training
 standalone trainer
 PyInstaller onefile
+ShotTimeline
+ShotType
+kill coverage
+pre-fight coverage
+corpse time
+cut rate
+shot duration
+manual takeover
+round story
+economy
+force buy
+clutch
+match point
 ```
 
 ### 文件/仓库关键词
 
 ```text
 cs2_ai_director.py
+director_story.py
 director_pro.py
 decision_model.py
+shot_timeline.csv
+round_metrics.csv
 train_from_demos.py
 trainer_gui.py
 train_decision_model.py
@@ -446,13 +550,14 @@ YuGaN525/cs2-ai-decision-trainer
 继续开发 CS2 AI 导播项目。请先阅读仓库根目录的 HANDOFF.md 和 README.md。
 
 当前状态：
-- 主程序 v1.9.0，训练器 v1.1.0；
+- 主程序源码 v1.10.0（Phase 1：镜头时间线/六项指标/回合故事），训练器 v1.1.0；
 - 主仓库 YuGaN525/cs2-ai-director，训练器仓库 YuGaN525/cs2-ai-decision-trainer，均为私密；
-- 主程序 exe：dist/CS2AIDirector.exe；
+- 主程序 exe：dist/CS2AIDirector.exe（v1.10.0，已重新打包）；
 - 训练器 exe：dist/CS2AIDecisionTrainer.exe；
-- 80 项测试通过；OBS/FFmpeg 尚未实机联调；
+- 86 项测试通过；OBS/FFmpeg 尚未实机联调；Phase 1 只有模拟 GSI 序列验证；
 - 模型使用 RF/ExtraTrees 交叉验证选择，导出纯 JSON，导播自动重载；
-- 决策样本 decisions.csv 尚未达到 1000 条。
+- 决策样本 decisions.csv 尚未达到 1000 条；
+- 训练器仓库尚未同步 director_story.py（见 10.1）。
 
 硬性约束：
 - 只读 GSI，不读内存/不注入/不发控制台命令；
@@ -461,10 +566,10 @@ YuGaN525/cs2-ai-decision-trainer
 - 训练器与主程序共享评分核心，修改时两个仓库要同步。
 
 下一步优先：
-1. 实机联调 OBS/FFmpeg；
-2. 用多场 demo 训练并验证 AUC；
-3. 增加回合上下文特征；
-4. 消除两仓库共享核心副本。
+1. Phase 2 镜头调度器（不切候选/最短停留/切换成本），不改模型；
+2. 用真实 GSI + HLAE 校准 Phase 1 指标；
+3. 实机联调 OBS/FFmpeg；
+4. 同步训练器仓库并消除共享核心副本。
 
 请先检查当前代码和测试，再给出最小改动方案。
 ```

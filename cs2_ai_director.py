@@ -50,7 +50,7 @@ from typing import Any, Callable, Optional
 
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "CS2 AI 导播"
-VERSION = "1.9.0"
+VERSION = "1.10.0"
 IS_WINDOWS = os.name == "nt"
 
 GSI_CFG_NAME = "gamestate_integration_ai_director.cfg"
@@ -81,6 +81,7 @@ except Exception:  # pragma: no cover
 
 import decision_model as dm
 import director_pro as pro_mod
+import director_story as story_mod
 
 try:
     import tkinter as tk
@@ -159,6 +160,20 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "decision_model_enabled": True,
     "decision_model_margin": 0.08,
     "decision_model_min_factor": 0.9,
+    # ---- 专业导播 Phase 1：镜头时间线 / 专业指标 / 回合故事 ----
+    "shot_timeline_enabled": True,
+    "shot_timeline_dir": "",       # 空 = %APPDATA%\CS2AIDirector
+    "metric_kill_lookback": 2.5,   # 击杀前多少秒内镜头在击杀者
+    "metric_prefight_lookback": 2.5,  # 首次伤害前多少秒内镜头在当事人
+    "metric_engagement_gap": 3.0,  # 多久没有伤害算“新的一段交火”
+    "metric_min_live_seconds": 5.0,  # live 时间少于此值不计算 cut_rate
+    "story_opening_seconds": 12.0,  # 开局阶段时长
+    "story_engage_recent_seconds": 3.0,  # 最近伤害多久内算“交火中”
+    "economy_full_avg": 3500.0,    # 金钱兜底：全起平均余额
+    "economy_force_avg": 2000.0,   # 金钱兜底：强起平均余额
+    "economy_equip_full": 1.5,     # 装备判定：全起平均档位
+    "economy_equip_force": 0.8,    # 装备判定：强起平均档位
+    "match_point_score": 12,       # CS2 MR12：先到 12 分拿到赛点
     # ---- 视角切换 ----
     "manual_pause_seconds": 10.0,
     "loop_hz": 20,
@@ -2173,12 +2188,15 @@ class DirectorEngine:
     def __init__(self, cfg: dict[str, Any], bus: LogBus,
                  pro: Optional[pro_mod.ProDirector] = None,
                  decision_logger: Optional[dm.DecisionLogger] = None,
-                 model_arbiter: Optional[dm.ModelArbiter] = None) -> None:
+                 model_arbiter: Optional[dm.ModelArbiter] = None,
+                 timeline: Optional[story_mod.ShotTimeline] = None) -> None:
         self.cfg = cfg
         self.bus = bus
         self.pro = pro
         self.decision_logger = decision_logger
         self.model_arbiter = model_arbiter
+        self.timeline = timeline
+        self.story = story_mod.StoryTracker(cfg)
         self.store = SnapshotStore()
         self.server: Optional[GSIServer] = None
         self.input = InputController(cfg, bus)
@@ -2207,6 +2225,9 @@ class DirectorEngine:
         self._last_bomb_pov_log = 0.0
         self._last_reason = ""
         self._press_retry_after = 0.0
+        self._last_observed_slot: Optional[int] = None
+        self._dmg_dealt: dict[str, int] = {}
+        self._round_kills: dict[str, int] = {}
         self._last_round_winner: Optional[str] = None
         self._last_scores: Optional[tuple[int, int]] = None
         self._last_map_name = ""
@@ -2252,6 +2273,8 @@ class DirectorEngine:
             server.stop()
             raise
         self._stop.clear()
+        if self.timeline is not None:
+            self.timeline.start(time.monotonic())
         self._running = True
         self._thread = threading.Thread(target=self._loop, name="director", daemon=True)
         self._thread.start()
@@ -2276,6 +2299,11 @@ class DirectorEngine:
         if self._thread is not None:
             self._thread.join(timeout=2.0)
             self._thread = None
+        if self.timeline is not None:
+            try:
+                self.timeline.close(time.monotonic(), "导播停止")
+            except Exception:
+                self.bus.exception("关闭镜头时间线时出现异常")
         with self._status_lock:
             self._status = {"running": False}
         self.bus.info("导播已停止。")
@@ -2289,6 +2317,12 @@ class DirectorEngine:
         now = time.monotonic()
         pause = float(self.cfg["manual_pause_seconds"])
         self._manual_until = max(self._manual_until, now + pause)
+        if self.timeline is not None:
+            try:
+                self.timeline.note_manual(int(digit), self._last_observed_slot,
+                                          now, pause)
+            except Exception:
+                self.bus.exception("记录人工接管时出现异常")
         self.bus.info(f"检测到手动切换（按 {digit}），AI 自动切换暂停 {pause:.0f} 秒。")
 
     # ---- 主循环 ----
@@ -2330,6 +2364,14 @@ class DirectorEngine:
             "triggers": dict(self.triggers.counts),
             "spectating": False,
             "candidates": 0,
+            "story": self.story.state.to_dict(),
+            "story_text": self.story.state.story,
+            "metrics": (self.timeline.session_metrics()
+                        if self.timeline is not None else {}),
+            "current_shot": (
+                self.timeline.current.to_dict(now)
+                if (self.timeline is not None and self.timeline.current)
+                else None),
         }
 
         if snap is None:
@@ -2355,6 +2397,35 @@ class DirectorEngine:
             self.bus.info("GSI 数据流已恢复。")
         status["gsi"] = "ok"
 
+        # ---- 回合故事 + 镜头时间线（Phase 1，不影响评分/模型）----
+        self._last_observed_slot = snap.observer_slot
+        bomb_site: Optional[str] = None
+        if snap.bomb is not None and snap.bomb.state in ("planted", "defusing"):
+            try:
+                bomb_site = detect_bomb_site(snap.map_name, snap.bomb.position,
+                                             self.cfg)
+            except Exception:
+                bomb_site = None
+        story = self.story.update(snap, now, bomb_site)
+        status["story"] = story.to_dict()
+        status["story_text"] = story.story
+        for ev in story.events:
+            self.bus.info(f"故事：{ev}")
+            if self.timeline is not None:
+                if ev.startswith("下包"):
+                    self.timeline.note_bomb("bomb_planted", story.bomb_site, now)
+                elif ev.startswith("开始拆包"):
+                    self.timeline.note_bomb("bomb_defusing", story.bomb_site, now)
+
+        # 先让 timeline 识别新回合（否则新回合的伤害会被算进上一回合），
+        # 再采集伤害/击杀，最后 tick 一次处理 POV 变化与回合结束。
+        if self.timeline is not None:
+            try:
+                if story.round_key and story.round_key != self.timeline.round_key:
+                    self.timeline.tick(snap, story, now)
+            except Exception:
+                self.bus.exception("镜头时间线更新异常（已继续运行）")
+
         if snap.seq != self._last_seq:
             self._update_damage(snap, now)
             if self.decision_logger is not None:
@@ -2362,6 +2433,12 @@ class DirectorEngine:
             if self.pro is not None:
                 self.pro.tick(snap, now)
             self._last_seq = snap.seq
+
+        if self.timeline is not None:
+            try:
+                self.timeline.tick(snap, story, now)
+            except Exception:
+                self.bus.exception("镜头时间线更新异常（已继续运行）")
 
         self._update_round_winner(snap)
         self._handle_triggers(snap, now)
@@ -2374,21 +2451,83 @@ class DirectorEngine:
             self._decide_and_switch(snap, now, status)
         finally:
             status["ai"] = self.arbiter.status()
+            if self.timeline is not None:
+                try:
+                    status["metrics"] = self.timeline.session_metrics()
+                    cur = self.timeline.current
+                    status["current_shot"] = cur.to_dict(now) if cur else None
+                except Exception:
+                    pass
             self._set_status(status)
 
     def _set_status(self, status: dict[str, Any]) -> None:
         with self._status_lock:
             self._status = status
 
-    # ---- 伤害追踪：用于判断“正在交火” ----
+    # ---- 伤害/击杀/死亡追踪：评分 + 专业导播指标共用 ----
     def _update_damage(self, snap: Snapshot, now: float) -> None:
+        attackers: list[int] = []
+        victims: list[int] = []
+        deaths: list[int] = []
+        killers: list[int] = []
+        damage_amount = 0
+
         for sid, p in snap.players.items():
-            prev = self._hp.get(sid)
-            if prev is not None and p.health < prev - 2:
-                self._damage_at[sid] = now
+            slot = p.slot
+            prev_hp = self._hp.get(sid)
+            if prev_hp is not None:
+                if p.health < prev_hp - 2:
+                    self._damage_at[sid] = now
+                if p.health < prev_hp and slot is not None:
+                    victims.append(int(slot))
+                if prev_hp > 0 and p.health <= 0 and slot is not None:
+                    deaths.append(int(slot))
             self._hp[sid] = p.health
+
+            # round_totaldmg 增量 = 本 tick 造成伤害的人；不需要读内存。
+            prev_dmg = self._dmg_dealt.get(sid)
+            if prev_dmg is not None and p.round_totaldmg > prev_dmg:
+                delta = p.round_totaldmg - prev_dmg
+                damage_amount += delta
+                if slot is not None:
+                    attackers.append(int(slot))
+            self._dmg_dealt[sid] = p.round_totaldmg
+
+            # round_kills 增量 = 击杀者；可能比死亡晚一个 GSI 包。
+            prev_kills = self._round_kills.get(sid)
+            if prev_kills is not None and p.round_kills > prev_kills:
+                if slot is not None:
+                    killers.extend([int(slot)] * (p.round_kills - prev_kills))
+            self._round_kills[sid] = p.round_kills
+
+        if attackers or victims:
+            self.story.note_damage(now)
+            if self.timeline is not None:
+                try:
+                    self.timeline.note_damage(attackers, victims, now,
+                                              damage_amount)
+                except Exception:
+                    self.bus.exception("记录伤害事件时出现异常")
+        if killers and self.timeline is not None:
+            try:
+                self.timeline.note_kill(killers, deaths, now)
+            except Exception:
+                self.bus.exception("记录击杀事件时出现异常")
+        if deaths and self.timeline is not None:
+            try:
+                for slot in deaths:
+                    self.timeline.note_death(slot, now)
+            except Exception:
+                self.bus.exception("记录死亡事件时出现异常")
+
         if len(self._damage_at) > 40:
             self._damage_at = {k: v for k, v in self._damage_at.items() if now - v < 15.0}
+        if len(self._hp) > 80:
+            # 换图/重连后的旧 SteamID 清理，避免长局内存增长
+            keep = set(snap.players)
+            self._hp = {k: v for k, v in self._hp.items() if k in keep}
+            self._dmg_dealt = {k: v for k, v in self._dmg_dealt.items() if k in keep}
+            self._round_kills = {k: v for k, v in self._round_kills.items() if k in keep}
 
     def _damage_recent(self, sid: str) -> bool:
         return (time.monotonic() - self._damage_at.get(sid, -999.0)) <= 1.6
@@ -2480,6 +2619,10 @@ class DirectorEngine:
                         f"回合开始（{snap.phase}），{why}，"
                         f"已发送 HLAE {side} 出生点运镜：{hotkey}（{mode_txt}）"
                     )
+                    if self.timeline is not None:
+                        self.timeline.begin_cinematic(
+                            story_mod.SHOT_SPAWN, f"side={side}", why,
+                            "spawn_cam", now, expires_at=now + 30.0)
                 else:
                     grace = float(self.cfg["bomb_cam_grace"])
                     if grace > 0:
@@ -2489,6 +2632,13 @@ class DirectorEngine:
                         f"炸弹剩余 {cd:.1f}s，{site} 包点，已发送 HLAE 包点运镜：{hotkey}（{mode_txt}）"
                         + (f"（AI 切换让位 {grace:.1f}s）" if grace > 0 else "")
                     )
+                    if self.timeline is not None:
+                        self.timeline.begin_cinematic(
+                            story_mod.SHOT_BOMB, f"site={site}",
+                            f"炸弹剩余 {cd:.1f}s，{site} 包点" if cd is not None
+                            else f"{site} 包点",
+                            "bomb_cam", now,
+                            expires_at=now + max(1.5, grace) + 1.0)
             else:
                 if now - self._last_trigger_fail > 3.0:
                     self._last_trigger_fail = now
@@ -2554,6 +2704,17 @@ class DirectorEngine:
         if not snap.players:
             status["reason"] = "GSI 中缺少 allplayers 数据"
             return
+        # 运镜结束：出生点运镜在进入 live 时交还 POV；包点运镜在保护时间
+        # 结束后交还。否则时间线会一直停在 BOMB/SPAWN。
+        if self.timeline is not None:
+            cur = self.timeline.current
+            if cur is not None:
+                if (cur.shot_type == story_mod.SHOT_SPAWN
+                        and snap.phase == "live"):
+                    self.timeline.end_cinematic(now, "进入 live，恢复 POV")
+                elif (cur.shot_type == story_mod.SHOT_BOMB
+                      and now >= self._bomb_cam_until):
+                    self.timeline.end_cinematic(now, "包点运镜结束，恢复 POV")
         # 按用户要求，移除“当前不是观战视角就跳过”的判定；即使 GSI 没给出
         # observer_slot，也继续按评分切人。
         if snap.phase not in ("", "live"):
@@ -2603,6 +2764,9 @@ class DirectorEngine:
                         self._last_switch_slot = death_slot
                         status["target"] = death_slot
                         status["reason"] = "观战对象已阵亡，切到最近敌人"
+                        if self.timeline is not None:
+                            self.timeline.expect_switch(
+                                death_slot, status["reason"], "death", now)
                         self.bus.info(
                             f"切换视角 → slot={death_slot}（观战对象已阵亡，切到最近敌人）"
                         )
@@ -2666,12 +2830,20 @@ class DirectorEngine:
                 status["target"] = decision.slot
                 status["target_name"] = cand.name if cand else ""
                 if decision.source == "death":
+                    if self.timeline is not None:
+                        self.timeline.expect_switch(
+                            decision.slot, decision.reason, "death", now)
                     self.bus.info(
                         f"切换视角 → slot={decision.slot}（观战对象已阵亡，切到最近敌人）"
                     )
                 else:
                     source = ("AI" if (hint and hint[0] == decision.slot)
                               else ("模型" if model_slot == decision.slot else "规则"))
+                    timeline_source = {"AI": "ai", "模型": "model",
+                                       "规则": "rule"}.get(source, "rule")
+                    if self.timeline is not None:
+                        self.timeline.expect_switch(
+                            decision.slot, decision.reason, timeline_source, now)
                     self.bus.info(
                         f"切换视角 → slot={decision.slot} {cand.name if cand else '?'}"
                         f" [{source}] " + (format_candidate(cand) if cand else "")
@@ -2913,6 +3085,7 @@ class DirectorApp:
         self.pro = pro_mod.ProDirector(cfg)
         self.decision_logger = dm.DecisionLogger(cfg)
         self.model_arbiter = dm.ModelArbiter(cfg)
+        self.timeline = story_mod.ShotTimeline(cfg, log_fn=self.bus.info)
         self.engine: Optional[DirectorEngine] = None
         self._closing = False
         self._detecting = False
@@ -3102,6 +3275,26 @@ class DirectorApp:
             side="left", padx=6)
         self.lbl_model = ttk.Label(lf5, text="随机森林：检查中…", foreground="#555555")
         self.lbl_model.pack(side="left", padx=6)
+
+        lf6 = ttk.LabelFrame(parent, text=" 镜头时间线 / 专业指标（Phase 1） ", padding=8)
+        lf6.grid(row=5, column=0, sticky="ew", pady=(6, 0))
+        lf6.columnconfigure(0, weight=1)
+        self.lbl_pro_shot = ttk.Label(
+            lf6, text="当前镜头：-    故事：-", foreground="#444444",
+            justify="left", wraplength=900)
+        self.lbl_pro_shot.grid(row=0, column=0, sticky="w")
+        self.lbl_pro_metrics = ttk.Label(
+            lf6, text="专业指标：击杀覆盖 -    交火前覆盖 -    尸体 -s    "
+                      "切换 -/min    POV均长 -s    人工 -",
+            foreground="#555555", justify="left", wraplength=900)
+        self.lbl_pro_metrics.grid(row=1, column=0, sticky="w", pady=(3, 0))
+        row = ttk.Frame(lf6)
+        row.grid(row=2, column=0, sticky="w", pady=(6, 0))
+        ttk.Button(row, text="打开数据目录",
+                   command=self._open_timeline_dir).pack(side="left")
+        ttk.Label(row, text="shot_timeline.csv / shot_events.csv / round_metrics.csv / "
+                            "director_metrics.json",
+                  foreground="#777777").pack(side="left", padx=8)
         self._refresh_rules()
 
     def _build_pro_logs(self, parent: Any) -> None:
@@ -3586,6 +3779,12 @@ class DirectorApp:
         self.lbl_reason = ttk.Label(status_box, text="决策：-", foreground="#666666",
                                     justify="left", wraplength=940)
         self.lbl_reason.grid(row=2, column=0, sticky="w", pady=(3, 0))
+        self.lbl_story = ttk.Label(status_box, text="故事：-", foreground="#444444",
+                                   justify="left", wraplength=940)
+        self.lbl_story.grid(row=3, column=0, sticky="w", pady=(3, 0))
+        self.lbl_metrics = ttk.Label(status_box, text="专业指标：-", foreground="#666666",
+                                     justify="left", wraplength=940)
+        self.lbl_metrics.grid(row=4, column=0, sticky="w", pady=(3, 0))
 
         # 8) 日志页
         logs.rowconfigure(0, weight=1)
@@ -3840,6 +4039,17 @@ class DirectorApp:
                 f"以及防火墙是否拦截本机 127.0.0.1:{port}。",
             )
 
+    def _open_timeline_dir(self) -> None:
+        try:
+            path = self.timeline.base_dir
+            path.mkdir(parents=True, exist_ok=True)
+            if IS_WINDOWS:
+                os.startfile(str(path))  # type: ignore[attr-defined]
+            else:
+                subprocess.Popen(["xdg-open", str(path)])
+        except Exception as e:
+            messagebox.showerror("打开目录", f"无法打开镜头数据目录：{e}")
+
     def _open_cfg_dir(self) -> None:
         cfg_dir = derive_cfg_dir(self.var_exe.get().strip())
         if cfg_dir is None:
@@ -3908,6 +4118,7 @@ class DirectorApp:
             cfg["manual_pause_seconds"] = DEFAULT_CONFIG["manual_pause_seconds"]
         self.decision_logger.cfg = cfg
         self.model_arbiter.cfg = cfg
+        self.timeline.cfg = cfg
         return cfg
 
     def _validate_cfg(self, cfg: dict[str, Any]) -> bool:
@@ -3977,6 +4188,7 @@ class DirectorApp:
                 cfg, self.bus, pro=self.pro,
                 decision_logger=self.decision_logger,
                 model_arbiter=self.model_arbiter,
+                timeline=self.timeline,
             )
             engine.start()
         except Exception as e:
@@ -4037,6 +4249,8 @@ class DirectorApp:
                 self.lbl_play.configure(text="阶段：-    当前视角：-    AI 目标：-")
                 self.lbl_ai.configure(text="AI：未启动    运镜：-")
                 self.lbl_reason.configure(text="决策：-")
+                self.lbl_story.configure(text="故事：-    当前镜头：-")
+                self.lbl_metrics.configure(text="专业指标：-")
         except Exception as e:
             # 状态栏刷新失败不应打断 after 循环；5 秒最多记一条，避免刷屏
             now = time.monotonic()
@@ -4089,6 +4303,42 @@ class DirectorApp:
         self.lbl_reason.configure(
             text=f"决策：{st.get('reason', '-')}    最高分：{float(st.get('score') or 0):.2f}    候选：{st.get('candidates', 0)}"
         )
+
+        story = st.get("story") or {}
+        story_txt = st.get("story_text") or story.get("story") or "-"
+        cur = st.get("current_shot") or {}
+        if cur:
+            shot_txt = (
+                f"{cur.get('type_label', cur.get('type', '?'))} "
+                f"{cur.get('target', '-')} "
+                f"({float(cur.get('duration') or 0):.1f}s / {cur.get('source', '-')})"
+            )
+        else:
+            shot_txt = "-"
+        self.lbl_story.configure(
+            text=f"故事：{story_txt}    当前镜头：{shot_txt}")
+        self.lbl_pro_shot.configure(
+            text=f"当前镜头：{shot_txt}    故事：{story_txt}")
+
+        m = st.get("metrics") or {}
+
+        def _pct(v: Any) -> str:
+            return "-" if v is None else f"{float(v) * 100:.0f}%"
+
+        def _num(v: Any, suffix: str = "") -> str:
+            return "-" if v is None else f"{float(v):.2f}{suffix}"
+
+        metrics_txt = (
+            f"击杀覆盖 {_pct(m.get('kill_coverage'))}"
+            f"    交火前覆盖 {_pct(m.get('pre_fight_coverage'))}"
+            f"    尸体 {_num(m.get('corpse_time'), 's')}"
+            f"    切换 {_num(m.get('cut_rate'), '/min')}"
+            f"    POV均长 {_num(m.get('shot_duration_mean'), 's')}"
+            f"    人工 {int(m.get('manual_takeover') or 0)}"
+            f"    回合 {int(m.get('rounds') or 0)}"
+        )
+        self.lbl_metrics.configure(text="专业指标：" + metrics_txt)
+        self.lbl_pro_metrics.configure(text="专业指标：" + metrics_txt)
 
     def _drain_logs(self) -> None:
         for _ in range(80):
