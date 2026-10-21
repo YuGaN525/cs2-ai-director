@@ -57,7 +57,7 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`13dd8a6 Brand as Yuzi_CS2_AIDecisionTrainer`
+- 最新提交：`2fc7c94 Align trainer with director arbitration`
 - Release：`v1.1.2`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
 - 大小：179,782,124 字节（约 179 MB）
