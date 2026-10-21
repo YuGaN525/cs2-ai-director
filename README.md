@@ -21,7 +21,7 @@
 
 | 程序 | 用途 |
 |---|---|
-| `CS2AIDirector.exe` | AI 导播主程序 v1.10.0，约 35 MB |
+| `CS2AIDirector.exe` | AI 导播主程序 v1.10.0，约 35 MB（Release v1.10.0） |
 
 当前本地构建：35,036,402 字节，SHA256 `A5E5104470C8D79CCBE56A7D4310AE9F74873E3CD5EF752B6A601AB053604F17`。
 

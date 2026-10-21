@@ -542,7 +542,8 @@ SHA256：A5E5104470C8D79CCBE56A7D4310AE9F74873E3CD5EF752B6A601AB053604F17
 powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
 ```
 
-> `dist/` 被 .gitignore 排除；exe 是否上传 GitHub Release 需单独操作。
+> `dist/` 被 .gitignore 排除；同一 exe 已上传到 GitHub Release `v1.10.0`：
+> https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.0
 
 ## 12. v1.8：专业导播整合
 
