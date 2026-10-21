@@ -713,7 +713,7 @@ ruff F/E9: All checks passed!
 ### 19.5 exe / Release
 
 ```text
-dist\CS2AIDirector_v1104.exe
+dist\CS2AIDirector.exe（已替换为 v1.10.4）
 大小：35,039,316 字节
 SHA256：358364B65296961C014C5764F37C6C95886F4A76BBC19FC35DDEE133B596D2D1
 窗口标题：CS2 AI 导播 v1.10.4
@@ -721,8 +721,9 @@ SHA256：358364B65296961C014C5764F37C6C95886F4A76BBC19FC35DDEE133B596D2D1
 
 Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.4
 
-> 当前 `dist\CS2AIDirector.exe` 可能仍被正在运行的 v1.10.3 占用；新版先构建为
-> `CS2AIDirector_v1104.exe`，关闭旧程序后可改名替换。
+> 构建时旧 v1.10.3 仍在运行，因此先把新 exe 构建为 `CS2AIDirector_v1104.exe`，
+> 再复制替换为 `CS2AIDirector.exe`；旧文件备份为 `CS2AIDirector_v1103_backup.exe`。
+> 正在运行的旧进程需要关闭并重新启动才会使用 v1.10.4。
 
 ## 12. v1.8：专业导播整合
 
