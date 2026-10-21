@@ -1,7 +1,7 @@
 # CS2 AI 导播 — 开发交接日志
 
 最后更新：2026-10-21  
-当前主程序源码版本：**v1.10.3（Phase 1 + 映射修正 + 防碎切/交火锁定 + HLAE 权限诊断）**  
+当前主程序源码版本：**v1.10.4（Phase 1 + 映射修正 + 防碎切/交火锁定 + MulNX 时序适配）**  
 当前训练器版本：**v1.1.0（共享核心已同步 v1.10；模型/特征未变，无需重训）**  
 专业导播新目标：见 `PRO_DIRECTOR_HANDOFF.md`
 
@@ -35,25 +35,26 @@ CS2 观战/转播导播工具，核心目标：
 
 https://github.com/YuGaN525/cs2-ai-director
 
-- 当前源码版本：`v1.10.3`（Phase 1 + 映射修正 + 防碎切/交火锁定 + HLAE 权限诊断）
+- 当前源码版本：`v1.10.4`（Phase 1 + 映射修正 + 防碎切/交火锁定 + MulNX 时序适配）
 - Phase 1 源码提交：`b78bbd3 Add Phase 1 shot timeline, pro metrics, and round story`
 - v1.10.1 映射方向错误（已废弃）：`02c770e`
 - v1.10.2 映射修正提交：`44640a3 Correct observer_slot keyboard mapping direction`
 - v1.10.3 稳定性提交：`f2563e1 Reduce fragmented cuts and add fight lock`
-- Release：`v1.10.3`
+- v1.10.4 MulNX 时序提交：以 `git log` 中 `Hold Alt for MulNX combo buffer` 为准
+- Release：`v1.10.4`
 - 资产：`CS2AIDirector.exe`
-- 大小：35,040,575 字节（约 35.0 MB）
-- SHA256：`1B2AC658DF9373D464D4A1D2C8C0C1DC2AFC5FABCC3458E14EF370123DD63D2D`
-- Release 页面：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.3
+- 大小：35,039,316 字节（约 35.0 MB）
+- SHA256：`358364B65296961C014C5764F37C6C95886F4A76BBC19FC35DDEE133B596D2D1`
+- Release 页面：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.4
 
-> v1.10.3 已用 PyInstaller 6.22.3 / Python 3.14 打包，并通过启动验证（窗口标题 `CS2 AI 导播 v1.10.3`）；
-> exe 已作为 v1.10.3 Release 资产上传。v1.10.1 映射方向错误，请勿使用。
+> v1.10.4 已用 PyInstaller 6.22.3 / Python 3.14 打包，并通过启动验证（窗口标题 `CS2 AI 导播 v1.10.4`）；
+> exe 已作为 v1.10.4 Release 资产上传。v1.10.1 映射方向错误，请勿使用。
 
 ### 训练器仓库（私密）
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`0bebbdd Sync v1.10.3 stability and HLAE diagnostics`
+- 最新提交：`792e4a3 Hold Alt for MulNX combo buffer`
 - Release：`v1.1.0`（exe 未重建；训练功能/模型格式未变）
 - 资产：`CS2AIDecisionTrainer.exe`
 - 大小：178,826,787 字节（约 179 MB）
@@ -141,7 +142,11 @@ README.md
 - 日志只写“已发送”，不谎称 HLAE 已接收；
 - **v1.10.3 权限诊断**：启动时输出“权限=管理员/普通用户”；非管理员会警告
   “CS2/HLAE 若以管理员运行，UIPI 会拦截模拟按键，日志已发送但游戏无反应”；
-- 若 HLAE 只认单次 alt+N，双击可能先触发再取消；日志提示改用“单次”验证。
+- 若 HLAE 只认单次 alt+N，双击可能先触发再取消；日志提示改用“单次”验证；
+- **v1.10.4 MulNX 适配**：MulNX 的 `InputSystem` 每 10ms 轮询 `GetAsyncKeyState`，按键后
+  200ms 才把连击计数放入 `BufferComboClick`，并在消费时检查 Alt 仍按住。旧版最后按键后
+  50ms 就松 Alt，所以日志“已发送”但 MulNX 不触发。现在 `hotkey_modifier_hold_after=0.30`，
+  最后按键后保持 Alt 300ms；导播单次/双击必须与 MulNX 宏的 `comboClick` 一致。
 
 ### 5.3 专业导播
 
@@ -291,7 +296,7 @@ min_shot_duration / max_cuts_per_10s / fight_lock_enabled / fight_lock_aim
 hard_min_switch_interval / repeat_guard_seconds / emergency_score
 bomb_cam_policy / bomb_cam_grace
 hotkey_double_interval / hotkey_press_hold
-hotkey_modifier_lead / hotkey_modifier_release_delay
+hotkey_modifier_lead / hotkey_modifier_release_delay / hotkey_modifier_hold_after
 max_vertical_diff
 demo_model_enabled / demo_model_min_samples / demo_model_blend
 decision_log_enabled / decision_log_interval / decision_label_window
@@ -324,7 +329,8 @@ player_api_base_url
 - v1.10（Phase 1）：新增 `director_story.py`：镜头时间线、六项专业指标、回合故事状态；评分/模型/特征不变；
 - v1.10.1：尝试修复 slot/按键错位，但方向写反（键 N→slot N+1），已废弃；
 - v1.10.2：更正为键 N→slot (N-1) mod 10（键1→slot0、键0→slot9），日志/GUI 同时显示 slot 与键；
-- v1.10.3：防碎切（最短停留 2s、10 秒最多 3 次切换）、当前 POV 交火/拆包锁定、HLAE 管理员权限诊断。
+- v1.10.3：防碎切（最短停留 2s、10 秒最多 3 次切换）、当前 POV 交火/拆包锁定、HLAE 管理员权限诊断；
+- v1.10.4：适配 MulNX 的 200ms 连击缓冲，Alt 在最后按键后保持 300ms，修复“已发送不触发”。
 
 ---
 
@@ -333,12 +339,12 @@ player_api_base_url
 已验证：
 
 ```text
-主仓库 93 项测试通过（v1.10.3；新增 13 项 timeline/story/integration/slot-key/stability）
-训练器仓库 93 项测试通过（已同步 v1.10.3 共享核心；模型/特征未变）
+主仓库 95 项测试通过（v1.10.4；新增 15 项 timeline/story/integration/slot-key/stability/mulnx）
+训练器仓库 95 项测试通过（已同步 v1.10.4 共享核心；模型/特征未变）
 Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
 模拟 GSI 序列验证镜头/指标/故事落盘
-两个 exe 启动成功（主程序 v1.10.3 / 训练器 v1.1.0）
+两个 exe 启动成功（主程序 v1.10.4 / 训练器 v1.1.0）
 训练器 CSV 训练 exit=0
 训练器 .dem 训练 exit=0（544 行 / 105 击杀事件）
 导播加载 ExtraTrees JSON 成功
@@ -381,8 +387,8 @@ Python 编译通过（cs2_ai_director.py / director_story.py）
 18. **经济分档是近似**：freezetime 用金钱（可能买到一半）、live 用武器+护甲平均档位；不读装备价值。
 19. **残局/阶段判定依赖 GSI 字段**：若 `allplayers` 缺失、`observer_slot` 延迟，镜头目标会以 GSI 实际值为准，指标可能少算。
 20. **回合切换/中途停止会产生 partial 行**：`round_metrics.csv` 用 `completed=1/0` 区分；累计指标会包含 partial 行。
-21. **训练器仓库已同步 v1.10.3 共享核心**（以最新 `Reduce fragmented cuts...` 提交为准），但训练器 exe 仍是 v1.1.0；因训练功能/模型格式未变，暂未重建。
-22. **observer_slot 映射依赖实测**：v1.10.2 按完整表修正为“键 N→slot (N-1) mod 10”；v1.10.3 未改映射；若 CS2 更新后映射变化，需重新实测。
+21. **训练器仓库已同步 v1.10.4 共享核心**（以最新 `Hold Alt for MulNX...` 提交为准），但训练器 exe 仍是 v1.1.0；因训练功能/模型格式未变，暂未重建。
+22. **observer_slot 映射依赖实测**：v1.10.2 按完整表修正为“键 N→slot (N-1) mod 10”；v1.10.3/v1.10.4 未改映射；若 CS2 更新后映射变化，需重新实测。
 
 ---
 
@@ -423,7 +429,7 @@ python demo_dataset.py --demos "D:\demos" --out demo_decisions.csv
 
 ## 10.1 共享核心同步清单（v1.10）
 
-训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 已于 `0bebbdd` 同步 v1.10.3 共享核心（含映射修正、防碎切/交火锁定）。
+训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 已于 `792e4a3` 同步 v1.10.4 共享核心（含映射修正、防碎切/交火锁定、MulNX 时序）。
 评分核心没有改，但主程序新增了 `import director_story`，因此**复制新的 `cs2_ai_director.py` 时必须同时复制
 `director_story.py`**，否则训练器的 demo 解析会 ImportError。
 
@@ -573,11 +579,11 @@ YuGaN525/cs2-ai-decision-trainer
 继续开发 CS2 AI 导播项目。请先阅读仓库根目录的 HANDOFF.md 和 README.md。
 
 当前状态：
-- 主程序源码 v1.10.3（Phase 1 + 映射修正 + 防碎切/交火锁定），训练器 v1.1.0；
+- 主程序源码 v1.10.4（Phase 1 + 映射修正 + 防碎切/交火锁定 + MulNX 时序），训练器 v1.1.0；
 - 主仓库 YuGaN525/cs2-ai-director，训练器仓库 YuGaN525/cs2-ai-decision-trainer，均为私密；
-- 主程序 exe：dist/CS2AIDirector.exe（v1.10.3，已重新打包）；
+- 主程序 exe：dist/CS2AIDirector.exe（v1.10.4，已重新打包）；
 - 训练器 exe：dist/CS2AIDecisionTrainer.exe；
-- 93 项测试通过；OBS/FFmpeg 尚未实机联调；Phase 1 只有模拟 GSI 序列验证；
+- 95 项测试通过；OBS/FFmpeg 尚未实机联调；Phase 1 只有模拟 GSI 序列验证；
 - 模型使用 RF/ExtraTrees 交叉验证选择，导出纯 JSON，导播自动重载；
 - 决策样本 decisions.csv 尚未达到 1000 条；
 - 训练器仓库已同步 director_story.py 与映射修正；训练器 exe 仍是 v1.1.0。

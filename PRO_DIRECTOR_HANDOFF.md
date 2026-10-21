@@ -1,8 +1,8 @@
 # CS2 AI 专业导播 — 目标、开发日志与关键词
 
 最后更新：2026-10-21  
-当前主程序源码：**v1.10.3（Phase 0/1 + 映射修正 + 防碎切/交火锁定；exe 已重新打包，窗口标题 v1.10.3）**  
-当前训练器：**v1.1.0（共享核心已同步 v1.10.3；模型/特征未变）**  
+当前主程序源码：**v1.10.4（Phase 0/1 + 映射修正 + 防碎切/交火锁定 + MulNX 时序；exe 已重新打包，窗口标题 v1.10.4）**  
+当前训练器：**v1.1.0（共享核心已同步 v1.10.4；模型/特征未变）**  
 现有通用交接：`HANDOFF.md`
 
 ---
@@ -506,7 +506,7 @@ manual_override
 - README.md
 
 当前系统：
-- 主程序源码 v1.10.3，训练器 v1.1.0；
+- 主程序源码 v1.10.4，训练器 v1.1.0；
 - 已具备 GSI/POV/HLAE/事件动作/OBS/FFmpeg/决策日志/RF-ExtraTrees；
 - v1.10 Phase 1 已有镜头 timeline、六项指标、回合故事状态；
 - 仍是反应式 POV 切换器，没有镜头候选/调度器；
@@ -581,7 +581,7 @@ reason / end_reason / source / manual / story`。
    `OVERVIEW/REPLAY` 只定义类型，尚未接入实际机位/OBS 回放。
 2. 经济分档是近似：freezetime 用金钱（可能在买入过程中），live 用武器+护甲平均档位。
 3. 指标是启发式统计，未经真实比赛人工标注校准；不要用它直接下“比 v1.9 更好”的结论。
-4. 训练器仓库已于 `0bebbdd` 同步 `director_story.py` + `cs2_ai_director.py`（含 v1.10.3 稳定性层）；训练器 exe 未重建，指标未进入训练特征。
+4. 训练器仓库已于 `792e4a3` 同步 `director_story.py` + `cs2_ai_director.py`（含 v1.10.4 MulNX 时序）；训练器 exe 未重建，指标未进入训练特征。
 
 ### 14.5 v1.10.2：observer_slot/按键映射修正
 
@@ -601,7 +601,19 @@ reason / end_reason / source / manual / story`。
 - 这些是执行层约束，没有改 `score_candidates` / `choose_slot` / 模型；
 - 日志/状态显示 `10s切换 N 次` 和 `权限=管理员/普通`；非管理员会警告 HLAE 模拟按键可能被 UIPI 拦截。
 
-### 14.7 下一步（Phase 2）
+### 14.7 v1.10.4：MulNX 200ms 连击缓冲适配
+
+MulNX 的 `InputSystem::UpdateKeysState` 每 10ms 调 `GetAsyncKeyState`：
+
+- 主键按下沿累加 `ComboClick`；
+- 距最后一次按下超过 `Threshold=200ms` 后，才把 `ComboClick` 放进 `BufferComboClick`；
+- `CheckWithPack` 消费连击时，要求**当前 Alt 状态与配置完全匹配**。
+
+旧版在最后主键后 50ms 就松 Alt，MulNX 在 200ms 窗口检查时 Alt 已经松开，所以日志“已发送”但运镜不触发。HLAE 是边沿触发，所以之前用 HLAE 时没有暴露。
+
+修正：`hotkey_modifier_hold_after=0.30`，最后按键后保持 Alt 300ms；导播单次/双击必须与 MulNX 宏 YAML 的 `comboClick` 一致。CS2 进程实测未提升权限，所以本次不是 UIPI 问题。
+
+### 14.8 下一步（Phase 2）
 
 - 把 `StoryState` + `ShotTimeline` 作为输入，生成 `ShotCandidate`（POV/BOMB/OVERVIEW/REPLAY/不切）；
 - 先实现最短停留、最大切率、切换成本、事件优先级；

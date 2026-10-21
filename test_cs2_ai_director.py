@@ -14,6 +14,7 @@ import urllib.error
 import urllib.request
 from collections import deque
 from pathlib import Path
+from unittest import mock
 
 import cs2_ai_director as d
 import director_story as st
@@ -910,6 +911,37 @@ class TestInputSafety(unittest.TestCase):
         self.assertTrue(ctl.is_self_press("3"))
         self.assertFalse(ctl.is_self_press("4"))
 
+    def test_hotkey_modifier_hold_default_supports_mulnx(self):
+        # MulNX InputSystem uses a 200ms combo buffer; Alt must still be down.
+        self.assertGreaterEqual(
+            d.DEFAULT_CONFIG.get("hotkey_modifier_hold_after", 0), 0.20)
+
+    def test_hotkey_holds_alt_after_last_press(self):
+        cfg = dict(d.DEFAULT_CONFIG)
+        cfg["hotkey_modifier_hold_after"] = 0.30
+        cfg["hotkey_modifier_release_delay"] = 0.05
+        ctl = d.InputController(cfg, d.LogBus())
+        ctl.ensure_foreground = lambda: True  # type: ignore[assignment]
+
+        class FakeKB:
+            def press(self, key):
+                pass
+
+            def release(self, key):
+                pass
+
+            def press_and_release(self, hk):
+                pass
+
+        old = d.keyboard
+        d.keyboard = FakeKB()  # type: ignore[assignment]
+        try:
+            with mock.patch.object(d.time, "sleep") as sleep:
+                self.assertTrue(ctl.send_hotkey("alt+N", double=False))
+                sleep.assert_any_call(0.30)
+        finally:
+            d.keyboard = old
+
     def test_hotkey_validation(self):
         self.assertTrue(d.validate_hotkey("f6"))
         self.assertTrue(d.validate_hotkey("ctrl+shift+f9"))
@@ -955,6 +987,7 @@ class TestInputSafety(unittest.TestCase):
         cfg["dry_run"] = False
         cfg["hotkey_double_interval"] = 0.001
         cfg["hotkey_press_hold"] = 0.001
+        cfg["hotkey_modifier_hold_after"] = 0.001
         ctl = d.InputController(cfg, d.LogBus())
         ctl.ensure_foreground = lambda: True  # type: ignore[assignment]
         calls = []

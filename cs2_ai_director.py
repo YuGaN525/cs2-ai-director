@@ -50,7 +50,7 @@ from typing import Any, Callable, Optional
 
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "CS2 AI 导播"
-VERSION = "1.10.3"
+VERSION = "1.10.4"
 IS_WINDOWS = os.name == "nt"
 
 GSI_CFG_NAME = "gamestate_integration_ai_director.cfg"
@@ -131,12 +131,17 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "hlae_bomb_a_mode": "double",
     "hlae_bomb_b_mode": "double",
     "hlae_bomb_mode": "double",  # 旧版兼容
-    # 指南实测时序：按住 Alt → 80ms → N 30ms → 80ms 后第二次 N 30ms
-    # → 第二次 N 后 50ms → 松开 Alt。
+    # 时序：按住 Alt → 80ms → N 30ms → 80ms 后第二次 N 30ms
+    # → 保持 Alt 约 300ms → 松开。MulNX 需要 >200ms 才会消费连击缓冲。
     "hotkey_double_interval": 0.08,  # 两次主键按下的间隔（从第一次按下算）
     "hotkey_press_hold": 0.03,       # 主键按住时长
     "hotkey_modifier_lead": 0.08,    # Alt 按下后先等多久
-    "hotkey_modifier_release_delay": 0.05,  # 最后一次主键后等多久松开 Alt
+    "hotkey_modifier_release_delay": 0.05,  # 兼容项：最后一次主键后等多久松开 Alt
+    # MulNX 的输入系统是 GetAsyncKeyState 轮询 + 200ms 连击缓冲：
+    # 它要等主键按下 200ms 后才把 ComboClick 放进 BufferComboClick，
+    # 并在那一刻检查 Alt 必须仍按住。因此 Alt 必须在最后一次主键后
+    # 至少保持 200ms；默认 0.30s 留出轮询/帧回调余量。
+    "hotkey_modifier_hold_after": 0.30,
     # ---- DeepSeek 仲裁（可选）----
     "ai_enabled": True,
     "deepseek_api_key": "",
@@ -1705,8 +1710,14 @@ class InputController:
             lead = max(0.0, min(0.3, float(self.cfg.get("hotkey_modifier_lead", 0.08))))
             release_delay = max(0.0, min(0.3, float(
                 self.cfg.get("hotkey_modifier_release_delay", 0.05))))
+            hold_after = max(0.0, min(1.0, float(
+                self.cfg.get("hotkey_modifier_hold_after", 0.30))))
         except (TypeError, ValueError):
-            interval, hold, lead, release_delay = 0.08, 0.03, 0.08, 0.05
+            interval, hold, lead = 0.08, 0.03, 0.08
+            release_delay, hold_after = 0.05, 0.30
+        # MulNX 的 200ms 连击缓冲要求 Alt 在最后一次主键后仍保持按下；
+        # 兼容旧配置：取 release_delay 与新 hold_after 的较大值。
+        hold_after = max(release_delay, hold_after)
         presses = 2 if double else 1
         mods, keys = split_hotkey(hotkey)
 
@@ -1733,7 +1744,8 @@ class InputController:
                                 time.sleep(hold)
                                 keyboard.release(keys[0])
                             if mods:
-                                time.sleep(release_delay)  # 第二次主键后 50ms 再松 Alt
+                                # MulNX 在 200ms 后才消费 ComboClick；这里默认 300ms
+                                time.sleep(hold_after)
                         finally:
                             for mod in reversed(mods):
                                 try:

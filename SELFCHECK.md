@@ -15,7 +15,8 @@
 - **v1.10 增量（2026-10-21）**：Phase 1 专业导播观测层：镜头时间线、六项专业指标、回合故事状态；不改评分/模型。
 - **v1.10.1 增量（2026-10-21）**：尝试修复 `observer_slot` 与观察者数字键错位，但方向写反（键 N→slot N+1），已废弃。
 - **v1.10.2 增量（2026-10-21）**：按完整实测表更正为键 N→slot (N-1) mod 10（键1→slot0、键0→slot9）。
-- **v1.10.3 增量（2026-10-21）**：防碎切（最短停留 2s、10 秒最多 3 次）、当前 POV 交火/拆包锁定、HLAE 管理员权限诊断；当前测试 93 项。
+- **v1.10.3 增量（2026-10-21）**：防碎切（最短停留 2s、10 秒最多 3 次）、当前 POV 交火/拆包锁定、HLAE 管理员权限诊断。
+- **v1.10.4 增量（2026-10-21）**：适配 MulNX 的 200ms 连击缓冲，Alt 在最后按键后保持 300ms；当前测试 95 项。
 
 ---
 
@@ -525,7 +526,7 @@ OK
 - `pre_fight_coverage` 与人工标注的一致性；
 - OBS/FFmpeg 的 `REPLAY` 机位尚未接入 timeline；
 - 回合中停止/重开会产生 `completed=0` 的 partial 行，累计指标包含这些行；
-- 训练器仓库已同步 v1.10.3 共享核心（`0bebbdd`）；训练器 exe 未重建，指标不作为训练特征。
+- 训练器仓库已同步 v1.10.4 共享核心（`792e4a3`）；训练器 exe 未重建，指标不作为训练特征。
 
 ### 16.4 exe
 
@@ -659,6 +660,69 @@ Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.3
 - 2s 最短停留 + 3 次/10s 是否仍偏快或偏慢；
 - MULNX 启动场景下，本程序以管理员运行时 HLAE 是否正常；
 - 若仍不触发，尝试把该快捷键从“双击”改为“单次”，并确认 HLAE 内绑定。
+
+---
+
+## 19. v1.10.4：MulNX 连击缓冲时序适配
+
+### 19.1 现象
+
+- 导播以管理员运行，CS2 由 MULNX/CS2Injector 启动；
+- 导播日志显示 HLAE/MulNX 出生点运镜“已发送”，游戏画面不变化；
+- 手动按 Alt+N 可以正常触发；
+- 导播与 MulNX 都改成“单次”仍不触发。
+
+### 19.2 根因（读 MulNX 源码）
+
+MulNX 的 `source/MulNX/Systems/InputSystem/InputSystem.cpp`：
+
+```text
+每 10ms: GetAsyncKeyState(vkCode)
+主键按下沿: ComboClick++
+距最后按下 > 200ms: BufferComboClick = ComboClick; ComboClick = 0
+CheckWithPack: 先检查 Ctrl/Shift/Alt 当前状态必须完全匹配，
+               再 CheckComboClick(vkCode, comboClick)
+```
+
+即 MulNX 不是 HLAE 的边沿触发，而是“轮询 + 200ms 缓冲 + 消费时仍要求 Alt 按住”。
+
+旧版 `hotkey_modifier_release_delay=0.05`：第二次按键后 50ms 就松开 Alt。到 200ms
+MulNX 准备消费连击时，Alt 已经松开，`CheckWithPack` 的 Alt 检查失败，所以永远不触发。
+
+补充核查：CS2 进程 `TokenIsElevated=False`，因此本问题不是 UIPI/管理员权限。
+
+### 19.3 修正
+
+- 新增 `hotkey_modifier_hold_after=0.30`：最后一次按键后保持 Alt 300ms 再松开；
+- 实际保持时间取 `max(hotkey_modifier_release_delay, hotkey_modifier_hold_after)`，兼容旧配置；
+- 导播“单次/双击”必须与 MulNX 运镜包/宏 YAML 的 `comboClick` 完全一致；
+- 这是输入时序修复，不改评分/模型。
+
+### 19.4 回归
+
+```text
+python -m unittest test_cs2_ai_director
+Ran 95 tests ... OK
+
+ruff F/E9: All checks passed!
+```
+
+新增测试：`test_hotkey_modifier_hold_default_supports_mulnx`、
+`test_hotkey_holds_alt_after_last_press`（断言最后 sleep 0.30s）。
+
+### 19.5 exe / Release
+
+```text
+dist\CS2AIDirector_v1104.exe
+大小：35,039,316 字节
+SHA256：358364B65296961C014C5764F37C6C95886F4A76BBC19FC35DDEE133B596D2D1
+窗口标题：CS2 AI 导播 v1.10.4
+```
+
+Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.4
+
+> 当前 `dist\CS2AIDirector.exe` 可能仍被正在运行的 v1.10.3 占用；新版先构建为
+> `CS2AIDirector_v1104.exe`，关闭旧程序后可改名替换。
 
 ## 12. v1.8：专业导播整合
 
