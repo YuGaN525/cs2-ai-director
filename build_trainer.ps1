@@ -11,9 +11,8 @@ python -m PyInstaller `
   --name CS2AIDecisionTrainer `
   --collect-submodules sklearn `
   --collect-submodules joblib `
+  --collect-all demoparser2 `
   --exclude-module matplotlib `
-  --exclude-module pandas `
-  --exclude-module demoparser2 `
   --exclude-module pytest `
   --exclude-module IPython `
   trainer_gui.py

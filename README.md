@@ -21,7 +21,7 @@
 | 程序 | 用途 |
 |---|---|
 | `CS2AIDirector.exe` | AI 导播主程序，约 35 MB |
-| `CS2AIDecisionTrainer.exe` | 独立随机森林训练器，约 160 MB（内置 scikit-learn） |
+| `CS2AIDecisionTrainer.exe` | 独立随机森林训练器，约 179 MB（内置 scikit-learn + demo 解析） |
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -33,6 +33,7 @@
 训练器：
 
 - 默认读取 `%APPDATA%\CS2AIDirector\decisions.csv`；
+- 也可以直接导入已有的 `.dem` 文件/文件夹，自动生成 `demo_decisions.csv` 再训练；
 - 默认输出到 `%APPDATA%\CS2AIDirector\`；
 - 少于 1000 条时拒绝训练；
 - 训练完成显示 AUC/特征重要性，并写出 `decision_model.json.gz`；
@@ -166,6 +167,19 @@ python train_decision_model.py --min-samples 1000
 
 生成 `decision_model.pkl` / `decision_model.json.gz`，并在验证集打印 AUC、混淆矩阵和特征重要性。
 也可以直接运行独立的 `CS2AIDecisionTrainer.exe`，用 GUI 选择 CSV、样本阈值和树参数。
+
+**从 demo 训练**：训练器 GUI 的“从 .dem 导入”支持选文件或文件夹，默认回看 160 tick（64tick ≈ 2.5 秒）：
+
+- 解析每个 `player_death`；
+- 回看击杀前 2.5 秒的所有存活候选；
+- 击杀者 label=1，同刻其他候选 label=0；
+- 先写 `demo_decisions.csv`，再走同一个随机森林训练流程。
+
+命令行等价：
+
+```bat
+CS2AIDecisionTrainer.exe --cli --demos "D:\demos" --min-samples 1000
+```
 
 只有当规则前两名分差 ≤ `decision_model_margin` 时，导播才用模型概率重排候选；
 模型推荐目标的规则分不得低于当前第一名的 `decision_model_min_factor`，随后仍走原有阈值/迟滞/冷却检查。
@@ -374,6 +388,7 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁
 - `train_decision_model.py`：从 `decisions.csv` 训练随机森林（CLI + 训练器后端）
 - `trainer_gui.py`：独立模型训练器 GUI
+- `demo_dataset.py`：从 `.dem` 生成决策模型 CSV
 - `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`
 - `build_exe.ps1` / `build_trainer.ps1`：两个 exe 的打包脚本
 - `SELFCHECK.md`：自检清单、修复记录与仍需实机验证的步骤

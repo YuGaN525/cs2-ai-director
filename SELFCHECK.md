@@ -418,7 +418,7 @@ dist\CS2AIDirector.exe  约 35 MB
 ### 15.1 产物
 
 ```text
-dist\CS2AIDecisionTrainer.exe  约 160 MB（onefile，内置 sklearn）
+dist\CS2AIDecisionTrainer.exe  约 179 MB（onefile，内置 sklearn + demoparser2 + pandas）
 dist\CS2AIDirector.exe         约 35 MB（不打包 sklearn）
 ```
 
@@ -432,6 +432,8 @@ dist\CS2AIDirector.exe         约 35 MB（不打包 sklearn）
 ### 15.2 训练器
 
 - GUI 选择 CSV、输出目录、最少样本、树数量、最大深度、验证集比例；
+- GUI 可直接选 `.dem` 文件/文件夹，生成 `demo_decisions.csv` 后训练；
+- demo 回看 160 tick，击杀者 label=1、同刻其他候选 label=0；
 - 少于最少样本时拒绝训练；
 - 显示 AUC、混淆矩阵、分类报告、特征重要性；
 - 输出纯 JSON 森林，主程序无需 sklearn；
@@ -443,7 +445,15 @@ dist\CS2AIDirector.exe         约 35 MB（不打包 sklearn）
 dist\CS2AIDecisionTrainer.exe --cli --csv ... --out ... --min-samples 100 --trees 50
 exit=0
 生成 decision_model.pkl / decision_model.json.gz / metrics.json
+
+dist\CS2AIDecisionTrainer.exe --cli --demos "...4081612816...dem" --min-samples 300
+exit=0
+demo_decisions.csv：544 行 / 105 个击杀事件
+decision_model.json.gz：31 KB
 ```
+
+首次打包时排除了 pandas，导致 `demoparser2.parse_ticks()` 在 exe 内报
+`ModuleNotFoundError: pandas`；已把 pandas 纳入训练器打包并复测通过。
 
 ### 15.3 主程序读取
 
@@ -458,6 +468,7 @@ exit=0
 Ran 80 tests ... OK
 两个 exe 均启动成功
 窗口标题：CS2 AI 导播 v1.9.0 / CS2 AI 决策模型训练器 v1.0.0
+训练器 SHA256：37D5E6D8B3B54B70291BA3EFF0D3ACBBDE100A9380CF55238C0BCC0D0FA849CC
 ```
 
 ---
