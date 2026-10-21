@@ -40,7 +40,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.1 映射方向错误（已废弃）：`02c770e`
 - v1.10.2 映射修正提交：`44640a3 Correct observer_slot keyboard mapping direction`
 - v1.10.3 稳定性提交：`f2563e1 Reduce fragmented cuts and add fight lock`
-- v1.10.4 MulNX 时序提交：以 `git log` 中 `Hold Alt for MulNX combo buffer` 为准
+- v1.10.4 MulNX 时序提交：`7f6caf6 Hold Alt for MulNX combo buffer`
 - Release：`v1.10.4`
 - 资产：`CS2AIDirector.exe`
 - 大小：35,039,316 字节（约 35.0 MB）
