@@ -762,13 +762,15 @@ GUI 构造 smoke test: GUI_OK 1.10.5
 ### 20.3 exe / Release
 
 ```text
-dist\CS2AIDirector_v1105.exe
+dist\CS2AIDirector.exe（已替换为 v1.10.5）
 大小：35,026,519 字节
 SHA256：373B53E613AB74823EB65990B86F9DC9F90C0C9698D2C8696E9E6EAF9207BC30
 窗口标题：CS2 AI 导播 v1.10.5
 ```
 
 Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.5
+
+> 旧 v1.10.4 exe 备份为 `dist\CS2AIDirector_v1104_backup.exe`。
 
 ## 12. v1.8：专业导播整合
 

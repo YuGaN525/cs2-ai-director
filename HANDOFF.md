@@ -41,7 +41,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.2 映射修正提交：`44640a3 Correct observer_slot keyboard mapping direction`
 - v1.10.3 稳定性提交：`f2563e1 Reduce fragmented cuts and add fight lock`
 - v1.10.4 MulNX 时序提交：`7f6caf6 Hold Alt for MulNX combo buffer`
-- v1.10.5 功能精简提交：以 `git log` 中 `Remove FFmpeg replay and player rename` 为准
+- v1.10.5 功能精简提交：`0156527 Remove FFmpeg replay and player rename`
 - Release：`v1.10.5`
 - 资产：`CS2AIDirector.exe`
 - 大小：35,026,519 字节（约 35.0 MB）
