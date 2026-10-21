@@ -251,8 +251,10 @@ def export_forest(model: Any, path: Path) -> None:
         "trees": trees,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(path, "wt", encoding="utf-8") as f:
+    tmp = path.with_name(path.name + ".tmp")
+    with gzip.open(tmp, "wt", encoding="utf-8") as f:
         json.dump(data, f, separators=(",", ":"))
+    tmp.replace(path)
 
 
 class ModelArbiter:
@@ -269,11 +271,23 @@ class ModelArbiter:
         self.error = ""
         self.loaded = False
         self.format = ""
+        self._lock = threading.Lock()
+        self._stamp = 0.0
         self.load()
 
     @property
     def enabled(self) -> bool:
         return bool(self.cfg.get("decision_model_enabled", True))
+
+    def _stamp_now(self) -> float:
+        stamps = []
+        for p in (self.json_path, self.path):
+            try:
+                if p.is_file():
+                    stamps.append(p.stat().st_mtime)
+            except Exception:
+                pass
+        return max(stamps) if stamps else 0.0
 
     def load(self) -> bool:
         self.model = None
@@ -281,6 +295,7 @@ class ModelArbiter:
         self.loaded = False
         self.error = ""
         self.format = ""
+        self._stamp = self._stamp_now()
         if not self.enabled:
             return False
         if self.json_path.is_file():
@@ -291,9 +306,10 @@ class ModelArbiter:
                     raise ValueError("模型特征数不匹配")
                 if not data.get("trees"):
                     raise ValueError("模型没有树")
-                self.forest = data
-                self.loaded = True
-                self.format = "json"
+                with self._lock:
+                    self.forest = data
+                    self.loaded = True
+                    self.format = "json"
                 return True
             except Exception as e:
                 self.error = str(e)
@@ -301,22 +317,24 @@ class ModelArbiter:
             return False
         try:
             import joblib
-            self.model = joblib.load(self.path)
-            n = getattr(self.model, "n_features_in_", len(DECISION_FEATURES))
+            model = joblib.load(self.path)
+            n = getattr(model, "n_features_in_", len(DECISION_FEATURES))
             if int(n) != len(DECISION_FEATURES):
                 raise ValueError(f"模型特征数 {n} != {len(DECISION_FEATURES)}")
-            self.loaded = True
-            self.format = "pkl"
+            with self._lock:
+                self.model = model
+                self.loaded = True
+                self.format = "pkl"
             return True
         except Exception as e:
             self.error = str(e)
             self.model = None
             return False
 
-    def _forest_probability(self, x: list[float]) -> float:
-        assert self.forest is not None
+    def _forest_probability(self, x: list[float],
+                            forest: dict[str, Any]) -> float:
         total = 0.0
-        trees = self.forest.get("trees", [])
+        trees = forest.get("trees", [])
         for tree in trees:
             left = tree["left"]
             right = tree["right"]
@@ -336,12 +354,26 @@ class ModelArbiter:
             return 0.5
         try:
             x = candidate_features(c)
-            if self.forest is not None:
-                return self._forest_probability(x)
-            p = self.model.predict_proba([x])[0]
+            with self._lock:
+                forest = self.forest
+                model = self.model
+            if forest is not None:
+                return self._forest_probability(x, forest)
+            if model is None:
+                return 0.5
+            p = model.predict_proba([x])[0]
             return float(p[1])
         except Exception:
             return 0.5
+
+    def reload_if_changed(self) -> bool:
+        """训练器写出新模型后，导播无需重启即可切换。"""
+        if not self.enabled:
+            return False
+        stamp = self._stamp_now()
+        if stamp and stamp != self._stamp:
+            return self.load()
+        return False
 
     def arbitrate(self, cands: list[Any], top_score: float) -> Optional[int]:
         """返回模型推荐 slot；不满足模糊区间/分数保护时返回 None。"""

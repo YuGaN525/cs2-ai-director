@@ -16,22 +16,41 @@
 
 ## 0. 直接运行 exe（推荐）
 
-仓库 Release 提供 `CS2AIDirector.exe`（Windows x64，onefile）：
+仓库 Release 提供两个 Windows x64 onefile：
+
+| 程序 | 用途 |
+|---|---|
+| `CS2AIDirector.exe` | AI 导播主程序，约 35 MB |
+| `CS2AIDecisionTrainer.exe` | 独立随机森林训练器，约 160 MB（内置 scikit-learn） |
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
 - 配置、日志、`decisions.csv`、`learner.json` 仍在 `%APPDATA%\CS2AIDirector\`；
-- 已内置 OBS WebSocket 依赖，但没有打包 scikit-learn；训练脚本仍用 Python 运行，导播通过
-  `decision_model.json.gz` 读取随机森林，不需要 sklearn；
+- 主程序内置 OBS WebSocket 依赖，但不打包 scikit-learn；它读取训练器生成的
+  `decision_model.json.gz`；
 - 未签名，Windows SmartScreen 可能提示，选择“更多信息 → 仍要运行”。
+
+训练器：
+
+- 默认读取 `%APPDATA%\CS2AIDirector\decisions.csv`；
+- 默认输出到 `%APPDATA%\CS2AIDirector\`；
+- 少于 1000 条时拒绝训练；
+- 训练完成显示 AUC/特征重要性，并写出 `decision_model.json.gz`；
+- 主程序每 5 秒检测文件更新，**训练完无需重启导播**；也可在主程序“专业导播 → 重新加载模型”。
 
 自行重新打包：
 
 ```bat
 powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
+powershell -ExecutionPolicy Bypass -File .\build_trainer.ps1
 ```
 
-产物：`dist\CS2AIDirector.exe`。
+产物：
+
+```text
+dist\CS2AIDirector.exe
+dist\CS2AIDecisionTrainer.exe
+```
 
 ## 1. 环境与安装
 
@@ -145,9 +164,12 @@ GUI 的“从 demo 训练…”按钮执行同一脚本；训练后重启导播�
 python train_decision_model.py --min-samples 1000
 ```
 
-生成 `decision_model.pkl` 并在验证集打印 AUC、混淆矩阵和特征重要性。
+生成 `decision_model.pkl` / `decision_model.json.gz`，并在验证集打印 AUC、混淆矩阵和特征重要性。
+也可以直接运行独立的 `CS2AIDecisionTrainer.exe`，用 GUI 选择 CSV、样本阈值和树参数。
+
 只有当规则前两名分差 ≤ `decision_model_margin` 时，导播才用模型概率重排候选；
 模型推荐目标的规则分不得低于当前第一名的 `decision_model_min_factor`，随后仍走原有阈值/迟滞/冷却检查。
+导播每 5 秒检查一次模型文件修改时间，训练器写完后自动加载。
 
 **运镜去抖**：出生点运镜按 `map + round` 去重，包点运镜按回合去重；发送失败不标记完成，1 秒后重试。
 
@@ -350,9 +372,10 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 - `test_cs2_ai_director.py`：核心逻辑测试，共 80 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS、FFmpeg 回放、玩家改名
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁
-- `train_decision_model.py`：从 `decisions.csv` 训练随机森林
+- `train_decision_model.py`：从 `decisions.csv` 训练随机森林（CLI + 训练器后端）
+- `trainer_gui.py`：独立模型训练器 GUI
 - `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`
-- `build_exe.ps1`：PyInstaller 一键打包脚本
+- `build_exe.ps1` / `build_trainer.ps1`：两个 exe 的打包脚本
 - `SELFCHECK.md`：自检清单、修复记录与仍需实机验证的步骤
 - `frozen_v1.0.0/`：优化前冻结基线（含 SHA256）
 - `requirements.txt`：依赖

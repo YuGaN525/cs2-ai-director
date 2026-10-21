@@ -409,7 +409,56 @@ dist\CS2AIDirector.exe  约 35 MB
 - exe 未数字签名，SmartScreen 会提示；
 - 打包后的管理员权限需要右键运行（键盘钩子/前台激活更稳）；
 - 打包后的 OBS 真实连接、FFmpeg 实际剪辑尚未在本机联调（OBS 未开 WebSocket、ffmpeg 未安装）；
-- 训练脚本不在 exe 内，需单独运行 `train_decision_model.py`。
+- 训练脚本不在主 exe 内；现已提供独立的 `CS2AIDecisionTrainer.exe`。
+
+---
+
+## 15. v1.9.1：独立训练器
+
+### 15.1 产物
+
+```text
+dist\CS2AIDecisionTrainer.exe  约 160 MB（onefile，内置 sklearn）
+dist\CS2AIDirector.exe         约 35 MB（不打包 sklearn）
+```
+
+训练器默认：
+
+```text
+输入：%APPDATA%\CS2AIDirector\decisions.csv
+输出：%APPDATA%\CS2AIDirector\decision_model.pkl / .json.gz / _metrics.json
+```
+
+### 15.2 训练器
+
+- GUI 选择 CSV、输出目录、最少样本、树数量、最大深度、验证集比例；
+- 少于最少样本时拒绝训练；
+- 显示 AUC、混淆矩阵、分类报告、特征重要性；
+- 输出纯 JSON 森林，主程序无需 sklearn；
+- 支持 `--cli` 参数，便于自动化验证。
+
+已实测：
+
+```text
+dist\CS2AIDecisionTrainer.exe --cli --csv ... --out ... --min-samples 100 --trees 50
+exit=0
+生成 decision_model.pkl / decision_model.json.gz / metrics.json
+```
+
+### 15.3 主程序读取
+
+- 启动时加载 `decision_model.json.gz`；
+- 每 5 秒检查文件 mtime，训练器完成后自动重新加载；
+- “专业导播”页提供“打开训练器…”和“重新加载模型”按钮；
+- 已用临时模型验证：启动加载成功、覆盖文件后 `reload_if_changed()` 返回 True。
+
+### 15.4 回归
+
+```text
+Ran 80 tests ... OK
+两个 exe 均启动成功
+窗口标题：CS2 AI 导播 v1.9.0 / CS2 AI 决策模型训练器 v1.0.0
+```
 
 ---
 

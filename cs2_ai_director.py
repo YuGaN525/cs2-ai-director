@@ -2919,6 +2919,7 @@ class DirectorApp:
         self._training = False
         self._last_gui_warn = 0.0
         self._last_pro_log_refresh = 0.0
+        self._last_model_check = 0.0
 
         self.root = tk.Tk()
         self.root.title(f"{APP_TITLE} v{VERSION}")
@@ -2981,6 +2982,7 @@ class DirectorApp:
         self.var_pause = tk.StringVar(value=str(cfg.get("manual_pause_seconds", 10.0)))
 
         self._build()
+        self._update_model_label()
         self._refresh_deps()
         self._refresh_gsi_status()
         self.bus.info(f"配置目录：{app_data_dir()}")
@@ -3092,6 +3094,14 @@ class DirectorApp:
             row=0, column=2)
         self.lbl_rename = ttk.Label(lf4, text="", foreground="#555555")
         self.lbl_rename.grid(row=1, column=0, columnspan=3, sticky="w", pady=(4, 0))
+
+        lf5 = ttk.LabelFrame(parent, text=" 决策模型（独立训练器） ", padding=8)
+        lf5.grid(row=4, column=0, sticky="ew", pady=(6, 0))
+        ttk.Button(lf5, text="打开训练器…", command=self._open_trainer).pack(side="left")
+        ttk.Button(lf5, text="重新加载模型", command=self._reload_model).pack(
+            side="left", padx=6)
+        self.lbl_model = ttk.Label(lf5, text="随机森林：检查中…", foreground="#555555")
+        self.lbl_model.pack(side="left", padx=6)
         self._refresh_rules()
 
     def _build_pro_logs(self, parent: Any) -> None:
@@ -3175,6 +3185,41 @@ class DirectorApp:
 
     def _pro_thread(self, fn: Callable[[], None]) -> None:
         threading.Thread(target=fn, daemon=True).start()
+
+    def _update_model_label(self) -> None:
+        st = self.model_arbiter.status()
+        if st.get("loaded"):
+            self.lbl_model.configure(
+                text=f"随机森林：已加载（{st.get('format', '?')}）",
+                foreground="#087f23")
+        else:
+            self.lbl_model.configure(
+                text="随机森林：未加载（先训练，或点击重新加载）",
+                foreground="#a15c00")
+
+    def _reload_model(self) -> None:
+        ok = self.model_arbiter.load()
+        self._update_model_label()
+        self.bus.info("随机森林模型已重新加载。" if ok else
+                      f"随机森林模型加载失败：{self.model_arbiter.error}")
+        if not ok:
+            messagebox.showwarning(
+                "模型", "未找到 decision_model.json.gz，或模型格式不匹配。")
+
+    def _open_trainer(self) -> None:
+        base = Path(sys.executable).parent if getattr(sys, "frozen", False) \
+            else Path(__file__).parent
+        exe = base / "CS2AIDecisionTrainer.exe"
+        script = base / "trainer_gui.py"
+        try:
+            if exe.is_file():
+                subprocess.Popen([str(exe)], cwd=str(base))
+            elif script.is_file():
+                subprocess.Popen([sys.executable, str(script)], cwd=str(base))
+            else:
+                messagebox.showerror("训练器", f"找不到训练器：\n{exe}\n{script}")
+        except Exception as e:
+            messagebox.showerror("训练器", str(e))
 
     def _pro_connect(self) -> None:
         self._sync_pro_cfg()
@@ -3979,6 +4024,11 @@ class DirectorApp:
                 obs = self.pro.status()
                 if obs.get("obs"):
                     self.lbl_obs.configure(text="OBS：已连接", foreground="#087f23")
+            if now - self._last_model_check > 5.0:
+                self._last_model_check = now
+                if self.model_arbiter.reload_if_changed():
+                    self.bus.info("检测到新的随机森林模型，已自动重新加载。")
+                    self._update_model_label()
             status = self.engine.status() if self.engine else None
             if status and status.get("running"):
                 self._render_status(status)
