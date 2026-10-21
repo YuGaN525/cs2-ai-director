@@ -1,7 +1,7 @@
 # CS2 AI 导播 — 开发交接日志
 
 最后更新：2026-10-21  
-当前主程序源码版本：**v1.10.1（Phase 1 + observer_slot/按键映射修复）**  
+当前主程序源码版本：**v1.10.2（Phase 1 + observer_slot/按键映射修正）**  
 当前训练器版本：**v1.1.0（共享核心已同步 v1.10；模型/特征未变，无需重训）**  
 专业导播新目标：见 `PRO_DIRECTOR_HANDOFF.md`
 
@@ -35,23 +35,24 @@ CS2 观战/转播导播工具，核心目标：
 
 https://github.com/YuGaN525/cs2-ai-director
 
-- 当前源码版本：`v1.10.1`（Phase 1 + 映射修复）
+- 当前源码版本：`v1.10.2`（Phase 1 + 映射修正）
 - Phase 1 源码提交：`b78bbd3 Add Phase 1 shot timeline, pro metrics, and round story`
-- v1.10.1 修复提交：`02c770e Fix observer_slot to keyboard mapping`
-- Release：`v1.10.1`
+- v1.10.1 映射方向错误（已废弃）：`02c770e`
+- v1.10.2 修正提交：以 `git log` 中 `Correct observer_slot keyboard mapping` 为准
+- Release：`v1.10.2`
 - 资产：`CS2AIDirector.exe`
-- 大小：35,036,523 字节（约 35.0 MB）
-- SHA256：`BBAF9A236AC4CDCDE34897AA3E335D9A147831F5A789FB3A120983465866A4A7`
-- Release 页面：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.1
+- 大小：35,036,437 字节（约 35.0 MB）
+- SHA256：`2EFCEDA544B23DD1359E5E66F78EE704748796706F0B7FC17D1B9E5104C03AB1`
+- Release 页面：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.2
 
-> v1.10.1 已用 PyInstaller 6.22.3 / Python 3.14 打包，并通过启动验证（窗口标题 `CS2 AI 导播 v1.10.1`）；
-> exe 已作为 Release 资产上传。源码已推送到 `origin/main`（2026-10-21）。
+> v1.10.2 已用 PyInstaller 6.22.3 / Python 3.14 打包，并通过启动验证（窗口标题 `CS2 AI 导播 v1.10.2`）；
+> v1.10.1 的映射方向写反，请勿使用；exe 已作为 v1.10.2 Release 资产上传。
 
 ### 训练器仓库（私密）
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`de09e65 Fix observer_slot to keyboard mapping in shared core`
+- 最新提交：`28cd378 Correct observer_slot keyboard mapping direction`
 - Release：`v1.1.0`（exe 未重建；训练功能/模型格式未变）
 - 资产：`CS2AIDecisionTrainer.exe`
 - 大小：178,826,787 字节（约 179 MB）
@@ -118,9 +119,9 @@ README.md
 - 评分：武器射程包络、双向瞄准、胜率、血量/护甲、残血、最近掉血、拆包、准备度；
 - 决策：`switch_min_score=0.30`、`switch_margin=0.10`、`min_dwell=1.0s`、`repeat_guard=4.0s`、`emergency=0.72`；
 - 硬间隔：`hard_min_switch_interval=0.2s`；
-- **v1.10.1 映射修复**：CS2 实测“按数字键 N → GSI slot (N+1) mod 10”，因此发键用
-  `slot_to_key(slot)=(slot-1) mod 10`（slot 0→9、1→0、3→2、4→3）；人工接管反向用
-  `key_to_slot(key)=(key+1) mod 10`。日志/状态同时显示 `slot=N（键X）`；
+- **v1.10.2 映射修正**：CS2 实测“按数字键 N → GSI slot (N-1) mod 10”，因此发键用
+  `slot_to_key(slot)=(slot+1) mod 10`（slot 0→1、1→2、3→4、4→5、9→0）；人工接管反向用
+  `key_to_slot(key)=(key-1) mod 10`（键1→slot0、键0→slot9）。日志/状态同时显示 `slot=N（键X）`；
 - 观察对象阵亡回切：优先最近敌人，支持 `observer_slot` 被清空后使用最后观察记录；
 - 不再使用“是否观战视角”阻断切换（v1.6 移除）；
 - 跨楼层/超远距离不视为可交火：`max_vertical_diff=300`，Nuke 放宽到 900；
@@ -313,7 +314,8 @@ player_api_base_url
 - v1.9：移除即时学习、决策 CSV/标签、随机森林、纯 JSON 加载、独立训练器、`.dem` 导入、RF/ExtraTrees CV 优化；
 - v1.9.1：训练器独立私密仓库、主程序清理训练器源码；
 - v1.10（Phase 1）：新增 `director_story.py`：镜头时间线、六项专业指标、回合故事状态；评分/模型/特征不变；
-- v1.10.1：修复 `observer_slot` 与观察者数字键错位（键 N→slot N+1），日志/GUI 同时显示 slot 与键。
+- v1.10.1：尝试修复 slot/按键错位，但方向写反（键 N→slot N+1），已废弃；
+- v1.10.2：更正为键 N→slot (N-1) mod 10（键1→slot0、键0→slot9），日志/GUI 同时显示 slot 与键。
 
 ---
 
@@ -322,12 +324,12 @@ player_api_base_url
 已验证：
 
 ```text
-主仓库 90 项测试通过（v1.10.1；新增 10 项 timeline/story/integration/slot-key）
-训练器仓库 90 项测试通过（已同步 v1.10.1 共享核心；模型/特征未变）
+主仓库 90 项测试通过（v1.10.2；新增 10 项 timeline/story/integration/slot-key）
+训练器仓库 90 项测试通过（已同步 v1.10.2 共享核心；模型/特征未变）
 Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
 模拟 GSI 序列验证镜头/指标/故事落盘
-两个 exe 启动成功（主程序 v1.10.1 / 训练器 v1.1.0）
+两个 exe 启动成功（主程序 v1.10.2 / 训练器 v1.1.0）
 训练器 CSV 训练 exit=0
 训练器 .dem 训练 exit=0（544 行 / 105 击杀事件）
 导播加载 ExtraTrees JSON 成功
@@ -370,8 +372,8 @@ Python 编译通过（cs2_ai_director.py / director_story.py）
 18. **经济分档是近似**：freezetime 用金钱（可能买到一半）、live 用武器+护甲平均档位；不读装备价值。
 19. **残局/阶段判定依赖 GSI 字段**：若 `allplayers` 缺失、`observer_slot` 延迟，镜头目标会以 GSI 实际值为准，指标可能少算。
 20. **回合切换/中途停止会产生 partial 行**：`round_metrics.csv` 用 `completed=1/0` 区分；累计指标会包含 partial 行。
-21. **训练器仓库已同步 v1.10.1 共享核心**（`de09e65`），但训练器 exe 仍是 v1.1.0；因训练功能/模型格式未变，暂未重建。
-22. **observer_slot 映射依赖实测**：v1.10.1 按“键 N→slot N+1”修正；若 CS2 更新后映射变化，需重新实测 `slot_to_key/key_to_slot`。
+21. **训练器仓库已同步 v1.10.2 共享核心**（以最新 `Fix observer_slot...` 提交为准），但训练器 exe 仍是 v1.1.0；因训练功能/模型格式未变，暂未重建。
+22. **observer_slot 映射依赖实测**：v1.10.2 按完整表修正为“键 N→slot (N-1) mod 10”；若 CS2 更新后映射变化，需重新实测 `slot_to_key/key_to_slot`。
 
 ---
 
@@ -412,7 +414,7 @@ python demo_dataset.py --demos "D:\demos" --out demo_decisions.csv
 
 ## 10.1 共享核心同步清单（v1.10）
 
-训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 已于 `de09e65` 同步 v1.10.1 共享核心（含 slot/按键映射修复）。
+训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 已于 `28cd378` 同步 v1.10.2 共享核心（含修正后的 slot/按键映射）。
 评分核心没有改，但主程序新增了 `import director_story`，因此**复制新的 `cs2_ai_director.py` 时必须同时复制
 `director_story.py`**，否则训练器的 demo 解析会 ImportError。
 
@@ -562,14 +564,14 @@ YuGaN525/cs2-ai-decision-trainer
 继续开发 CS2 AI 导播项目。请先阅读仓库根目录的 HANDOFF.md 和 README.md。
 
 当前状态：
-- 主程序源码 v1.10.1（Phase 1 + slot/按键映射修复），训练器 v1.1.0；
+- 主程序源码 v1.10.2（Phase 1 + slot/按键映射修正），训练器 v1.1.0；
 - 主仓库 YuGaN525/cs2-ai-director，训练器仓库 YuGaN525/cs2-ai-decision-trainer，均为私密；
-- 主程序 exe：dist/CS2AIDirector.exe（v1.10.1，已重新打包）；
+- 主程序 exe：dist/CS2AIDirector.exe（v1.10.2，已重新打包）；
 - 训练器 exe：dist/CS2AIDecisionTrainer.exe；
 - 90 项测试通过；OBS/FFmpeg 尚未实机联调；Phase 1 只有模拟 GSI 序列验证；
 - 模型使用 RF/ExtraTrees 交叉验证选择，导出纯 JSON，导播自动重载；
 - 决策样本 decisions.csv 尚未达到 1000 条；
-- 训练器仓库已同步 director_story.py（`de09e65`）；训练器 exe 仍是 v1.1.0。
+- 训练器仓库已同步 director_story.py 与映射修正；训练器 exe 仍是 v1.1.0。
 
 硬性约束：
 - 只读 GSI，不读内存/不注入/不发控制台命令；

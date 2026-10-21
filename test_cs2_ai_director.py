@@ -1020,19 +1020,20 @@ class _FakePD:
 
 
 class TestSlotKeyMapping(unittest.TestCase):
-    """GSI observer_slot 与观察者数字键的实测映射：键 N → slot (N+1) mod 10。"""
+    """GSI observer_slot 与观察者数字键的实测映射：键 N → slot (N-1) mod 10。"""
 
     def test_slot_to_key_examples(self):
-        self.assertEqual(d.slot_to_key(0), "9")
-        self.assertEqual(d.slot_to_key(1), "0")
-        self.assertEqual(d.slot_to_key(3), "2")
-        self.assertEqual(d.slot_to_key(4), "3")
-        self.assertEqual(d.slot_to_key(9), "8")
+        self.assertEqual(d.slot_to_key(0), "1")
+        self.assertEqual(d.slot_to_key(1), "2")
+        self.assertEqual(d.slot_to_key(3), "4")
+        self.assertEqual(d.slot_to_key(4), "5")
+        self.assertEqual(d.slot_to_key(9), "0")
 
     def test_key_to_slot_examples(self):
-        self.assertEqual(d.key_to_slot(0), 1)
-        self.assertEqual(d.key_to_slot(9), 0)
-        self.assertEqual(d.key_to_slot(3), 4)
+        self.assertEqual(d.key_to_slot(1), 0)
+        self.assertEqual(d.key_to_slot(2), 1)
+        self.assertEqual(d.key_to_slot(9), 8)
+        self.assertEqual(d.key_to_slot(0), 9)
 
     def test_roundtrip_all_slots(self):
         for slot in range(10):
@@ -1057,7 +1058,7 @@ class TestSlotKeyMapping(unittest.TestCase):
         eng.timeline = fake  # type: ignore[assignment]
         eng._last_observed_slot = 4
         eng._on_manual_key("0")
-        self.assertEqual(fake.calls[0][0], 1)   # 键 0 → GSI slot 1
+        self.assertEqual(fake.calls[0][0], 9)   # 键 0 → GSI slot 9
         self.assertEqual(fake.calls[0][1], 4)   # from_slot 仍是 GSI slot 4
 
 
@@ -1081,8 +1082,8 @@ class TestInputIdentity(unittest.TestCase):
         d.keyboard = self.old_kb
 
     def test_slot_to_key_mapping_0_to_9(self):
-        expected = {0: "9", 1: "0", 2: "1", 3: "2", 4: "3",
-                    5: "4", 6: "5", 7: "6", 8: "7", 9: "8"}
+        expected = {0: "1", 1: "2", 2: "3", 3: "4", 4: "5",
+                    5: "6", 6: "7", 7: "8", 8: "9", 9: "0"}
         for slot, key in expected.items():
             self.fake.keys.clear()
             self.assertTrue(self.ctl.press_slot(slot), slot)

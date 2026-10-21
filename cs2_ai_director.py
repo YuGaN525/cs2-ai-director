@@ -50,7 +50,7 @@ from typing import Any, Callable, Optional
 
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "CS2 AI 导播"
-VERSION = "1.10.1"
+VERSION = "1.10.2"
 IS_WINDOWS = os.name == "nt"
 
 GSI_CFG_NAME = "gamestate_integration_ai_director.cfg"
@@ -524,14 +524,14 @@ def _b(v: Any) -> bool:
 def slot_to_key(slot: Any) -> Optional[str]:
     """GSI observer_slot → 观察者数字键。
 
-    实测 CS2：按数字键 N 会选中 GSI slot (N+1) mod 10
-    （键 0→slot 1，键 9→slot 0，键 3→slot 4）。
-    所以反推 slot S 对应键 (S-1) mod 10；不能再直接把 slot 当按键。
+    实测 CS2：按数字键 N 会选中 GSI slot (N-1) mod 10
+    （键 1→slot 0，键 2→slot 1，键 9→slot 8，键 0→slot 9）。
+    所以反推 slot S 对应键 (S+1) mod 10；不能直接把 slot 当按键。
     """
     s = _i(slot)
     if s is None or not (0 <= s <= 9):
         return None
-    return str((s - 1) % 10)
+    return str((s + 1) % 10)
 
 
 def key_to_slot(key: Any) -> Optional[int]:
@@ -539,7 +539,7 @@ def key_to_slot(key: Any) -> Optional[int]:
     k = _i(key)
     if k is None or not (0 <= k <= 9):
         return None
-    return (k + 1) % 10
+    return (k - 1) % 10
 
 
 def format_slot(slot: Any) -> str:

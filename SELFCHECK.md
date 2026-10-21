@@ -13,7 +13,8 @@
 - **v1.8 增量（2026-10-21）**：整合专业导播：独立日志、事件动作、OBS WebSocket、FFmpeg 击杀回放、玩家改名。
 - **v1.9 增量（2026-10-21）**：移除即时学习；新增 decisions.csv、3 秒标签回填、随机森林训练与模糊区间仲裁。
 - **v1.10 增量（2026-10-21）**：Phase 1 专业导播观测层：镜头时间线、六项专业指标、回合故事状态；不改评分/模型。
-- **v1.10.1 增量（2026-10-21）**：修复 `observer_slot` 与观察者数字键错位（键 N→slot N+1）；当前测试 90 项。
+- **v1.10.1 增量（2026-10-21）**：尝试修复 `observer_slot` 与观察者数字键错位，但方向写反（键 N→slot N+1），已废弃。
+- **v1.10.2 增量（2026-10-21）**：按完整实测表更正为键 N→slot (N-1) mod 10（键1→slot0、键0→slot9）；当前测试 90 项。
 
 ---
 
@@ -26,7 +27,7 @@
 | 3 | GSI 配置必需字段 | ✅ | ✅ | `gsi_config_dict` 输出 12 个 data 字段，含 `allplayers_position`、`bomb`、`phase_countdowns`；单测 `test_all_required_fields` |
 | 4 | GSI HTTP 线程安全 | ✅ | ✅ | `SnapshotStore` 加锁；20 线程并发 POST 60 次全部 200，收包计数 60、快照结构完整；单测 `TestGSIConcurrency` |
 | 5 | 断流是否跳过决策 | ✅ | ✅ | 快照 10 秒未更新时 `_tick` 标记 `stale` 并直接返回，`_decide_and_switch` 调用次数 0；单测 `test_stale_snapshot_skips_decision` |
-| 6 | observer_slot → 数字键映射 | ❌ 旧版直接当键，实测错位 | ✅ v1.10.1：键 N→slot N+1；`slot_to_key`/`key_to_slot`，slot 0→9、1→0、3→2、4→3；-1/10/99 拒绝且不发键；`TestSlotKeyMapping`、`TestInputIdentity` |
+| 6 | observer_slot → 数字键映射 | ❌ 旧版直接当键，实测错位 | ✅ v1.10.2：键 N→slot N-1；`slot_to_key`/`key_to_slot`，slot 0→1、1→2、3→4、4→5、9→0；-1/10/99 拒绝且不发键；`TestSlotKeyMapping`、`TestInputIdentity` |
 | 7 | 模拟按键前确保 CS2 聚焦 | ✅ | ✅ | `press_slot`/`send_hotkey` 都先 `ensure_foreground()`（前台进程必须是 cs2.exe）；焦点为假时 0 次按键；单测 `test_no_key_without_focus`、`test_hotkey_also_requires_focus` |
 | 8 | 程序按键不被误判为手动接管 | ✅ | ✅ | 采用按数字键分别记录的 `_simulating_until`（等价于 simulating_until，但不会吞掉用户按下的其他数字）；钩子事件忽略被标记的 3、仍识别 4；单测 `test_hook_ignores_simulated_key` |
 | 9 | 手动按 0-9 暂停约 10 秒 | ✅ | ✅ | 真实 `keybd_event` 按 4，状态显示剩余 9.7s；暂停期间切人调用 0 次；单测 `test_manual_pause_blocks_switch` |
@@ -523,7 +524,7 @@ OK
 - `pre_fight_coverage` 与人工标注的一致性；
 - OBS/FFmpeg 的 `REPLAY` 机位尚未接入 timeline；
 - 回合中停止/重开会产生 `completed=0` 的 partial 行，累计指标包含这些行；
-- 训练器仓库已同步 v1.10.1 共享核心（`de09e65`）；训练器 exe 未重建，指标不作为训练特征。
+- 训练器仓库已同步 v1.10.2 共享核心（`28cd378`）；训练器 exe 未重建，指标不作为训练特征。
 
 ### 16.4 exe
 
@@ -548,30 +549,32 @@ powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
 
 ---
 
-## 17. v1.10.1：observer_slot/按键映射修复
+## 17. v1.10.2：observer_slot/按键映射修正
 
 ### 17.1 现象
 
-实机反馈：
+完整实机反馈：
 
 ```text
-按 0 键 → GSI observer_slot = 1
-按 9 键 → GSI observer_slot = 0
-按 3 键 → GSI observer_slot = 4
+键 1 → GSI slot 0     键 6 → GSI slot 5
+键 2 → GSI slot 1     键 7 → GSI slot 6
+键 3 → GSI slot 2     键 8 → GSI slot 7
+键 4 → GSI slot 3     键 9 → GSI slot 8
+键 5 → GSI slot 4     键 0 → GSI slot 9
 ```
 
-旧版 `press_slot(slot)` 直接把 GSI slot 当数字键（`str(int(slot))`），导致整体错一位，
-例如想切 slot 1 会按 1 键，实际落到 slot 2。
+旧版 `press_slot(slot)` 直接把 GSI slot 当数字键（`str(int(slot))`），导致整体错位；
+v1.10.1 的修正方向又写反，v1.10.2 按上表更正。
 
 ### 17.2 修正
 
 ```text
-键 N        → GSI slot (N+1) mod 10
-GSI slot S  → 键 (S-1) mod 10
+键 N        → GSI slot (N-1) mod 10
+GSI slot S  → 键 (S+1) mod 10
 ```
 
-- `slot_to_key(0)=9, slot_to_key(1)=0, slot_to_key(3)=2, slot_to_key(4)=3`；
-- `key_to_slot(0)=1, key_to_slot(9)=0, key_to_slot(3)=4`；
+- `slot_to_key(0)=1, slot_to_key(1)=2, slot_to_key(3)=4, slot_to_key(4)=5, slot_to_key(9)=0`；
+- `key_to_slot(1)=0, key_to_slot(2)=1, key_to_slot(9)=8, key_to_slot(0)=9`；
 - 人工接管按下的数字键先转成 GSI slot，再写入 timeline 的 `target_slot`；
 - 日志/状态显示 `slot=N（键X）`；timeline/decisions CSV 仍用 GSI slot；
 - 不是“改评分”：只改执行层的按键映射和人工接管归因。
@@ -585,19 +588,19 @@ Ran 90 tests ... OK
 ruff F/E9: All checks passed!
 ```
 
-新增测试：`TestSlotKeyMapping`（三个实测例子、10 个 slot 往返、人工按键→GSI slot），
+新增测试：`TestSlotKeyMapping`（完整 10 键表、10 个 slot 往返、人工按键→GSI slot），
 并更新 `TestInputIdentity` 的按键期望。
 
 ### 17.4 exe
 
 ```text
 dist\CS2AIDirector.exe
-大小：35,036,523 字节
-SHA256：BBAF9A236AC4CDCDE34897AA3E335D9A147831F5A789FB3A120983465866A4A7
-窗口标题：CS2 AI 导播 v1.10.1
+大小：35,036,437 字节
+SHA256：2EFCEDA544B23DD1359E5E66F78EE704748796706F0B7FC17D1B9E5104C03AB1
+窗口标题：CS2 AI 导播 v1.10.2
 ```
 
-Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.1
+Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.2
 
 ## 12. v1.8：专业导播整合
 

@@ -9,7 +9,7 @@
 - 即时学习已移除；保留离线 demo 静态权重，并新增决策 CSV 记录 + 随机森林离线仲裁模型；
 - 专业导播：独立导播日志、事件动作规则、OBS WebSocket、FFmpeg 击杀回放、玩家改名命令；
 - **v1.10 Phase 1**：镜头时间线（ShotTimeline）+ 六项专业指标 + 回合故事状态（阶段/经济/残局/下包/比分），不参与评分；
-- **v1.10.1**：修复 GSI `observer_slot` 与观察者数字键错位（键 N→slot N+1），日志/GUI 同时显示 slot 与键；
+- **v1.10.2**：修复 GSI `observer_slot` 与观察者数字键错位（键 N→slot N-1 mod 10），日志/GUI 同时显示 slot 与键；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -22,9 +22,9 @@
 
 | 程序 | 用途 |
 |---|---|
-| `CS2AIDirector.exe` | AI 导播主程序 v1.10.1，约 35 MB（Release v1.10.1） |
+| `CS2AIDirector.exe` | AI 导播主程序 v1.10.2，约 35 MB（Release v1.10.2） |
 
-当前本地构建：35,036,523 字节，SHA256 `BBAF9A236AC4CDCDE34897AA3E335D9A147831F5A789FB3A120983465866A4A7`。
+当前本地构建：35,036,437 字节，SHA256 `2EFCEDA544B23DD1359E5E66F78EE704748796706F0B7FC17D1B9E5104C03AB1`。
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -40,7 +40,7 @@ https://github.com/YuGaN525/cs2-ai-decision-trainer
 训练器支持 `decisions.csv` 和 `.dem`，输出 `decision_model.json.gz`。
 主程序每 5 秒检测文件更新，训练完无需重启；也可在“专业导播 → 重新加载模型”。
 
-v1.10.1 的共享核心（`director_story.py` / `cs2_ai_director.py`）已同步到训练器仓库；
+v1.10.2 的共享核心（`director_story.py` / `cs2_ai_director.py`）已同步到训练器仓库；
 但 `kill_coverage` 等六项指标只用于评估，不进入 8 特征击杀预测模型，也不需要重训。
 
 自行重新打包主程序：
@@ -111,13 +111,14 @@ GSI 配置端口必须与 GUI 里“GSI 端口”一致（默认 3000）。改�
    `%APPDATA%\CS2AIDirector\config.json`，日志在 `%APPDATA%\CS2AIDirector\director.log`。
 
 > **不要把 GSI slot 直接当按键。** 实测 CS2 的 `observer_slot` 与观察者数字键错开一位：
-> 按数字键 `N` 实际选中 GSI slot `(N+1) mod 10`。所以程序发送按键时使用反推映射：
+> 按数字键 `N` 实际选中 GSI slot `(N-1) mod 10`。所以程序发送按键时使用反推映射：
 >
 > ```text
-> GSI slot 0 → 键 9
-> GSI slot 1 → 键 0
-> GSI slot 3 → 键 2
-> GSI slot 4 → 键 3
+> GSI slot 0 → 键 1
+> GSI slot 1 → 键 2
+> GSI slot 3 → 键 4
+> GSI slot 4 → 键 5
+> GSI slot 9 → 键 0
 > ```
 >
 > 日志和状态区会同时显示 `slot=N（键X）`。`shot_timeline.csv` / `round_metrics.csv`
@@ -390,7 +391,7 @@ story         当时的回合故事快照
 - 只有观战/有 `allplayers` 数据时才能自动导播；防火墙需允许本机 127.0.0.1 回环。
 
 **切视角没反应 / 停在尸体视角**
-- v1.10.1 修复了 `observer_slot` 与数字键错位：旧版把 slot 直接当按键，会出现“想切 slot 1 却切到 2”一类现象；请使用 v1.10.1 及以上；
+- v1.10.2 修复了 `observer_slot` 与数字键错位：旧版把 slot 直接当按键；v1.10.1 的映射方向写反，已由 v1.10.2 更正；请使用 v1.10.2 及以上；
 - v1.6 起已移除“不是观战视角就跳过”的判定；观察对象阵亡会切到离尸体最近的敌人；
 - 若仍停在尸体，确认 `observer_slot` 在死亡后仍有上报（否则无法判断哪名选手死亡）；
 - 日志出现“窗口未聚焦/激活失败”：以管理员运行本程序，确认游戏窗口标题是 `Counter-Strike 2`；
