@@ -838,6 +838,38 @@ class TestDecisionModel(unittest.TestCase):
             self.assertEqual(logger.positive, 0)
 
 
+class TestEventActionDispatch(unittest.TestCase):
+    def test_dispatch_executes_matching_rule(self):
+        calls = []
+
+        class FakeObs:
+            def media_action(self, source, action):
+                calls.append(("media", source, action))
+                return True
+
+            def switch_scene(self, name):
+                calls.append(("scene", name))
+                return True
+
+        cfg = {
+            "event_actions_enabled": True,
+            "event_rules": [{
+                "name": "round",
+                "event": "round_started",
+                "enabled": True,
+                "actions": [{"type": "play_media", "target": "matchend"}],
+            }],
+        }
+        log = d.pro_mod.ProLog()
+        engine = d.pro_mod.EventActionEngine(cfg, FakeObs(), log)
+        engine.dispatch([d.pro_mod.GsiEvent("round_started", {"round": 1})])
+        deadline = __import__("time").monotonic() + 1.0
+        while not calls and __import__("time").monotonic() < deadline:
+            __import__("time").sleep(0.01)
+        engine.stop()
+        self.assertEqual(calls, [("media", "matchend", "restart")])
+
+
 class TestModelArbiterMargin(unittest.TestCase):
     def _arbiter(self, probs):
         from types import SimpleNamespace

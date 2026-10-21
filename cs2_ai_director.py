@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.7"
+VERSION = "1.10.8"
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -3453,6 +3453,16 @@ class DirectorApp:
         except Exception:
             pass
 
+    def _checkbutton(self, parent: Any, text: str,
+                     variable: tk.BooleanVar, **kwargs: Any) -> tk.Checkbutton:
+        """Use the native check mark; ttk clam renders an 'x' on Windows."""
+        return tk.Checkbutton(
+            parent, text=text, variable=variable,
+            bg=UI_CARD, fg=UI_INK,
+            activebackground=UI_CARD, activeforeground=UI_INK,
+            selectcolor="#ffffff", bd=0, highlightthickness=0,
+            font=("Microsoft YaHei UI", 9), anchor="w", **kwargs)
+
     def _set_window_icon(self) -> None:
         try:
             ico = asset_path("yuzi.ico")
@@ -3496,13 +3506,15 @@ class DirectorApp:
         lf3.columnconfigure(0, weight=1)
         top = ttk.Frame(lf3)
         top.grid(row=0, column=0, sticky="ew")
-        ttk.Checkbutton(top, text="启用事件动作", variable=self.var_pro_enabled).pack(
+        self._checkbutton(top, "启用事件动作", self.var_pro_enabled).pack(
             side="left")
         ttk.Button(top, text="添加", width=6, command=self._pro_add_rule).pack(
             side="left", padx=(12, 2))
         ttk.Button(top, text="编辑", width=6, command=self._pro_edit_rule).pack(side="left")
         ttk.Button(top, text="删除", width=6, command=self._pro_delete_rule).pack(side="left")
         ttk.Button(top, text="启用/禁用", width=9, command=self._pro_toggle_rule).pack(
+            side="left", padx=2)
+        ttk.Button(top, text="测试选中", width=8, command=self._pro_test_rule).pack(
             side="left", padx=2)
         ttk.Button(top, text="保存预设…", command=self._pro_save_preset).pack(
             side="right", padx=2)
@@ -3608,6 +3620,10 @@ class DirectorApp:
                 rule.get("name", ""), actions,
                 "是" if rule.get("enabled", True) else "否",
             ))
+        try:
+            self._sync_pro_cfg()
+        except Exception:
+            pass
 
     # ---- 专业导播动作 ----
     def _sync_pro_cfg(self) -> None:
@@ -3619,6 +3635,9 @@ class DirectorApp:
             c["obs_port"] = 4455
         c["obs_password"] = self.var_obs_pwd.get()
         c["event_actions_enabled"] = bool(self.var_pro_enabled.get())
+        # 规则编辑只更新 self.cfg；事件线程读的是 pro.cfg，必须同步，
+        # 否则“保存配置/启动”后新增的规则不会生效。
+        c["event_rules"] = copy.deepcopy(self.cfg.get("event_rules", []))
 
     def _pro_thread(self, fn: Callable[[], None]) -> None:
         threading.Thread(target=fn, daemon=True).start()
@@ -3705,6 +3724,23 @@ class DirectorApp:
             rules[idx]["enabled"] = not bool(rules[idx].get("enabled", True))
             self._refresh_rules()
 
+    def _pro_test_rule(self) -> None:
+        """不依赖 GSI 事件，直接执行选中规则，用于排查 OBS 源/场景问题。"""
+        sel = self.rule_tree.selection()
+        if not sel:
+            messagebox.showinfo("测试规则", "先在列表里选中一条规则。")
+            return
+        idx = int(sel[0])
+        rules = self.cfg.get("event_rules", [])
+        if not (0 <= idx < len(rules)):
+            return
+        if not self.pro.obs.connected:
+            messagebox.showwarning("测试规则", "OBS 尚未连接，请先点“连接”。")
+            return
+        rule = copy.deepcopy(rules[idx])
+        self.bus.info(f"手动测试规则：{rule.get('name', '')}")
+        self._pro_thread(lambda: self.pro.actions.execute(rule))
+
     def _pro_save_preset(self) -> None:
         path = filedialog.asksaveasfilename(
             title="保存事件动作预设", defaultextension=".json",
@@ -3755,7 +3791,7 @@ class DirectorApp:
         ttk.Combobox(top, textvariable=event_var, state="readonly",
                      values=tuple(pro_mod.EVENT_LABELS.values())).grid(
             row=1, column=1, sticky="w", padx=8)
-        ttk.Checkbutton(top, text="启用", variable=enabled_var).grid(
+        self._checkbutton(top, "启用", enabled_var).grid(
             row=1, column=2, sticky="w", padx=8)
 
         listbox = tk.Listbox(top, height=7, width=62)
@@ -3944,12 +3980,12 @@ class DirectorApp:
         ttk.Label(lf3, text="模型").grid(row=1, column=0, sticky="w", pady=(6, 0))
         ttk.Entry(lf3, textvariable=self.var_model, width=24).grid(
             row=1, column=1, sticky="w", padx=6, pady=(6, 0))
-        ttk.Checkbutton(lf3, text="启用 AI 仲裁（留空 Key 则自动只用规则引擎）",
-                        variable=self.var_ai).grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
-        ttk.Checkbutton(lf3, text="演练模式（不实际发送按键）",
-                        variable=self.var_dry).grid(row=2, column=2, columnspan=2, sticky="w", pady=(6, 0))
-        ttk.Checkbutton(lf3, text="启用 demo 模型（离线权重，不即时更新）",
-                        variable=self.var_learn).grid(
+        self._checkbutton(lf3, "启用 AI 仲裁（留空 Key 则自动只用规则引擎）",
+                         self.var_ai).grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        self._checkbutton(lf3, "演练模式（不实际发送按键）",
+                         self.var_dry).grid(row=2, column=2, columnspan=2, sticky="w", pady=(6, 0))
+        self._checkbutton(lf3, "启用 demo 模型（离线权重，不即时更新）",
+                         self.var_learn).grid(
             row=3, column=0, columnspan=2, sticky="w", pady=(6, 0))
         self.btn_train = ttk.Button(
             lf3, text="从 demo 训练…", command=self._train_demos
@@ -4344,6 +4380,10 @@ class DirectorApp:
         self.decision_logger.cfg = cfg
         self.model_arbiter.cfg = cfg
         self.timeline.cfg = cfg
+        # 让 OBS/事件动作共享同一份最新配置对象。
+        self.pro.cfg = cfg
+        self.pro.obs.cfg = cfg
+        self.pro.actions.cfg = cfg
         return cfg
 
     def _validate_cfg(self, cfg: dict[str, Any]) -> bool:

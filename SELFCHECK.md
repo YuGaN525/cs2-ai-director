@@ -19,7 +19,8 @@
 - **v1.10.4 增量（2026-10-21）**：适配 MulNX 的 200ms 连击缓冲，Alt 在最后按键后保持 300ms。
 - **v1.10.5 增量（2026-10-21）**：移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名。
 - **v1.10.6 增量（2026-10-21）**：品牌化 Yuzi_CS2_AIDirector / Yuzi_CS2_AIDecisionTrainer，鱼籽杯图标与 UI 美化。
-- **v1.10.7 增量（2026-10-21）**：训练器分组切分/模糊样本加权/top-1/伤害窗口标签；仲裁概率边际；当前测试 99 项。
+- **v1.10.7 增量（2026-10-21）**：训练器分组切分/模糊样本加权/top-1/伤害窗口标签；仲裁概率边际。
+- **v1.10.8 增量（2026-10-21）**：勾选框改原生 √；修复事件规则/OBS 配置同步；新增测试规则与 OBS 源/场景校验；当前测试 100 项。
 
 ---
 
@@ -874,6 +875,53 @@ SHA256：33F056FF75B404BD0930C0B759DC17E41C2BDF0D8AAC609EDB95963C8050A169
 Yuzi_CS2_AIDecisionTrainer.exe v1.1.3
 大小：179,784,415 字节
 SHA256：679634328964DE6BDD1E38E3107F28399C0EC252C3C96FB2AC2FECE0BDDE4A66
+```
+
+---
+
+## 23. v1.10.8：勾选框 √ 与 OBS 事件链路
+
+### 23.1 勾选框显示 ×
+
+- 原因：主界面使用 ttk.Checkbutton + clam 主题，Windows 下选中标记被绘成 “×”；
+- 修复：改用原生 tk.Checkbutton，显示标准 “√”；
+- 覆盖：事件动作启用、规则启用、AI 仲裁、演练模式、demo 模型。
+
+### 23.2 OBS 已连接但游戏事件不执行
+
+定位到两个链路问题：
+
+1. `_sync_pro_cfg()` 只同步 OBS 地址/端口/密码，没有同步 `event_rules`；
+   `_collect_cfg()` 又用 deepcopy 替换了 `self.cfg`，导致事件线程的 `pro.cfg` 仍指向旧对象。
+   保存配置后新增/修改的规则不会生效。
+2. OBS 动作失败时只写 OBS 日志，事件动作仍打印“成功”，难以判断是源不存在还是未触发。
+
+修复：
+
+- 保存/启动时把最新 `cfg` 同时赋给 `pro.cfg`、`pro.obs.cfg`、`pro.actions.cfg`；
+- `_sync_pro_cfg()` 同步 `event_rules`，规则编辑后立即刷新；
+- 媒体动作先校验 OBS 输入名和 kind（必须是 ffmpeg_source/vlc_source）；
+- 场景动作先校验场景名，不再静默创建场景；
+- 动作返回 False 时记录“未生效”，不再误报成功；
+- 新增“测试选中”按钮，可绕过 GSI 直接执行选中规则。
+
+### 23.3 验证
+
+```text
+Python 单元测试：100 项通过
+ruff F/E9：通过
+GUI 构造：OK
+OBS 实测：连接成功；current_scene/scenes/inputs 可读；
+          media_action("matchend","restart") 成功；
+          不存在的输入返回 False 并给出可读错误。
+```
+
+### 23.4 产物
+
+```text
+Yuzi_CS2_AIDirector.exe v1.10.8
+大小：35,952,388 字节
+SHA256：FDC37BFE3C018AE810E0C3DCE0F43667F5FBC978A297E5133EAB42C22CDD1C7C
 ```
 
 ## 12. v1.8：专业导播整合

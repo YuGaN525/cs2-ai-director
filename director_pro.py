@@ -290,15 +290,43 @@ class ObsController:
     def _attr(obj: Any, name: str, default: Any = None) -> Any:
         if obj is None:
             return default
-        for key in (name, name.replace("_", "")):
+        if isinstance(obj, dict):
+            for key in (name, name.replace("_", ""),
+                        name.replace("_", "") .lower()):
+                if key in obj:
+                    return obj[key]
+        for key in (name, name.replace("_", ""), f"{name}_name"):
             if hasattr(obj, key):
                 return getattr(obj, key)
         return default
 
+    def inputs(self) -> list[dict[str, Any]]:
+        try:
+            resp = self._call("get_input_list")
+            items = self._attr(resp, "inputs", []) or []
+            out: list[dict[str, Any]] = []
+            for item in items:
+                if isinstance(item, dict):
+                    out.append(item)
+                else:
+                    out.append({
+                        "inputName": self._attr(item, "input_name", ""),
+                        "inputKind": self._attr(item, "input_kind", ""),
+                    })
+            return out
+        except Exception:
+            return []
+
     def current_scene(self) -> str:
         try:
             resp = self._call("get_current_program_scene")
-            return str(self._attr(resp, "current_program_scene", "") or "")
+            # obsws-python 不同版本返回 dataclass/类/dict，统一兜底。
+            for key in ("current_program_scene_name", "scene_name",
+                        "current_program_scene", "sceneName"):
+                value = self._attr(resp, key, "")
+                if value:
+                    return str(value)
+            return ""
         except Exception:
             return ""
 
@@ -315,8 +343,10 @@ class ObsController:
             return False
         try:
             if name not in self.scenes():
-                self._call("create_scene", name)
-                self.log.info("OBS", f"已创建场景：{name}")
+                self.log.error(
+                    "OBS",
+                    f"场景不存在：{name}；OBS 场景名必须完全一致（区分大小写）")
+                return False
             self._call("set_current_program_scene", name)
             self.log.info("OBS", f"切换场景：{name}")
             return True
@@ -330,6 +360,30 @@ class ObsController:
             "stop": "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_STOP",
             "restart": "OBS_WEBSOCKET_MEDIA_INPUT_ACTION_RESTART",
         }
+        source = str(source or "")
+        if not source:
+            self.log.error("OBS", "媒体源名称为空")
+            return False
+        items = self.inputs()
+        found = next(
+            (i for i in items if str(i.get("inputName", "")) == source), None)
+        if found is None:
+            if items:
+                self.log.error(
+                    "OBS",
+                    f"找不到输入「{source}」；OBS 输入名必须完全一致。"
+                    f"当前输入：{', '.join(str(i.get('inputName', '')) for i in items)}")
+                return False
+            # 输入列表读取失败时不阻断，让触发请求返回真实错误
+            self.log.warning("OBS", "无法读取 OBS 输入列表，直接尝试触发媒体动作")
+        else:
+            kind = str(found.get("inputKind", ""))
+            if kind not in ("ffmpeg_source", "vlc_source", "media_source"):
+                self.log.error(
+                    "OBS",
+                    f"「{source}」不是媒体源（kind={kind or '?'}）；"
+                    f"如果要切场景，请把动作改成“切换场景”")
+                return False
         try:
             self._call("trigger_media_input_action", source, mapping[action])
             self.log.info("OBS", f"媒体源 {source}：{action}")
@@ -396,13 +450,18 @@ class EventActionEngine:
             label = ACTION_LABELS.get(typ, typ)
             try:
                 if typ == "play_media":
-                    self.obs.media_action(target, "restart")
+                    ok = self.obs.media_action(target, "restart")
                 elif typ == "stop_media":
-                    self.obs.media_action(target, "stop")
+                    ok = self.obs.media_action(target, "stop")
                 elif typ == "switch_scene":
-                    self.obs.switch_scene(target)
+                    ok = self.obs.switch_scene(target)
                 else:
                     self.log.warning("EventAction", f"未知动作：{typ}")
+                    continue
+                if not ok:
+                    self.log.error(
+                        "EventAction",
+                        f"规则「{name}」动作「{label} {target}」未生效，详见 OBS 日志")
                     continue
                 self.log.info("EventAction", f"规则「{name}」→ {label} {target}".strip())
             except Exception as e:
