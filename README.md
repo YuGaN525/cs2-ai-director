@@ -10,6 +10,7 @@
 - 专业导播：独立导播日志、事件动作规则、OBS WebSocket、FFmpeg 击杀回放、玩家改名命令；
 - **v1.10 Phase 1**：镜头时间线（ShotTimeline）+ 六项专业指标 + 回合故事状态（阶段/经济/残局/下包/比分），不参与评分；
 - **v1.10.2**：修复 GSI `observer_slot` 与观察者数字键错位（键 N→slot N-1 mod 10），日志/GUI 同时显示 slot 与键；
+- **v1.10.3**：防碎切（最短停留 2s + 10 秒切率上限 3）+ 当前 POV 交火/拆包锁定不切；HLAE 增加管理员权限检测与提示；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -22,9 +23,9 @@
 
 | 程序 | 用途 |
 |---|---|
-| `CS2AIDirector.exe` | AI 导播主程序 v1.10.2，约 35 MB（Release v1.10.2） |
+| `CS2AIDirector.exe` | AI 导播主程序 v1.10.3，约 35 MB（Release v1.10.3） |
 
-当前本地构建：35,036,437 字节，SHA256 `2EFCEDA544B23DD1359E5E66F78EE704748796706F0B7FC17D1B9E5104C03AB1`。
+当前本地构建：35,040,575 字节，SHA256 `1B2AC658DF9373D464D4A1D2C8C0C1DC2AFC5FABCC3458E14EF370123DD63D2D`。
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -40,7 +41,7 @@ https://github.com/YuGaN525/cs2-ai-decision-trainer
 训练器支持 `decisions.csv` 和 `.dem`，输出 `decision_model.json.gz`。
 主程序每 5 秒检测文件更新，训练完无需重启；也可在“专业导播 → 重新加载模型”。
 
-v1.10.2 的共享核心（`director_story.py` / `cs2_ai_director.py`）已同步到训练器仓库；
+v1.10.3 的共享核心（`director_story.py` / `cs2_ai_director.py`）已同步到训练器仓库；
 但 `kill_coverage` 等六项指标只用于评估，不进入 8 特征击杀预测模型，也不需要重训。
 
 自行重新打包主程序：
@@ -151,6 +152,14 @@ score(A, B) = prox^0.55
 决策层再叠加：`switch_min_score=0.30` 阈值、`switch_margin=0.10` 迟滞、`min_dwell_seconds=1.0` 冷却、
 `repeat_guard_seconds=4.0` 同 slot 重复按键保护；`emergency_score=0.72` 时允许绕过迟滞。
 因此“残血对枪”会切，“满血架远点”基本不切，且不会每帧乱按。
+
+**v1.10.3 防碎切层**（在评分/阈值之后、实际发键之前）：
+
+- `min_shot_duration=2.0`：任何新 POV 至少停留 2 秒（与 `min_dwell_seconds` 取较大值）；
+- `max_cuts_per_10s=3`：10 秒窗口内最多切 3 次，超过后保持；
+- `fight_lock_enabled=true`：当前 POV 正在与敌人交火（距离在射程内 + 任一方近期掉血/双向瞄准）或正在拆包时，**不切走**；
+- 当前观察者阵亡时死亡回切不受以上限制，避免停在尸体；
+- 这些是执行层约束，不改变 `score_candidates` / `choose_slot` / 模型特征。
 
 **AI 仲裁**：仅当规则前两名分差 ≤ `ai_ambiguity_margin`（默认 0.08）时才请求 `deepseek-chat`，
 最多 12 次/分钟、超时 2.5 秒；返回空 content、超时、网络错误、返回候选外 slot 时全部回退规则引擎。
@@ -334,7 +343,11 @@ story         当时的回合故事快照
 | `manual_pause_seconds` | 10.0 | 手动按裸 0–9 后 AI 暂停秒数 |
 | `switch_min_score` | 0.30 | 切换阈值，越低越容易切 |
 | `switch_margin` | 0.10 | 新目标需领先当前目标的分数 |
-| `min_dwell_seconds` | 1.0 | 两次切换最小间隔 |
+| `min_dwell_seconds` | 1.0 | 两次切换最小间隔（基础值） |
+| `min_shot_duration` | 2.0 | v1.10.3 最短镜头停留；与 min_dwell 取较大值 |
+| `max_cuts_per_10s` | 3 | v1.10.3 10 秒内最多切换次数；0 关闭 |
+| `fight_lock_enabled` | true | v1.10.3 当前 POV 交火/拆包时不切走 |
+| `fight_lock_aim` | 0.60 | 双方瞄准度都过该值也视为交火 |
 | `hard_min_switch_interval` | 0.2 | 任意两次切换的硬下限（200ms） |
 | `repeat_guard_seconds` | 4.0 | 防止 GSI 延迟导致重复按同一键 |
 | `max_vertical_diff` | 300.0 | 楼层高度差超过此值视为不可能交火（Nuke 自动放宽） |
@@ -408,10 +421,12 @@ story         当时的回合故事快照
 - 不想用时清空 Key 或取消勾选。
 
 **HLAE 运镜不触发或触发两次**
+- v1.10.3 启动时会打印“权限=管理员/普通用户”；如果 CS2/HLAE 由 MULNX 等启动器以管理员运行，本程序也必须**右键以管理员身份运行**，否则 Windows UIPI 会拦截模拟按键：日志显示“已发送”，游戏里却没有反应；
+- 先在设置里把该项改成“单次”试一次，再改回“双击”；双击是“按住 Alt 连点两次”，若 HLAE 只认单次 alt+N，双击可能先触发再取消；
+- 日志只会写“已发送”，无法确认 HLAE 是否接收；若没反应，把 `hotkey_press_hold` 调到 0.06–0.08，或把 `hotkey_double_interval` 调到 0.15–0.25；
 - 快捷键现在是下拉选择：**ALT/SHIFT/CTRL 三选一 + A–Z/0–9 之一**，不再支持 `f6`、`ctrl+shift+f9` 这类自由输入；旧配置会显示“请选择”，需要重新选；
 - 指南的交互格式是 `alt+按键`：选择 ALT + 对应字母/数字；
 - 相机需要**长按 Alt 同时短按两次其它键**：对应项选“双击”。程序已实现为“按住 Alt → 点主键 45ms → 间隔 120ms → 再点一次 → 松开 Alt”，不是两次完整 alt+1；
-- 日志只会写“已发送”，无法确认 HLAE 是否接收；若没反应，把 `hotkey_press_hold` 调到 0.06–0.08，或把 `hotkey_double_interval` 调到 0.15–0.25；
 - 如果一按就触发两次/镜头被取消：改回“单次”；
 - 确认 HLAE/运镜工具以管理员运行，且没有忽略模拟输入。
 
@@ -454,7 +469,7 @@ story         当时的回合故事快照
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 90 项（不启动 GUI、不发真实按键）
+- `test_cs2_ai_director.py`：核心逻辑测试，共 93 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS、FFmpeg 回放、玩家改名
 - `director_story.py`：镜头时间线、六项专业指标、回合故事状态（Phase 1）
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁

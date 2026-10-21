@@ -12,6 +12,7 @@ import time
 import unittest
 import urllib.error
 import urllib.request
+from collections import deque
 from pathlib import Path
 
 import cs2_ai_director as d
@@ -1407,6 +1408,61 @@ class TestEngineTimelineIntegration(unittest.TestCase):
             self.assertTrue(timeline.shot_path.is_file())
             timeline.close(time.monotonic())
             eng.timeline = None  # 避免 eng 析构/后续状态影响
+
+
+class TestDirectorStability(unittest.TestCase):
+    """防碎切：交火锁定、最短停留、10 秒切率上限。"""
+
+    def _engine(self):
+        cfg = dict(d.DEFAULT_CONFIG)
+        cfg["fight_lock_enabled"] = True
+        cfg["min_shot_duration"] = 2.0
+        cfg["max_cuts_per_10s"] = 3
+        eng = d.DirectorEngine(cfg, d.LogBus())
+        pressed = []
+        eng.input.press_slot = lambda slot: pressed.append(slot) or True  # type: ignore[assignment]
+        return eng, pressed
+
+    def _snap(self, enemy_pos=(600, 0, 0), enemy_fwd=(-1, 0, 0)):
+        return snapshot(players=[
+            player(1, "CT", pos=(0, 0, 0), fwd=(1, 0, 0)),
+            player(2, "T", pos=enemy_pos, fwd=enemy_fwd),
+        ], phase="live", round_no=1, player_slot=1)
+
+    def test_fight_lock_blocks_switch_away(self):
+        eng, pressed = self._engine()
+        snap = self._snap()
+        now = time.monotonic()
+        # 双方最近都掉过血，说明正在对枪。
+        eng._damage_at["sid1"] = now
+        eng._damage_at["sid2"] = now
+        status = {}
+        eng._decide_and_switch(snap, now, status)
+        self.assertEqual(pressed, [])
+        self.assertIn("交火", status["reason"])
+
+    def test_min_shot_duration_blocks_immediate_switch(self):
+        eng, pressed = self._engine()
+        snap = self._snap(enemy_pos=(1200, 0, 0), enemy_fwd=(0, 1, 0))
+        now = time.monotonic()
+        eng._last_switch_at = now - 1.0
+        eng._last_switch_slot = 1
+        status = {}
+        eng._decide_and_switch(snap, now, status)
+        self.assertEqual(pressed, [])
+        self.assertIn("最短停留", status["reason"])
+
+    def test_max_cuts_per_10s_blocks_switch(self):
+        eng, pressed = self._engine()
+        snap = self._snap(enemy_pos=(1200, 0, 0), enemy_fwd=(0, 1, 0))
+        now = time.monotonic()
+        eng._last_switch_at = now - 3.0
+        eng._last_switch_slot = 1
+        eng._cut_times = deque([now - 1.0, now - 2.0, now - 3.0])
+        status = {}
+        eng._decide_and_switch(snap, now, status)
+        self.assertEqual(pressed, [])
+        self.assertIn("上限", status["reason"])
 
 
 class TestGSIConcurrency(unittest.TestCase):

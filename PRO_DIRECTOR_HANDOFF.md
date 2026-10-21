@@ -1,8 +1,8 @@
 # CS2 AI 专业导播 — 目标、开发日志与关键词
 
 最后更新：2026-10-21  
-当前主程序源码：**v1.10.2（Phase 0/1 + slot/按键映射修正；exe 已重新打包，窗口标题 v1.10.2）**  
-当前训练器：**v1.1.0（共享核心已同步 v1.10.2；模型/特征未变）**  
+当前主程序源码：**v1.10.3（Phase 0/1 + 映射修正 + 防碎切/交火锁定；exe 已重新打包，窗口标题 v1.10.3）**  
+当前训练器：**v1.1.0（共享核心已同步 v1.10.3；模型/特征未变）**  
 现有通用交接：`HANDOFF.md`
 
 ---
@@ -506,7 +506,7 @@ manual_override
 - README.md
 
 当前系统：
-- 主程序源码 v1.10.2，训练器 v1.1.0；
+- 主程序源码 v1.10.3，训练器 v1.1.0；
 - 已具备 GSI/POV/HLAE/事件动作/OBS/FFmpeg/决策日志/RF-ExtraTrees；
 - v1.10 Phase 1 已有镜头 timeline、六项指标、回合故事状态；
 - 仍是反应式 POV 切换器，没有镜头候选/调度器；
@@ -581,7 +581,7 @@ reason / end_reason / source / manual / story`。
    `OVERVIEW/REPLAY` 只定义类型，尚未接入实际机位/OBS 回放。
 2. 经济分档是近似：freezetime 用金钱（可能在买入过程中），live 用武器+护甲平均档位。
 3. 指标是启发式统计，未经真实比赛人工标注校准；不要用它直接下“比 v1.9 更好”的结论。
-4. 训练器仓库已于 `28cd378` 同步 `director_story.py` + `cs2_ai_director.py`（含 v1.10.2 映射修正）；训练器 exe 未重建，指标未进入训练特征。
+4. 训练器仓库已于 `0bebbdd` 同步 `director_story.py` + `cs2_ai_director.py`（含 v1.10.3 稳定性层）；训练器 exe 未重建，指标未进入训练特征。
 
 ### 14.5 v1.10.2：observer_slot/按键映射修正
 
@@ -592,7 +592,16 @@ reason / end_reason / source / manual / story`。
 - 日志/状态显示 `slot=N（键X）`，避免再按错；
 - `shot_timeline.csv` / `decisions.csv` 的 slot 仍是 GSI slot，不是键盘数字。
 
-### 14.6 下一步（Phase 2）
+### 14.6 v1.10.3：防碎切与交火锁定
+
+- `min_shot_duration=2.0`：POV 最短停留 2s（与 `min_dwell_seconds` 取较大值）；
+- `max_cuts_per_10s=3`：10 秒内最多切 3 次，超过保持；
+- `fight_lock_enabled=true`：当前 POV 在射程内与敌人交火（近期掉血/双向瞄准）或正在拆包时保持不切；
+- 当前观察者阵亡的死亡回切不受限制；
+- 这些是执行层约束，没有改 `score_candidates` / `choose_slot` / 模型；
+- 日志/状态显示 `10s切换 N 次` 和 `权限=管理员/普通`；非管理员会警告 HLAE 模拟按键可能被 UIPI 拦截。
+
+### 14.7 下一步（Phase 2）
 
 - 把 `StoryState` + `ShotTimeline` 作为输入，生成 `ShotCandidate`（POV/BOMB/OVERVIEW/REPLAY/不切）；
 - 先实现最短停留、最大切率、切换成本、事件优先级；

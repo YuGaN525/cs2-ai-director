@@ -14,7 +14,8 @@
 - **v1.9 增量（2026-10-21）**：移除即时学习；新增 decisions.csv、3 秒标签回填、随机森林训练与模糊区间仲裁。
 - **v1.10 增量（2026-10-21）**：Phase 1 专业导播观测层：镜头时间线、六项专业指标、回合故事状态；不改评分/模型。
 - **v1.10.1 增量（2026-10-21）**：尝试修复 `observer_slot` 与观察者数字键错位，但方向写反（键 N→slot N+1），已废弃。
-- **v1.10.2 增量（2026-10-21）**：按完整实测表更正为键 N→slot (N-1) mod 10（键1→slot0、键0→slot9）；当前测试 90 项。
+- **v1.10.2 增量（2026-10-21）**：按完整实测表更正为键 N→slot (N-1) mod 10（键1→slot0、键0→slot9）。
+- **v1.10.3 增量（2026-10-21）**：防碎切（最短停留 2s、10 秒最多 3 次）、当前 POV 交火/拆包锁定、HLAE 管理员权限诊断；当前测试 93 项。
 
 ---
 
@@ -524,7 +525,7 @@ OK
 - `pre_fight_coverage` 与人工标注的一致性；
 - OBS/FFmpeg 的 `REPLAY` 机位尚未接入 timeline；
 - 回合中停止/重开会产生 `completed=0` 的 partial 行，累计指标包含这些行；
-- 训练器仓库已同步 v1.10.2 共享核心（`28cd378`）；训练器 exe 未重建，指标不作为训练特征。
+- 训练器仓库已同步 v1.10.3 共享核心（`0bebbdd`）；训练器 exe 未重建，指标不作为训练特征。
 
 ### 16.4 exe
 
@@ -601,6 +602,63 @@ SHA256：2EFCEDA544B23DD1359E5E66F78EE704748796706F0B7FC17D1B9E5104C03AB1
 ```
 
 Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.2
+
+---
+
+## 18. v1.10.3：防碎切 / 交火锁定 / HLAE 权限诊断
+
+### 18.1 问题
+
+1. 镜头切换过于细碎；
+2. 当前 POV 正在与敌人交火时不应切走；
+3. 日志显示 HLAE 运镜“已发送”，但游戏里未触发；CS2 由 MULNX 启动，手动测试正常。
+
+### 18.2 修正
+
+- **最短停留**：`min_shot_duration=2.0`，与 `min_dwell_seconds` 取较大值；
+- **切率上限**：`max_cuts_per_10s=3`，10 秒窗口内超过 3 次则保持；
+- **交火锁定**：`fight_lock_enabled=true`，当前 POV 满足以下任一条件时不切：
+  - 当前玩家正在拆包；
+  - 敌人在当前武器射程包络内，且任一方最近 1.6s 掉过血；
+  - 双方都朝对方瞄准（`fight_lock_aim=0.60`）。
+- **死亡回切例外**：当前观察者阵亡时仍立即切到最近敌人，不受最短停留/切率上限限制；
+- **HLAE 权限诊断**：启动时打印“权限=管理员/普通用户”；非管理员时警告
+  “CS2/HLAE 若以管理员运行，UIPI 会拦截模拟按键，日志已发送但游戏无反应”；
+  运镜日志追加“若画面未变化：确认管理员权限/单次双击”。
+- 以上均为执行层约束，没有改 `score_candidates` / `choose_slot` / 模型特征。
+
+### 18.3 回归
+
+```text
+python -m unittest test_cs2_ai_director
+Ran 93 tests ... OK
+
+ruff F/E9: All checks passed!
+```
+
+新增测试：
+
+- `TestDirectorStability.test_fight_lock_blocks_switch_away`；
+- `TestDirectorStability.test_min_shot_duration_blocks_immediate_switch`；
+- `TestDirectorStability.test_max_cuts_per_10s_blocks_switch`。
+
+### 18.4 exe / Release
+
+```text
+dist\CS2AIDirector.exe
+大小：35,040,575 字节
+SHA256：1B2AC658DF9373D464D4A1D2C8C0C1DC2AFC5FABCC3458E14EF370123DD63D2D
+窗口标题：CS2 AI 导播 v1.10.3
+```
+
+Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.3
+
+### 18.5 仍需实机确认
+
+- 当前 POV 交火锁定的实际时长是否合适（`fight_lock_aim` / 掉血窗口）；
+- 2s 最短停留 + 3 次/10s 是否仍偏快或偏慢；
+- MULNX 启动场景下，本程序以管理员运行时 HLAE 是否正常；
+- 若仍不触发，尝试把该快捷键从“双击”改为“单次”，并确认 HLAE 内绑定。
 
 ## 12. v1.8：专业导播整合
 

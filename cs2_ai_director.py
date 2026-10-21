@@ -50,11 +50,21 @@ from typing import Any, Callable, Optional
 
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "CS2 AI 导播"
-VERSION = "1.10.2"
+VERSION = "1.10.3"
 IS_WINDOWS = os.name == "nt"
 
 GSI_CFG_NAME = "gamestate_integration_ai_director.cfg"
 DIGITS = "0123456789"
+
+
+def is_admin() -> bool:
+    """当前进程是否管理员；UIPI 会拦截对提升权限 CS2/HLAE 的模拟按键。"""
+    if not IS_WINDOWS:
+        return False
+    try:
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
 
 # 可选依赖全部用 try/except 包起来：缺库时程序仍能启动并在 GUI 里提示，
 # 而不是 import 阶段直接崩溃。
@@ -185,7 +195,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "switch_margin": 0.10,      # 新目标必须比当前目标高出的分数，防抖
     "emergency_score": 0.72,    # 极高威胁时允许绕过 margin
     "min_dwell_seconds": 1.0,   # 两次切换的最小间隔
+    "min_shot_duration": 2.0,   # 专业导播最短镜头停留（与 min_dwell 取较大值）
+    "max_cuts_per_10s": 3,      # 10 秒窗口内最多切换次数；<=0 关闭
     "repeat_guard_seconds": 4.0,  # 同一 slot 的重复按键保护
+    "fight_lock_enabled": True,  # 当前 POV 正在交火时不切走
+    "fight_lock_aim": 0.60,      # 双方都瞄准到该阈值也视为交火
     "gsi_stale_seconds": 3.0,   # 超过该时间没有 GSI 数据视为断流
     "self_press_guard": 0.30,   # 模拟按键后多久内忽略同键，防自捕获
     # ---- 运镜 ----
@@ -2259,6 +2273,8 @@ class DirectorEngine:
         self._last_observed_slot: Optional[int] = None
         self._dmg_dealt: dict[str, int] = {}
         self._round_kills: dict[str, int] = {}
+        self._cut_times: deque[float] = deque()
+        self._last_fight_lock_log = 0.0
         self._last_round_winner: Optional[str] = None
         self._last_scores: Optional[tuple[int, int]] = None
         self._last_map_name = ""
@@ -2309,11 +2325,19 @@ class DirectorEngine:
         self._running = True
         self._thread = threading.Thread(target=self._loop, name="director", daemon=True)
         self._thread.start()
+        admin = is_admin()
         self.bus.info(
             f"导播已启动：GSI 127.0.0.1:{port}，循环 {self.cfg['loop_hz']}Hz，"
             f"手动接管检测={self.watcher.mode if self.watcher else 'off'}，"
-            f"演练={'开' if self.cfg.get('dry_run') else '关'}"
+            f"演练={'开' if self.cfg.get('dry_run') else '关'}，"
+            f"权限={'管理员' if admin else '普通用户'}"
         )
+        if IS_WINDOWS and not admin and not self.cfg.get("dry_run"):
+            self.bus.warning(
+                "当前不是管理员：如果 CS2/HLAE 是以管理员运行，Windows UIPI "
+                "会拦截模拟按键，日志会显示“已发送”但运镜/切人可能不触发。"
+                "请右键以管理员身份重新启动本程序。"
+            )
 
     def stop(self) -> None:
         if not self._running and self.server is None:
@@ -2398,6 +2422,8 @@ class DirectorEngine:
             "triggers": dict(self.triggers.counts),
             "spectating": False,
             "candidates": 0,
+            "admin": is_admin(),
+            "cuts_10s": self._recent_cut_count(now),
             "story": self.story.state.to_dict(),
             "story_text": self.story.state.story,
             "metrics": (self.timeline.session_metrics()
@@ -2651,7 +2677,8 @@ class DirectorEngine:
                     why = f"默认 {side}" if spawn_default else f"上回合 {side} 胜"
                     self.bus.info(
                         f"回合开始（{snap.phase}），{why}，"
-                        f"已发送 HLAE {side} 出生点运镜：{hotkey}（{mode_txt}）"
+                        f"已发送 HLAE {side} 出生点运镜：{hotkey}（{mode_txt}）；"
+                        f"若画面未变化：确认以管理员运行，或把该项改为单次再试"
                     )
                     if self.timeline is not None:
                         self.timeline.begin_cinematic(
@@ -2665,6 +2692,7 @@ class DirectorEngine:
                     self.bus.info(
                         f"炸弹剩余 {cd:.1f}s，{site} 包点，已发送 HLAE 包点运镜：{hotkey}（{mode_txt}）"
                         + (f"（AI 切换让位 {grace:.1f}s）" if grace > 0 else "")
+                        + "；若画面未变化：确认管理员权限/单次双击"
                     )
                     if self.timeline is not None:
                         self.timeline.begin_cinematic(
@@ -2677,6 +2705,84 @@ class DirectorEngine:
                 if now - self._last_trigger_fail > 3.0:
                     self._last_trigger_fail = now
                     self.bus.warning(f"{ev.kind} 运镜快捷键发送失败，稍后重试（窗口未聚焦？）")
+
+    def _effective_min_shot(self) -> float:
+        try:
+            dwell = max(0.2, float(self.cfg.get("min_dwell_seconds", 1.0)))
+            shot = max(0.0, float(self.cfg.get("min_shot_duration", 2.0)))
+            return max(dwell, shot)
+        except (TypeError, ValueError):
+            return 2.0
+
+    def _max_cuts(self) -> int:
+        try:
+            return max(0, int(float(self.cfg.get("max_cuts_per_10s", 3))))
+        except (TypeError, ValueError):
+            return 3
+
+    def _recent_cut_count(self, now: float) -> int:
+        cutoff = now - 10.0
+        while self._cut_times and self._cut_times[0] < cutoff:
+            self._cut_times.popleft()
+        return len(self._cut_times)
+
+    def _note_cut(self, now: float) -> None:
+        self._cut_times.append(now)
+        self._recent_cut_count(now)
+        if len(self._cut_times) > 100:
+            self._cut_times = deque(list(self._cut_times)[-100:])
+
+    def _current_fight_lock(self, snap: Snapshot, now: float) -> bool:
+        """当前 POV 正在交火/拆包时，不允许切走。
+
+        交火判定不依赖“是否在候选名单里”，只看当前观察者：
+        - 当前玩家正在拆包 → 锁定；
+        - 敌人进入当前武器射程包络，且任一方近期掉血 → 锁定；
+        - 双方都朝对方瞄准（aim_factor 都过阈值）→ 锁定。
+        GSI 不提供攻击者，因此用“距离 + 最近掉血 + 双向瞄准”做保守近似。
+        """
+        if not bool(self.cfg.get("fight_lock_enabled", True)):
+            return False
+        slot = snap.observer_slot
+        if slot is None:
+            slot = self._last_switch_slot
+        if slot is None:
+            return False
+        current = next(
+            (p for p in snap.players.values() if p.slot == slot), None)
+        if current is None or current.health <= 0 or not current.pos:
+            return False
+        if current.defusing:
+            return True
+        prof = weapon_profile(current)
+        try:
+            range_scale = max(0.4, min(
+                2.0, float(self.cfg.get("engage_range", 1500.0)) / 1500.0))
+            fov = float(self.cfg.get("aim_fov_deg", 70.0))
+            aim_threshold = max(0.3, min(
+                1.0, float(self.cfg.get("fight_lock_aim", 0.60))))
+        except (TypeError, ValueError):
+            range_scale, fov, aim_threshold = 1.0, 70.0, 0.60
+        envelope = prof.envelope * range_scale
+        vlimit = _vertical_limit(self.cfg, snap.map_name)
+        for enemy in snap.players.values():
+            if enemy.health <= 0 or enemy.team == current.team:
+                continue
+            if not enemy.pos:
+                continue
+            d = _dist(current.pos, enemy.pos)
+            if d is None or d > envelope:
+                continue
+            if abs(current.pos[2] - enemy.pos[2]) > vlimit:
+                continue
+            if (self._damage_recent(current.steamid)
+                    or self._damage_recent(enemy.steamid)):
+                return True
+            aim_c = aim_factor(current, enemy, fov)
+            aim_e = aim_factor(enemy, current, fov)
+            if min(aim_c, aim_e) >= aim_threshold:
+                return True
+        return False
 
     def _death_fallback_slot(self, snap: Snapshot,
                              cands: list[Candidate]) -> Optional[int]:
@@ -2777,6 +2883,28 @@ class DirectorEngine:
                     cands = [cands[idx]] + cands[:idx] + cands[idx + 1:]
         status["candidates"] = len(cands)
         death_slot = self._death_fallback_slot(snap, cands)
+
+        # 专业导播约束：交火锁定 > 最短停留 > 10 秒切率上限。
+        # 当前观察者阵亡时允许立即回切（death_slot 非空），避免停在尸体。
+        if death_slot is None:
+            if self._current_fight_lock(snap, now):
+                status["reason"] = "当前镜头正在交火，保持不切"
+                if now - self._last_fight_lock_log > 3.0:
+                    self._last_fight_lock_log = now
+                    self.bus.info(
+                        "当前 POV 正在交火/拆包，保持镜头不切换。")
+                self._last_reason = status["reason"]
+                return
+            min_shot = self._effective_min_shot()
+            if (self._last_switch_at is not None
+                    and now - self._last_switch_at < min_shot):
+                status["reason"] = f"镜头最短停留 {min_shot:.1f}s"
+                return
+            max_cuts = self._max_cuts()
+            if max_cuts > 0 and self._recent_cut_count(now) >= max_cuts:
+                status["reason"] = f"10 秒内切换已达上限（{max_cuts} 次）"
+                return
+
         if not cands:
             if (death_slot is not None and death_slot != snap.observer_slot
                     and now >= self._press_retry_after):
@@ -2796,6 +2924,7 @@ class DirectorEngine:
                     if self.input.press_slot(death_slot):
                         self._last_switch_at = now
                         self._last_switch_slot = death_slot
+                        self._note_cut(now)
                         status["target"] = death_slot
                         status["reason"] = "观战对象已阵亡，切到最近敌人"
                         if self.timeline is not None:
@@ -2862,6 +2991,7 @@ class DirectorEngine:
             if ok:
                 self._last_switch_at = now
                 self._last_switch_slot = decision.slot
+                self._note_cut(now)
                 status["target"] = decision.slot
                 status["target_name"] = cand.name if cand else ""
                 if decision.source == "death":
@@ -4337,6 +4467,8 @@ class DirectorApp:
                  f"    决策样本：{decision.get('rows', 0)}（正 {decision.get('positive', 0)}）"
                  f"    随机森林：{model_txt}"
                  f"    运镜：出生点 {trig.get('round', 0)} 次 / 包点 {trig.get('bomb', 0)} 次"
+                 f"    10s切换 {st.get('cuts_10s', 0)} 次"
+                 f"    权限：{'管理员' if st.get('admin') else '普通'}"
                  + (f"    运镜保护 {st.get('bomb_cam_for', 0):.1f}s" if st.get("bomb_cam_for", 0) > 0 else "")
         )
         self.lbl_reason.configure(
