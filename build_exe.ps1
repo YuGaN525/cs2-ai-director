@@ -7,7 +7,9 @@ Set-Location $PSScriptRoot
 python -m pip install --upgrade pyinstaller
 python -m PyInstaller `
   --noconfirm --clean --onefile --windowed `
-  --name CS2AIDirector `
+  --name Yuzi_CS2_AIDirector `
+  --icon "assets\yuzi.ico" `
+  --add-data "assets;assets" `
   --hidden-import obsws_python `
   --hidden-import websocket `
   --collect-submodules obsws_python `
@@ -18,7 +20,7 @@ python -m PyInstaller `
   --exclude-module matplotlib `
   cs2_ai_director.py
 
-$exe = Join-Path $PSScriptRoot "dist\CS2AIDirector.exe"
+$exe = Join-Path $PSScriptRoot "dist\Yuzi_CS2_AIDirector.exe"
 if (!(Test-Path $exe)) { throw "Build failed: $exe not found" }
 Write-Host ""
 Write-Host "Built: $exe"

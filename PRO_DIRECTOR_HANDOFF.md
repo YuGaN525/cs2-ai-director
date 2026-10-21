@@ -1,8 +1,8 @@
 # CS2 AI 专业导播 — 目标、开发日志与关键词
 
 最后更新：2026-10-21  
-当前主程序源码：**v1.10.5（Phase 0/1 + 映射修正 + 防碎切 + MulNX 时序；已移除 FFmpeg 回放/改名；窗口标题 v1.10.5）**  
-当前训练器：**v1.1.0（共享核心已同步 v1.10.5；模型/特征未变）**  
+当前主程序源码：**v1.10.6（Yuzi_CS2_AIDirector；Phase 0/1 + 映射/防碎切/MulNX 时序；窗口标题 v1.10.6）**  
+当前训练器：**v1.1.1（Yuzi_CS2_AIDecisionTrainer；共享核心已同步 v1.10.6）**  
 现有通用交接：`HANDOFF.md`
 
 > **v1.10.5 已移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名。**
@@ -509,7 +509,7 @@ manual_override
 - README.md
 
 当前系统：
-- 主程序源码 v1.10.5，训练器 v1.1.0；
+- 主程序源码 v1.10.6，训练器 v1.1.1；
 - 已具备 GSI/POV/HLAE/事件动作/OBS/决策日志/RF-ExtraTrees；
 - v1.10 Phase 1 已有镜头 timeline、六项指标、回合故事状态；
 - 仍是反应式 POV 切换器，没有镜头候选/调度器；
@@ -584,7 +584,7 @@ reason / end_reason / source / manual / story`。
    `OVERVIEW` 只定义类型，尚未接入实际机位；FFmpeg 回放已移除。
 2. 经济分档是近似：freezetime 用金钱（可能在买入过程中），live 用武器+护甲平均档位。
 3. 指标是启发式统计，未经真实比赛人工标注校准；不要用它直接下“比 v1.9 更好”的结论。
-4. 训练器仓库已于 `077a17c` 同步 `director_story.py` + `cs2_ai_director.py` + `director_pro.py`（含 v1.10.5 回放/改名移除）；训练器 exe 未重建，指标未进入训练特征。
+4. 训练器仓库已同步 v1.10.6 共享核心并发布 v1.1.1 品牌化 exe；指标仍未进入训练特征。
 
 ### 14.5 v1.10.2：observer_slot/按键映射修正
 
@@ -626,7 +626,15 @@ MulNX 的 `InputSystem::UpdateKeysState` 每 10ms 调 `GetAsyncKeyState`：
 - timeline 删除未使用的 REPLAY 类型；OBS WebSocket 场景/媒体控制保留；
 - 94 项测试通过。
 
-### 14.9 下一步（Phase 2）
+### 14.9 v1.10.6：Yuzi 品牌化
+
+- 主程序名：Yuzi_CS2_AIDirector；训练器名：Yuzi_CS2_AIDecisionTrainer；
+- 窗口标题/页头/图标统一使用鱼籽杯 logo；
+- 深色页头 + 暖色卡片式 UI，设置/专业导播页支持滚动；
+- 数据目录仍为 %APPDATA%\CS2AIDirector，避免破坏现有配置与训练器路径；
+- 逻辑/评分/模型未改；96 项测试通过。
+
+### 14.10 下一步（Phase 2）
 
 - 把 `StoryState` + `ShotTimeline` 作为输入，生成 `ShotCandidate`（POV/BOMB/OVERVIEW/不切）；
 - 先实现最短停留、最大切率、切换成本、事件优先级；

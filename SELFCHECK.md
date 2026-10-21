@@ -17,7 +17,8 @@
 - **v1.10.2 增量（2026-10-21）**：按完整实测表更正为键 N→slot (N-1) mod 10（键1→slot0、键0→slot9）。
 - **v1.10.3 增量（2026-10-21）**：防碎切（最短停留 2s、10 秒最多 3 次）、当前 POV 交火/拆包锁定、HLAE 管理员权限诊断。
 - **v1.10.4 增量（2026-10-21）**：适配 MulNX 的 200ms 连击缓冲，Alt 在最后按键后保持 300ms。
-- **v1.10.5 增量（2026-10-21）**：移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名；当前测试 94 项。
+- **v1.10.5 增量（2026-10-21）**：移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名。
+- **v1.10.6 增量（2026-10-21）**：品牌化 Yuzi_CS2_AIDirector / Yuzi_CS2_AIDecisionTrainer，鱼籽杯图标与 UI 美化；当前测试 96 项。
 
 ---
 
@@ -396,7 +397,7 @@ ruff: All checks passed!
 
 ```text
 PyInstaller 6.22.3 / Python 3.14.0 / Windows x64
-dist\CS2AIDirector.exe  约 35 MB
+dist\Yuzi_CS2_AIDirector.exe  约 35 MB
 启动后窗口标题：CS2 AI 导播 v1.9.0
 依赖状态：pydirectinput / keyboard / pygetwindow / openai / tkinter 均通过
 ```
@@ -414,7 +415,7 @@ dist\CS2AIDirector.exe  约 35 MB
 - exe 未数字签名，SmartScreen 会提示；
 - 打包后的管理员权限需要右键运行（键盘钩子/前台激活更稳）；
 - 打包后的 OBS 真实连接、FFmpeg 实际剪辑尚未在本机联调（OBS 未开 WebSocket、ffmpeg 未安装）；
-- 训练脚本不在主 exe 内；现已提供独立的 `CS2AIDecisionTrainer.exe`。
+- 训练脚本不在主 exe 内；现已提供独立的 `Yuzi_CS2_AIDecisionTrainer.exe`。
 
 ---
 
@@ -429,8 +430,8 @@ https://github.com/YuGaN525/cs2-ai-decision-trainer
 ### 15.1 产物
 
 ```text
-dist\CS2AIDecisionTrainer.exe  约 179 MB（onefile，内置 sklearn + demoparser2 + pandas）
-dist\CS2AIDirector.exe         约 35 MB（不打包 sklearn）
+dist\Yuzi_CS2_AIDecisionTrainer.exe  约 179 MB（onefile，内置 sklearn + demoparser2 + pandas）
+dist\Yuzi_CS2_AIDirector.exe         约 35 MB（不打包 sklearn）
 ```
 
 训练器默认：
@@ -453,11 +454,11 @@ dist\CS2AIDirector.exe         约 35 MB（不打包 sklearn）
 已实测：
 
 ```text
-dist\CS2AIDecisionTrainer.exe --cli --csv ... --out ... --min-samples 100 --trees 50
+dist\Yuzi_CS2_AIDecisionTrainer.exe --cli --csv ... --out ... --min-samples 100 --trees 50
 exit=0
 生成 decision_model.pkl / decision_model.json.gz / metrics.json
 
-dist\CS2AIDecisionTrainer.exe --cli --demos "...4081612816...dem" --min-samples 300
+dist\Yuzi_CS2_AIDecisionTrainer.exe --cli --demos "...4081612816...dem" --min-samples 300
 exit=0
 demo_decisions.csv：544 行 / 105 个击杀事件
 decision_model.json.gz：31 KB
@@ -535,7 +536,7 @@ OK
 
 ```text
 PyInstaller 6.22.3 / Python 3.14.0 / Windows x64
-dist\CS2AIDirector.exe
+dist\Yuzi_CS2_AIDirector.exe
 大小：35,036,402 字节
 SHA256：A5E5104470C8D79CCBE56A7D4310AE9F74873E3CD5EF752B6A601AB053604F17
 启动窗口标题：CS2 AI 导播 v1.10.0
@@ -597,7 +598,7 @@ ruff F/E9: All checks passed!
 ### 17.4 exe
 
 ```text
-dist\CS2AIDirector.exe
+dist\Yuzi_CS2_AIDirector.exe
 大小：35,036,437 字节
 SHA256：2EFCEDA544B23DD1359E5E66F78EE704748796706F0B7FC17D1B9E5104C03AB1
 窗口标题：CS2 AI 导播 v1.10.2
@@ -647,7 +648,7 @@ ruff F/E9: All checks passed!
 ### 18.4 exe / Release
 
 ```text
-dist\CS2AIDirector.exe
+dist\Yuzi_CS2_AIDirector.exe
 大小：35,040,575 字节
 SHA256：1B2AC658DF9373D464D4A1D2C8C0C1DC2AFC5FABCC3458E14EF370123DD63D2D
 窗口标题：CS2 AI 导播 v1.10.3
@@ -714,7 +715,7 @@ ruff F/E9: All checks passed!
 ### 19.5 exe / Release
 
 ```text
-dist\CS2AIDirector.exe（已替换为 v1.10.4）
+dist\Yuzi_CS2_AIDirector.exe（已替换为 v1.10.4）
 大小：35,039,316 字节
 SHA256：358364B65296961C014C5764F37C6C95886F4A76BBC19FC35DDEE133B596D2D1
 窗口标题：CS2 AI 导播 v1.10.4
@@ -723,7 +724,7 @@ SHA256：358364B65296961C014C5764F37C6C95886F4A76BBC19FC35DDEE133B596D2D1
 Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.4
 
 > 构建时旧 v1.10.3 仍在运行，因此先把新 exe 构建为 `CS2AIDirector_v1104.exe`，
-> 再复制替换为 `CS2AIDirector.exe`；旧文件备份为 `CS2AIDirector_v1103_backup.exe`。
+> 再复制替换为 `Yuzi_CS2_AIDirector.exe`；旧文件备份为 `CS2AIDirector_v1103_backup.exe`。
 > 正在运行的旧进程需要关闭并重新启动才会使用 v1.10.4。
 
 ---
@@ -762,7 +763,7 @@ GUI 构造 smoke test: GUI_OK 1.10.5
 ### 20.3 exe / Release
 
 ```text
-dist\CS2AIDirector.exe（已替换为 v1.10.5）
+dist\Yuzi_CS2_AIDirector.exe（已替换为 v1.10.5）
 大小：35,026,519 字节
 SHA256：373B53E613AB74823EB65990B86F9DC9F90C0C9698D2C8696E9E6EAF9207BC30
 窗口标题：CS2 AI 导播 v1.10.5
@@ -771,6 +772,57 @@ SHA256：373B53E613AB74823EB65990B86F9DC9F90C0C9698D2C8696E9E6EAF9207BC30
 Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.5
 
 > 旧 v1.10.4 exe 备份为 `dist\CS2AIDirector_v1104_backup.exe`。
+
+---
+
+## 21. v1.10.6：Yuzi 品牌化与界面美化
+
+### 21.1 命名
+
+| 项目 | 新名称 |
+|---|---|
+| 导播主程序 | Yuzi_CS2_AIDirector |
+| 导播训练器 | Yuzi_CS2_AIDecisionTrainer |
+| 导播 exe | dist\Yuzi_CS2_AIDirector.exe |
+| 训练器 exe | dist\Yuzi_CS2_AIDecisionTrainer.exe |
+
+数据目录仍为 %APPDATA%\CS2AIDirector，避免破坏现有配置、决策 CSV 和训练器路径。
+
+### 21.2 图标与界面
+
+- 新增 assets/yuzi_logo.png、yuzi_logo_76.png、yuzi_logo_64.png、yuzi.ico；
+- 源图为鱼籽杯 logo，白底已转为透明，生成多尺寸 ICO；
+- 主程序/训练器窗口图标、PyInstaller exe 图标均使用该图；
+- 深色页头 + 暖色卡片式 ttk 主题；主程序设置/专业导播页支持滚轮滚动；
+- 训练器同样使用深色页头、暖色卡片和统一按钮样式。
+
+### 21.3 构建
+
+```text
+主程序：
+dist\Yuzi_CS2_AIDirector.exe
+大小：35,947,532 字节
+SHA256：D8DB8899A2B2EF8017EAA5A97EB7C3EE4917C8CFEA1BB929E2F9B8D7B813A16B
+窗口：Yuzi_CS2_AIDirector v1.10.6 · CS2 AI 专业导播
+
+训练器：
+dist\Yuzi_CS2_AIDecisionTrainer.exe
+大小：179,769,400 字节
+SHA256：52F76BFEEA971DE7DF21B3536AF9C91E549C227D476418C18F54FCCEB10B2546
+窗口：Yuzi_CS2_AIDecisionTrainer v1.1.1 · CS2 AI 决策模型训练器
+```
+
+### 21.4 验证
+
+```text
+python -m unittest test_cs2_ai_director
+Ran 96 tests ... OK
+
+ruff F/E9: All checks passed!
+主/训练器 GUI 构造 smoke test: OK
+```
+
+新增测试：品牌名称、logo/ico 资源存在。
 
 ## 12. v1.8：专业导播整合
 

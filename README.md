@@ -1,6 +1,6 @@
-# CS2 AI 导播（CS2 AI Director）
+# Yuzi_CS2_AIDirector
 
-一个只读取 CS2 GSI 数据的自动观战导播：
+**Yuzi Cup 专用 CS2 AI 专业导播** —— 只读取 CS2 GSI 数据的自动观战导播：
 
 - 规则引擎（可选 DeepSeek 仲裁）自动切到“未来 1–3 秒最可能拿到击杀”的选手第一视角；
 - `freezetime` 按上一回合胜方触发 CT 或 T 出生点运镜宏；
@@ -13,6 +13,7 @@
 - **v1.10.3**：防碎切（最短停留 2s + 10 秒切率上限 3）+ 当前 POV 交火/拆包锁定不切；HLAE 增加管理员权限检测与提示；
 - **v1.10.4**：适配 MulNX 的 200ms 连击缓冲——最后一次按键后 Alt 保持 300ms 再松开，修复“日志已发送但运镜不触发”；
 - **v1.10.5**：移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名；只保留 OBS 场景/媒体事件动作；
+- **v1.10.6**：品牌化为 `Yuzi_CS2_AIDirector` / `Yuzi_CS2_AIDecisionTrainer`，加入鱼籽杯图标、深色页头与卡片式界面；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -25,9 +26,9 @@
 
 | 程序 | 用途 |
 |---|---|
-| `CS2AIDirector.exe` | AI 导播主程序 v1.10.5，约 35 MB（Release v1.10.5） |
+| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.6，约 36 MB（Release v1.10.6） |
 
-当前本地构建：35,026,519 字节，SHA256 `373B53E613AB74823EB65990B86F9DC9F90C0C9698D2C8696E9E6EAF9207BC30`。
+当前本地构建：35,947,532 字节，SHA256 `D8DB8899A2B2EF8017EAA5A97EB7C3EE4917C8CFEA1BB929E2F9B8D7B813A16B`。
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -43,7 +44,7 @@ https://github.com/YuGaN525/cs2-ai-decision-trainer
 训练器支持 `decisions.csv` 和 `.dem`，输出 `decision_model.json.gz`。
 主程序每 5 秒检测文件更新，训练完无需重启；也可在“专业导播 → 重新加载模型”。
 
-v1.10.4 的共享核心（`director_story.py` / `cs2_ai_director.py`）已同步到训练器仓库；
+v1.10.6 的共享核心（`director_story.py` / `cs2_ai_director.py`）已同步到训练器仓库；
 但 `kill_coverage` 等六项指标只用于评估，不进入 8 特征击杀预测模型，也不需要重训。
 
 自行重新打包主程序：
@@ -52,7 +53,7 @@ v1.10.4 的共享核心（`director_story.py` / `cs2_ai_director.py`）已同步
 powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
 ```
 
-产物：`dist\CS2AIDirector.exe`。
+产物：`dist\Yuzi_CS2_AIDirector.exe`。
 
 ## 1. 环境与安装
 
@@ -184,7 +185,7 @@ GUI 的“从 demo 训练…”按钮执行同一脚本；训练后重启导播�
 行内包含目标 slot、规则分、8 个候选特征；3 秒后按目标选手的 `round_totaldmg` / `round_kills`
 增量回填 `label`（1=造成伤害或击杀，0=没有）。样本达到 1000 条后：
 
-训练器已拆到独立仓库，下载 `CS2AIDecisionTrainer.exe`：
+训练器已拆到独立仓库，下载 `Yuzi_CS2_AIDecisionTrainer.exe`：
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
@@ -449,7 +450,7 @@ story         当时的回合故事快照
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 94 项（不启动 GUI、不发真实按键）
+- `test_cs2_ai_director.py`：核心逻辑测试，共 96 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS WebSocket 场景/媒体控制
 - `director_story.py`：镜头时间线、六项专业指标、回合故事状态（Phase 1）
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁

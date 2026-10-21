@@ -48,9 +48,21 @@ from typing import Any, Callable, Optional
 # 0. 基本常量 / 可选依赖
 # --------------------------------------------------------------------------
 
+# APP_NAME is the data/config folder name. Keep it unchanged so existing
+# %APPDATA% data and the trainer keep working.
 APP_NAME = "CS2AIDirector"
-APP_TITLE = "CS2 AI 导播"
-VERSION = "1.10.5"
+APP_TITLE = "Yuzi_CS2_AIDirector"
+APP_SUBTITLE = "CS2 AI 专业导播"
+VERSION = "1.10.6"
+
+UI_BG = "#f2ead9"
+UI_CARD = "#fffdf8"
+UI_INK = "#20242a"
+UI_MUTED = "#6f6a60"
+UI_GOLD = "#b8862f"
+UI_GOLD_DARK = "#7a561c"
+UI_HEADER = "#171a20"
+UI_BORDER = "#e2d6bf"
 IS_WINDOWS = os.name == "nt"
 
 GSI_CFG_NAME = "gamestate_integration_ai_director.cfg"
@@ -254,6 +266,12 @@ def app_data_dir() -> Path:
     p = Path(base) / APP_NAME
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def asset_path(name: str) -> Path:
+    """Resolve bundled assets in source and PyInstaller onefile modes."""
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return base / "assets" / name
 
 
 def config_path() -> Path:
@@ -3251,6 +3269,41 @@ def detect_cs2_executables() -> list[Path]:
 # 14. GUI
 # --------------------------------------------------------------------------
 
+class _ScrollableFrame(ttk.Frame):
+    """Vertically scrollable tab page; keeps settings usable on 1080p."""
+
+    def __init__(self, parent: Any) -> None:
+        super().__init__(parent)
+        self.canvas = tk.Canvas(self, bg=UI_CARD, highlightthickness=0, bd=0)
+        self.scrollbar = ttk.Scrollbar(
+            self, orient="vertical", command=self.canvas.yview)
+        self.inner = ttk.Frame(self.canvas, padding=10)
+        self._window = self.canvas.create_window(
+            (0, 0), window=self.inner, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+        self.inner.bind("<Configure>", self._on_inner_configure)
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+        self.inner.bind("<Enter>", self._bind_wheel)
+        self.inner.bind("<Leave>", self._unbind_wheel)
+
+    def _on_inner_configure(self, _event: Any) -> None:
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _on_canvas_configure(self, event: Any) -> None:
+        self.canvas.itemconfigure(self._window, width=event.width)
+
+    def _bind_wheel(self, _event: Any) -> None:
+        self.canvas.bind_all("<MouseWheel>", self._on_wheel)
+
+    def _unbind_wheel(self, _event: Any) -> None:
+        self.canvas.unbind_all("<MouseWheel>")
+
+    def _on_wheel(self, event: Any) -> None:
+        self.canvas.yview_scroll(int(-event.delta / 120), "units")
+
+
 class DirectorApp:
     def __init__(self, cfg: dict[str, Any]) -> None:
         self.cfg = cfg
@@ -3268,11 +3321,12 @@ class DirectorApp:
         self._last_model_check = 0.0
 
         self.root = tk.Tk()
-        self.root.title(f"{APP_TITLE} v{VERSION}")
-        self.root.geometry("1000x860")
-        self.root.minsize(900, 810)
+        self.root.title(f"{APP_TITLE} v{VERSION} · {APP_SUBTITLE}")
+        self.root.geometry("1060x940")
+        self.root.minsize(960, 860)
         self.root.report_callback_exception = self._on_tk_exception
         self._init_style()
+        self._set_window_icon()
 
         self.var_exe = tk.StringVar(value=str(cfg.get("cs2_exe", "")))
 
@@ -3338,10 +3392,76 @@ class DirectorApp:
 
     def _init_style(self) -> None:
         try:
+            self.root.configure(bg=UI_BG)
             self.root.option_add("*Font", ("Microsoft YaHei UI", 9))
             style = ttk.Style()
-            if "vista" in style.theme_names():
+            if "clam" in style.theme_names():
+                style.theme_use("clam")
+            elif "vista" in style.theme_names():
                 style.theme_use("vista")
+            style.configure(".", font=("Microsoft YaHei UI", 9),
+                            background=UI_CARD, foreground=UI_INK)
+            style.configure("TFrame", background=UI_CARD)
+            style.configure("TLabel", background=UI_CARD, foreground=UI_INK)
+            style.configure("Muted.TLabel", foreground=UI_MUTED)
+            style.configure("TLabelframe", background=UI_CARD,
+                            bordercolor=UI_BORDER, relief="solid", borderwidth=1)
+            style.configure("TLabelframe.Label", background=UI_CARD,
+                            foreground=UI_GOLD_DARK,
+                            font=("Microsoft YaHei UI", 10, "bold"))
+            style.configure("TNotebook", background=UI_BG, borderwidth=0,
+                            tabmargins=(0, 4, 0, 0))
+            style.configure("TNotebook.Tab", padding=(18, 8),
+                            background="#e8ddc9", foreground=UI_MUTED,
+                            font=("Microsoft YaHei UI", 9, "bold"))
+            style.map("TNotebook.Tab",
+                      background=[("selected", UI_CARD)],
+                      foreground=[("selected", UI_GOLD_DARK)])
+            style.configure("TButton", padding=(10, 5), background="#efe4cf",
+                            foreground=UI_INK, bordercolor=UI_BORDER)
+            style.map("TButton",
+                      background=[("active", "#e1d0af"), ("disabled", "#eee7da")],
+                      foreground=[("disabled", "#a09a90")])
+            style.configure("Accent.TButton", background=UI_GOLD,
+                            foreground="#171a20",
+                            font=("Microsoft YaHei UI", 9, "bold"))
+            style.map("Accent.TButton",
+                      background=[("active", "#c99a44"),
+                                  ("disabled", "#d8c8a8")])
+            style.configure("Stop.TButton", background="#8b2e2e",
+                            foreground="#ffffff")
+            style.map("Stop.TButton",
+                      background=[("active", "#a53b3b"),
+                                  ("disabled", "#d9c7c7")])
+            style.configure("TEntry", fieldbackground="#ffffff",
+                            bordercolor=UI_BORDER)
+            style.configure("TCombobox", fieldbackground="#ffffff",
+                            background="#ffffff", bordercolor=UI_BORDER)
+            style.configure("TCheckbutton", background=UI_CARD,
+                            foreground=UI_INK)
+            style.configure("Treeview", background="#ffffff",
+                            fieldbackground="#ffffff", rowheight=24,
+                            bordercolor=UI_BORDER)
+            style.configure("Treeview.Heading", background="#efe4cf",
+                            foreground=UI_GOLD_DARK,
+                            font=("Microsoft YaHei UI", 9, "bold"))
+            style.map("Treeview", background=[("selected", "#e8d5ad")],
+                      foreground=[("selected", UI_INK)])
+        except Exception:
+            pass
+
+    def _set_window_icon(self) -> None:
+        try:
+            ico = asset_path("yuzi.ico")
+            if ico.is_file():
+                self.root.iconbitmap(str(ico))
+        except Exception:
+            pass
+        try:
+            png = asset_path("yuzi_logo_64.png")
+            if png.is_file():
+                self._icon_img = tk.PhotoImage(file=str(png))
+                self.root.iconphoto(True, self._icon_img)
         except Exception:
             pass
 
@@ -3523,7 +3643,8 @@ class DirectorApp:
     def _open_trainer(self) -> None:
         base = Path(sys.executable).parent if getattr(sys, "frozen", False) \
             else Path(__file__).parent
-        exe = base / "CS2AIDecisionTrainer.exe"
+        names = ("Yuzi_CS2_AIDecisionTrainer.exe", "CS2AIDecisionTrainer.exe")
+        exe = next((base / n for n in names if (base / n).is_file()), base / names[0])
         script = base / "trainer_gui.py"
         try:
             if exe.is_file():
@@ -3691,21 +3812,51 @@ class DirectorApp:
             row=4, column=3, sticky="e", padx=8, pady=(0, 6))
 
     def _build(self) -> None:
-        outer = ttk.Frame(self.root, padding=8)
+        outer = ttk.Frame(self.root, padding=0)
         outer.pack(fill="both", expand=True)
         outer.columnconfigure(0, weight=1)
-        outer.rowconfigure(0, weight=1)
+        outer.rowconfigure(1, weight=1)
+
+        header = tk.Frame(outer, bg=UI_HEADER, height=98)
+        header.grid(row=0, column=0, sticky="ew")
+        header.grid_propagate(False)
+        header_inner = tk.Frame(header, bg=UI_HEADER)
+        header_inner.pack(fill="both", expand=True, padx=18, pady=10)
+        try:
+            self._logo_img = tk.PhotoImage(file=str(asset_path("yuzi_logo_76.png")))
+            tk.Label(header_inner, image=self._logo_img, bg=UI_HEADER).pack(
+                side="left", padx=(0, 14))
+        except Exception:
+            self._logo_img = None
+        title_box = tk.Frame(header_inner, bg=UI_HEADER)
+        title_box.pack(side="left", fill="y")
+        tk.Label(title_box, text=APP_TITLE, bg=UI_HEADER, fg="#f0c46a",
+                 font=("Microsoft YaHei UI", 18, "bold")).pack(
+            side="top", anchor="w", pady=(4, 0))
+        tk.Label(title_box, text=f"{APP_SUBTITLE}  ·  v{VERSION}",
+                 bg=UI_HEADER, fg="#b9b2a5",
+                 font=("Microsoft YaHei UI", 9)).pack(side="top", anchor="w", pady=(2, 0))
+        tk.Label(header_inner, text="YUZI CUP  ·  DIRECTOR", bg=UI_HEADER,
+                 fg="#7f7769", font=("Segoe UI", 9, "bold")).pack(
+            side="right", anchor="e", padx=(0, 4))
+
+        body = ttk.Frame(outer, padding=10)
+        body.grid(row=1, column=0, sticky="nsew")
+        body.columnconfigure(0, weight=1)
+        body.rowconfigure(0, weight=1)
 
         # 设置 / 日志分页：设置页保持紧凑，日志页占满剩余高度。
-        notebook = ttk.Notebook(outer)
+        notebook = ttk.Notebook(body)
         self.notebook = notebook
         notebook.grid(row=0, column=0, sticky="nsew")
-        settings = ttk.Frame(notebook, padding=8)
-        pro_page = ttk.Frame(notebook, padding=8)
-        pro_logs = ttk.Frame(notebook, padding=6)
-        logs = ttk.Frame(notebook, padding=6)
-        notebook.add(settings, text=" 设置 ")
-        notebook.add(pro_page, text=" 专业导播 ")
+        settings_scroll = _ScrollableFrame(notebook)
+        pro_scroll = _ScrollableFrame(notebook)
+        settings = settings_scroll.inner
+        pro_page = pro_scroll.inner
+        pro_logs = ttk.Frame(notebook, padding=8)
+        logs = ttk.Frame(notebook, padding=8)
+        notebook.add(settings_scroll, text=" 设置 ")
+        notebook.add(pro_scroll, text=" 专业导播 ")
         notebook.add(pro_logs, text=" 导播日志 ")
         notebook.add(logs, text=" 日志 ")
         settings.columnconfigure(0, weight=1)
@@ -3830,18 +3981,21 @@ class DirectorApp:
         ttk.Button(row, text="安装缺失依赖", command=self._install_deps_async).pack(side="left", padx=6)
 
         # 6) 控制条（始终可见）
-        ctrl = ttk.Frame(outer)
-        ctrl.grid(row=1, column=0, sticky="ew", pady=(8, 6))
-        self.btn_start = ttk.Button(ctrl, text="▶ 启动导播", command=self._start)
+        ctrl = ttk.Frame(body)
+        ctrl.grid(row=1, column=0, sticky="ew", pady=(10, 6))
+        self.btn_start = ttk.Button(
+            ctrl, text="▶ 启动导播", command=self._start, style="Accent.TButton")
         self.btn_start.pack(side="left")
-        self.btn_stop = ttk.Button(ctrl, text="■ 停止", command=self._stop, state="disabled")
+        self.btn_stop = ttk.Button(
+            ctrl, text="■ 停止", command=self._stop, state="disabled",
+            style="Stop.TButton")
         self.btn_stop.pack(side="left", padx=6)
         ttk.Button(ctrl, text="保存配置", command=self._save_only).pack(side="left")
-        self.lbl_conn = ttk.Label(ctrl, text="GSI：未启动", foreground="#1a4f8a")
+        self.lbl_conn = ttk.Label(ctrl, text="GSI：未启动", foreground=UI_GOLD_DARK)
         self.lbl_conn.pack(side="right")
 
         # 7) 运行状态（始终可见）
-        status_box = ttk.LabelFrame(outer, text=" 运行状态 ", padding=8)
+        status_box = ttk.LabelFrame(body, text=" 运行状态 ", padding=10)
         status_box.grid(row=2, column=0, sticky="ew")
         status_box.columnconfigure(0, weight=1)
         self.lbl_play = ttk.Label(status_box, text="阶段：-    当前视角：-    AI 目标：-",
