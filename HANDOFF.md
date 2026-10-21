@@ -36,8 +36,8 @@ CS2 观战/转播导播工具，核心目标：
 https://github.com/YuGaN525/cs2-ai-director
 
 - 当前源码版本：`v1.10.0`（Phase 1）
-- 最新提交：`b78bbd3 Add Phase 1 shot timeline, pro metrics, and round story`
-- 源码已推送到 `origin/main`（2026-10-21）
+- Phase 1 源码提交：`b78bbd3 Add Phase 1 shot timeline, pro metrics, and round story`
+- 源码已推送到 `origin/main`（2026-10-21；后续文档元数据提交紧随其后）
 - 上一 Release：`v1.9.0`（v1.10.0 exe 尚未上传 Release 资产）
 - 本地产物：`dist\CS2AIDirector.exe`
 - 大小：35,036,402 字节（约 35.0 MB）
