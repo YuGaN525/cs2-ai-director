@@ -42,7 +42,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.3 稳定性提交：`f2563e1 Reduce fragmented cuts and add fight lock`
 - v1.10.4 MulNX 时序提交：`7f6caf6 Hold Alt for MulNX combo buffer`
 - v1.10.5 功能精简提交：`0156527 Remove FFmpeg replay and player rename`
-- v1.10.6 品牌化提交：以 `git log` 中 `Brand as Yuzi_CS2_AIDirector` 为准
+- v1.10.6 品牌化提交：`ebcb74c Brand as Yuzi_CS2_AIDirector`
 - Release：`v1.10.6`
 - 资产：`Yuzi_CS2_AIDirector.exe`
 - 大小：35,947,532 字节（约 36.0 MB）
