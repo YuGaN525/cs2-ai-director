@@ -385,6 +385,34 @@ ruff: All checks passed!
 
 ---
 
+## 14. v1.9 exe 打包自检
+
+### 14.1 结果
+
+```text
+PyInstaller 6.22.3 / Python 3.14.0 / Windows x64
+dist\CS2AIDirector.exe  约 35 MB
+启动后窗口标题：CS2 AI 导播 v1.9.0
+依赖状态：pydirectinput / keyboard / pygetwindow / openai / tkinter 均通过
+```
+
+### 14.2 打包策略
+
+- onefile + windowed（无控制台）；
+- 内置 `obsws_python` / websocket；
+- 排除 `sklearn` / `joblib` / `demoparser2` / pandas / matplotlib，控制体积；
+- 随机森林通过 `decision_model.json.gz` 纯 Python 加载，exe 不需要 sklearn；
+- 训练脚本仍需要 Python + scikit-learn。
+
+### 14.3 仍需确认
+
+- exe 未数字签名，SmartScreen 会提示；
+- 打包后的管理员权限需要右键运行（键盘钩子/前台激活更稳）；
+- 打包后的 OBS 真实连接、FFmpeg 实际剪辑尚未在本机联调（OBS 未开 WebSocket、ffmpeg 未安装）；
+- 训练脚本不在 exe 内，需单独运行 `train_decision_model.py`。
+
+---
+
 ## 12. v1.8：专业导播整合
 
 ### 12.1 来源与边界

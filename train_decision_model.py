@@ -26,6 +26,7 @@ from decision_model import (
     decision_csv_path,
     decision_metrics_path,
     decision_model_path,
+    export_forest,
 )
 
 
@@ -123,6 +124,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, out)
+    # exe 里不打包 scikit-learn，导播优先读这个纯 JSON 森林
+    json_out = (out.with_suffix(".json.gz") if out.suffix == ".pkl"
+                else out.with_name(out.stem + ".json.gz"))
+    export_forest(model, json_out)
     metrics = {
         "samples": len(ys),
         "positive": stats["positive"],
@@ -132,11 +137,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         "importance": {name: float(v) for name, v in importance},
         "csv": str(csv_path),
         "model": str(out),
+        "model_json": str(json_out),
     }
-    Path(args.metrics).write_text(
+    metrics_path = Path(args.metrics)
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    metrics_path.write_text(
         json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     print(f"\n模型已保存：{out}")
+    print(f"纯 Python 森林已保存：{json_out}")
     print(f"指标已保存：{args.metrics}")
     return 0
 

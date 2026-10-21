@@ -14,6 +14,8 @@
 from __future__ import annotations
 
 import csv
+import gzip
+import json
 import os
 import threading
 import time
@@ -47,6 +49,11 @@ def decision_csv_path() -> Path:
 
 def decision_model_path() -> Path:
     return _data_dir() / "decision_model.pkl"
+
+
+def decision_model_json_path() -> Path:
+    """纯 Python 可加载的随机森林导出；exe 不需要 scikit-learn。"""
+    return _data_dir() / "decision_model.json.gz"
 
 
 def decision_metrics_path() -> Path:
@@ -226,15 +233,42 @@ class DecisionLogger:
         }
 
 
+def export_forest(model: Any, path: Path) -> None:
+    """把 sklearn RandomForest 导出为纯 Python 可读的 gzip JSON。"""
+    trees = []
+    for est in model.estimators_:
+        t = est.tree_
+        trees.append({
+            "left": t.children_left.tolist(),
+            "right": t.children_right.tolist(),
+            "feature": t.feature.tolist(),
+            "threshold": t.threshold.tolist(),
+            "value": t.value[:, 0, :].tolist(),
+        })
+    data = {
+        "n_features": int(model.n_features_in_),
+        "classes": [int(c) for c in model.classes_],
+        "trees": trees,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(path, "wt", encoding="utf-8") as f:
+        json.dump(data, f, separators=(",", ":"))
+
+
 class ModelArbiter:
-    """加载 sklearn 模型；只在规则前两名分差 <= margin 时介入。"""
+    """加载随机森林；优先纯 JSON，只有旧 pkl 才需要 sklearn/joblib。"""
 
     def __init__(self, cfg: dict[str, Any], path: Optional[Path] = None) -> None:
         self.cfg = cfg
         self.path = path or decision_model_path()
+        self.json_path = (self.path.with_suffix(".json.gz")
+                          if self.path.suffix == ".pkl"
+                          else self.path.with_name(self.path.stem + ".json.gz"))
         self.model: Any = None
+        self.forest: Optional[dict[str, Any]] = None
         self.error = ""
         self.loaded = False
+        self.format = ""
         self.load()
 
     @property
@@ -243,9 +277,27 @@ class ModelArbiter:
 
     def load(self) -> bool:
         self.model = None
+        self.forest = None
         self.loaded = False
         self.error = ""
-        if not self.enabled or not self.path.is_file():
+        self.format = ""
+        if not self.enabled:
+            return False
+        if self.json_path.is_file():
+            try:
+                with gzip.open(self.json_path, "rt", encoding="utf-8") as f:
+                    data = json.load(f)
+                if int(data.get("n_features", 0)) != len(DECISION_FEATURES):
+                    raise ValueError("模型特征数不匹配")
+                if not data.get("trees"):
+                    raise ValueError("模型没有树")
+                self.forest = data
+                self.loaded = True
+                self.format = "json"
+                return True
+            except Exception as e:
+                self.error = str(e)
+        if not self.path.is_file():
             return False
         try:
             import joblib
@@ -254,17 +306,39 @@ class ModelArbiter:
             if int(n) != len(DECISION_FEATURES):
                 raise ValueError(f"模型特征数 {n} != {len(DECISION_FEATURES)}")
             self.loaded = True
+            self.format = "pkl"
             return True
         except Exception as e:
             self.error = str(e)
             self.model = None
             return False
 
+    def _forest_probability(self, x: list[float]) -> float:
+        assert self.forest is not None
+        total = 0.0
+        trees = self.forest.get("trees", [])
+        for tree in trees:
+            left = tree["left"]
+            right = tree["right"]
+            feature = tree["feature"]
+            threshold = tree["threshold"]
+            value = tree["value"]
+            node = 0
+            while left[node] != -1:
+                node = left[node] if x[feature[node]] <= threshold[node] else right[node]
+            counts = value[node]
+            denom = float(sum(counts))
+            total += (float(counts[1]) / denom) if denom > 0 else 0.0
+        return total / max(1, len(trees))
+
     def probability(self, c: Any) -> float:
         if not self.loaded:
             return 0.5
         try:
-            p = self.model.predict_proba([candidate_features(c)])[0]
+            x = candidate_features(c)
+            if self.forest is not None:
+                return self._forest_probability(x)
+            p = self.model.predict_proba([x])[0]
             return float(p[1])
         except Exception:
             return 0.5
@@ -297,6 +371,7 @@ class ModelArbiter:
         return {
             "enabled": self.enabled,
             "loaded": self.loaded,
-            "path": str(self.path),
+            "format": self.format,
+            "path": str(self.json_path if self.format == "json" else self.path),
             "error": self.error,
         }

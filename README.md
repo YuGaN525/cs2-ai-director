@@ -14,6 +14,25 @@
 
 ---
 
+## 0. 直接运行 exe（推荐）
+
+仓库 Release 提供 `CS2AIDirector.exe`（Windows x64，onefile）：
+
+- 不需要安装 Python；
+- 双击即可，建议右键“以管理员身份运行”；
+- 配置、日志、`decisions.csv`、`learner.json` 仍在 `%APPDATA%\CS2AIDirector\`；
+- 已内置 OBS WebSocket 依赖，但没有打包 scikit-learn；训练脚本仍用 Python 运行，导播通过
+  `decision_model.json.gz` 读取随机森林，不需要 sklearn；
+- 未签名，Windows SmartScreen 可能提示，选择“更多信息 → 仍要运行”。
+
+自行重新打包：
+
+```bat
+powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
+```
+
+产物：`dist\CS2AIDirector.exe`。
+
 ## 1. 环境与安装
 
 - Windows 10/11，Python 3.10+（本机验证：Python 3.14.0 / Windows 11）
@@ -333,6 +352,7 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁
 - `train_decision_model.py`：从 `decisions.csv` 训练随机森林
 - `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`
+- `build_exe.ps1`：PyInstaller 一键打包脚本
 - `SELFCHECK.md`：自检清单、修复记录与仍需实机验证的步骤
 - `frozen_v1.0.0/`：优化前冻结基线（含 SHA256）
 - `requirements.txt`：依赖
