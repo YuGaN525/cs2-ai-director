@@ -43,7 +43,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.4 MulNX 时序提交：`7f6caf6 Hold Alt for MulNX combo buffer`
 - v1.10.5 功能精简提交：`0156527 Remove FFmpeg replay and player rename`
 - v1.10.6 品牌化提交：`ebcb74c Brand as Yuzi_CS2_AIDirector`
-- v1.10.7 训练/仲裁优化：以 `git log` 中 `Align trainer with director arbitration` 为准
+- v1.10.7 训练/仲裁优化：`a49ddc3 Align trainer with director arbitration`
 - Release：`v1.10.7`
 - 资产：`Yuzi_CS2_AIDirector.exe`
 - 大小：35,949,026 字节（约 36.0 MB）
