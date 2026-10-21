@@ -22,7 +22,8 @@
 - **v1.10.7 增量（2026-10-21）**：训练器分组切分/模糊样本加权/top-1/伤害窗口标签；仲裁概率边际。
 - **v1.10.8 增量（2026-10-21）**：勾选框改原生 √；修复事件规则/OBS 配置同步；新增测试规则与 OBS 源/场景校验。
 - **v1.10.9 增量（2026-10-21）**：修复 map.phase=gameover 被 countdowns.phase=over 覆盖；增加 GSI 阶段切换日志。
-- **v1.10.10 增量（2026-10-21）**：GSI 无暂停状态，新增暂停热键/按钮手动派发 pause_started/pause_over；当前测试 104 项。
+- **v1.10.10 增量（2026-10-21）**：GSI 无暂停状态，新增暂停热键/按钮手动派发 pause_started/pause_over。
+- **v1.10.11 增量（2026-10-22）**：修复 over 阶段提前改 round 导致下一回合 live=0 空行/真实指标丢失；当前测试 105 项。
 
 ---
 
@@ -1004,6 +1005,73 @@ CS2 GSI 的 map.phase/round.phase/phase_countdowns 都没有稳定的
 Yuzi_CS2_AIDirector.exe v1.10.10
 大小：35,954,376 字节
 SHA256：6F41A0683367F474CAAF14A9C316897FB8B3BFB0E35456A1662BC815D118483E
+```
+
+---
+
+## 26. v1.10.11：5 张图数据暴露的回合边界 bug
+
+### 26.1 数据现象
+
+5 张图（de_dust2/de_mirage/de_inferno/de_anubis/de_ancient）跑完后：
+
+```text
+shot_timeline.csv  466 行 / 90 个 round_key
+round_metrics.csv  205 行 / 91 个 round_key
+其中 77 行 completed=0，大量 completed=1 但 live_seconds=0
+```
+
+同一回合重复出现多行，例如：
+
+```text
+de_anubis#0  live=44s  kills=8  completed=0
+de_anubis#1  live=0    kills=0  completed=1
+de_anubis#2  live=0    kills=0  completed=1
+```
+
+### 26.2 根因
+
+CS2 在 phase=over 时已经先把 map.round 改成下一回合。旧逻辑看到 round_key 变化就：
+
+1. 结算上一回合；
+2. 立即 start 下一回合；
+3. 同一 tick 又因为 phase=over 立即 finalize 下一回合。
+
+结果下一回合写出 live=0 的空行，并设置 _finalized=True；真正进入
+freezetime/live 后所有数据被丢弃。
+
+### 26.3 修复
+
+round_key 变化时，如果 phase 是 over/gameover：
+
+- 只结算上一回合，不启动下一回合；
+- 等 phase 进入 freezetime/live 再 start。
+
+新增回归测试：over 阶段 round 1→2 不产生空回合，第 2 回合 live>9s。
+
+### 26.4 对 5 张图数据的影响
+
+旧 round_metrics 不能直接用于评估。按“每个 round_key 最后一行”做一次
+尽力重算：
+
+```text
+90 个回合 / 419.6s live / 52 kills / 15 kill_hits
+kill_coverage 28.8%
+pre_fight_coverage 40.5%
+cut_rate 1.79/10s
+corpse_time 102.4s
+manual_takeover 37
+```
+
+这仍不是可信基线（因为真实数据已被旧 bug 丢掉）。下一步必须用
+v1.10.11 重跑同样的 5 张图，再决定模型/镜头策略。
+
+### 26.5 产物
+
+```text
+Yuzi_CS2_AIDirector.exe v1.10.11
+大小：35,955,842 字节
+SHA256：C3E40F98FA1E6B389536C717A8E27A0B96B0A98EFB9CC85B71632B2D372014FC
 ```
 
 ## 12. v1.8：专业导播整合

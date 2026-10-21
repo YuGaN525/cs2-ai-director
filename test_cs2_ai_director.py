@@ -1399,6 +1399,23 @@ class TestShotTimeline(unittest.TestCase):
         self.timeline.tick(snap, state, now)
         return snap, state
 
+    def test_round_number_change_during_over_does_not_create_empty_round(self):
+        players = [player(1, "CT"), player(2, "T", pos=(600, 0, 0))]
+        self._tick(players, "live", 1, 1, 100.0)
+        self._tick(players, "over", 1, 1, 101.0)
+        # CS2 在 over 阶段已把 round 改成 2：不能立刻开始/结算第 2 回合。
+        self._tick(players, "over", 2, 1, 102.0)
+        self._tick(players, "freezetime", 2, 1, 103.0)
+        self._tick(players, "live", 2, 1, 104.0)
+        self._tick(players, "over", 2, 1, 114.0)
+        rows = []
+        with (Path(self.tmp.name) / "round_metrics.csv").open(
+                encoding="utf-8-sig", newline="") as f:
+            rows = [r for r in csv.DictReader(f) if r["round_key"] == "de_mirage#2"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["completed"], "1")
+        self.assertGreater(float(rows[0]["live_seconds"]), 9.0)
+
     def test_timeline_kill_coverage_corpse_cut_rate_manual(self):
         players = [player(1, "CT"), player(2, "T", pos=(600, 0, 0)),
                    player(3, "T", pos=(800, 0, 0))]

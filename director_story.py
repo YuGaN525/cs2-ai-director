@@ -1048,11 +1048,20 @@ class ShotTimeline:
             return
         key = story.round_key or _round_key(snap)
         with self._lock:
+            phase = str(getattr(snap, "phase", "") or "").lower()
             if key != self._round_key:
                 # 先结算上一回合（包括它自己的故事状态），再启动新回合，
                 # 否则 round_metrics.csv 会把新回合的故事写到上一回合行。
                 if self._round_key:
-                    self._finalize(self._last_tick_at or now, completed=False)
+                    self._finalize(
+                        self._last_tick_at or now,
+                        completed=phase in ("over", "gameover"))
+                # CS2 在回合结束阶段就可能把 map.round 改成下一回合。
+                # 此时不能启动下一回合，否则会立刻 finalize 出 live=0 的空行，
+                # 并且真正进入 freezetime/live 后因 _finalized=True 丢掉整回合。
+                if phase in ("over", "gameover"):
+                    self._last_tick_at = now
+                    return
                 self._start_round(snap, now, key)
             self._last_story = story.to_dict()
             self._map_name = str(getattr(snap, "map_name", "") or self._map_name)
