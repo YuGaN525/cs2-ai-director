@@ -14,6 +14,7 @@
 - **v1.10.4**：适配 MulNX 的 200ms 连击缓冲——最后一次按键后 Alt 保持 300ms 再松开，修复“日志已发送但运镜不触发”；
 - **v1.10.5**：移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名；只保留 OBS 场景/媒体事件动作；
 - **v1.10.6**：品牌化为 `Yuzi_CS2_AIDirector` / `Yuzi_CS2_AIDecisionTrainer`，加入鱼籽杯图标、深色页头与卡片式界面；
+- **v1.10.7**：训练器按回合/事件分组切分、模糊样本加权、top-1 评估；demo 标签对齐伤害窗口；仲裁增加概率边际；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -26,9 +27,9 @@
 
 | 程序 | 用途 |
 |---|---|
-| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.6，约 36 MB（Release v1.10.6） |
+| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.7，约 36 MB（Release v1.10.7） |
 
-当前本地构建：35,947,532 字节，SHA256 `D8DB8899A2B2EF8017EAA5A97EB7C3EE4917C8CFEA1BB929E2F9B8D7B813A16B`。
+当前本地构建：35,949,026 字节，SHA256 `33F056FF75B404BD0930C0B759DC17E41C2BDF0D8AAC609EDB95963C8050A169`。
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -182,8 +183,19 @@ GUI 的“从 demo 训练…”按钮执行同一脚本；训练后重启导播�
 %APPDATA%\CS2AIDirector\decisions.csv
 ```
 
-行内包含目标 slot、规则分、8 个候选特征；3 秒后按目标选手的 `round_totaldmg` / `round_kills`
-增量回填 `label`（1=造成伤害或击杀，0=没有）。样本达到 1000 条后：
+行内包含目标 slot、规则分、8 个候选特征，以及 v1.10.7 新增的
+`rule_gap` / `is_ambiguous` / `group` / `group_size`；3 秒后按目标选手的
+`round_totaldmg` / `round_kills` 增量回填 `label`（1=造成伤害或击杀，0=没有）。
+
+**v1.10.7 训练器对齐当前导播逻辑**：
+
+- 训练/验证按 `group`（回合或 demo 击杀事件）切分，避免同一回合泄漏；
+- 模型只在“规则前两名接近”的样本上实际生效，这些 `is_ambiguous=1` 样本权重更高；
+- demo 标签改为“回看窗口内造成伤害/击杀的候选=1”，与在线 `label` 一致，而不是只标击杀者；
+- 训练指标增加 **top-1**（候选组内概率最高者是否命中），不再只看 AUC；
+- 仲裁增加概率边际：模型推荐目标必须领先当前目标 `decision_model_prob_margin`，且概率 ≥ `decision_model_min_prob`，避免 50.1% 噪声切镜头。
+
+样本达到 1000 条后：
 
 训练器已拆到独立仓库，下载 `Yuzi_CS2_AIDecisionTrainer.exe`：
 
@@ -349,6 +361,8 @@ story         当时的回合故事快照
 | `decision_model_enabled` | true | 是否加载随机森林仲裁模型 |
 | `decision_model_margin` | 0.08 | 规则前两名分差 ≤ 该值才让模型仲裁 |
 | `decision_model_min_factor` | 0.9 | 模型推荐目标的规则分下限系数 |
+| `decision_model_prob_margin` | 0.05 | 模型推荐目标需领先当前目标的概率；过低不切 |
+| `decision_model_min_prob` | 0.55 | 模型推荐目标的最低概率 |
 | `shot_timeline_enabled` | true | 是否记录镜头时间线/指标 |
 | `shot_timeline_dir` | 空 | 时间线输出目录，空则 `%APPDATA%\CS2AIDirector` |
 | `metric_kill_lookback` | 2.5 | 击杀覆盖回看窗口（秒） |
@@ -450,7 +464,7 @@ story         当时的回合故事快照
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 96 项（不启动 GUI、不发真实按键）
+- `test_cs2_ai_director.py`：核心逻辑测试，共 99 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS WebSocket 场景/媒体控制
 - `director_story.py`：镜头时间线、六项专业指标、回合故事状态（Phase 1）
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁

@@ -30,7 +30,8 @@ DECISION_FEATURES = [
 CSV_COLUMNS = [
     "timestamp", "iso_time", "map", "round", "action", "target_slot",
     "target_name", "target_steamid", "current_slot", "reason", "rule_score",
-    "candidate_count", "distance", "target_hp", "enemy_hp",
+    "candidate_count", "rule_gap", "is_ambiguous", "group", "group_size",
+    "distance", "target_hp", "enemy_hp",
     *DECISION_FEATURES, "label", "label_damage", "label_kill",
 ]
 
@@ -104,6 +105,23 @@ class DecisionLogger:
             if not self.path.is_file() or self.path.stat().st_size == 0:
                 with self.path.open("w", newline="", encoding="utf-8-sig") as f:
                     csv.DictWriter(f, fieldnames=CSV_COLUMNS).writeheader()
+                return
+            with self.path.open("r", newline="", encoding="utf-8-sig") as f:
+                reader = csv.DictReader(f)
+                header = list(reader.fieldnames or [])
+                old_rows = list(reader) if any(
+                    name not in header for name in CSV_COLUMNS) else None
+            if old_rows is not None:
+                # v1.10.7: 旧 CSV 没有 rule_gap/is_ambiguous/group 列。
+                # 保留旧数据并补空列，避免追加写错位。
+                tmp = self.path.with_name(self.path.name + ".tmp")
+                with tmp.open("w", newline="", encoding="utf-8-sig") as f:
+                    writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
+                    writer.writeheader()
+                    for row in old_rows:
+                        writer.writerow({name: row.get(name, "") for name in CSV_COLUMNS})
+                tmp.replace(self.path)
+                self.rows = len(old_rows)
             else:
                 with self.path.open("r", newline="", encoding="utf-8-sig") as f:
                     self.rows = max(0, sum(1 for _ in f) - 1)
@@ -143,11 +161,24 @@ class DecisionLogger:
         if player is None:
             return
         feats = candidate_features(target)
+        scores = sorted(
+            (float(getattr(c, "score", 0.0)) for c in cands if c is not None),
+            reverse=True)
+        rule_gap = (scores[0] - scores[1]) if len(scores) >= 2 else 0.0
+        try:
+            margin = max(0.0, float(
+                self.cfg.get("decision_model_margin", 0.08)))
+        except (TypeError, ValueError):
+            margin = 0.08
+        is_ambiguous = 1 if len(cands) >= 2 and rule_gap <= margin else 0
+        map_name = str(getattr(snap, "map_name", "") or "")
+        round_num = getattr(snap, "round_num", None)
+        group = f"{map_name}|{round_num}" if round_num is not None else map_name
         row = {
             "timestamp": f"{time.time():.3f}",
             "iso_time": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "map": str(getattr(snap, "map_name", "") or ""),
-            "round": getattr(snap, "round_num", "") or "",
+            "map": map_name,
+            "round": round_num or "",
             "action": action,
             "target_slot": target.slot,
             "target_name": getattr(target, "name", ""),
@@ -156,6 +187,10 @@ class DecisionLogger:
             "reason": reason,
             "rule_score": f"{float(getattr(target, 'score', 0.0)):.6f}",
             "candidate_count": len(cands),
+            "rule_gap": f"{rule_gap:.6f}",
+            "is_ambiguous": is_ambiguous,
+            "group": group,
+            "group_size": 1,
             "distance": f"{float(getattr(target, 'distance', 0.0)):.3f}",
             "target_hp": int(getattr(target, "hp", 0)),
             "enemy_hp": int(getattr(target, "enemy_hp", 0)),
@@ -375,22 +410,40 @@ class ModelArbiter:
             return self.load()
         return False
 
-    def arbitrate(self, cands: list[Any], top_score: float) -> Optional[int]:
-        """返回模型推荐 slot；不满足模糊区间/分数保护时返回 None。"""
+    def arbitrate(self, cands: list[Any], top_score: float,
+                  current_slot: Optional[int] = None) -> Optional[int]:
+        """返回模型推荐 slot；只有模型明显优于当前目标时才接管。
+
+        导播只在规则前两名分差 <= margin 时调用本方法；这里再加一道
+        “概率边际”，避免 50.1% vs 49.9% 这种噪声把镜头切走。
+        """
         if not self.loaded or len(cands) < 2:
             return None
         try:
             margin = max(0.0, float(self.cfg.get("decision_model_margin", 0.08)))
             min_factor = max(0.5, min(1.0, float(
                 self.cfg.get("decision_model_min_factor", 0.9))))
+            min_prob = max(0.5, min(0.95, float(
+                self.cfg.get("decision_model_min_prob", 0.55))))
+            prob_margin = max(0.0, min(0.5, float(
+                self.cfg.get("decision_model_prob_margin", 0.05))))
         except (TypeError, ValueError):
-            margin, min_factor = 0.08, 0.9
+            margin, min_factor, min_prob, prob_margin = 0.08, 0.9, 0.55, 0.05
         if float(cands[0].score) - float(cands[1].score) > margin:
             return None
         probs = [(self.probability(c), c) for c in cands]
         best_p, best = max(probs, key=lambda x: x[0])
-        if best_p <= 0.5:
+        if best_p < min_prob:
             return None
+        current = None
+        if current_slot is not None:
+            current = next(
+                (c for c in cands if getattr(c, "slot", None) == current_slot),
+                None)
+        if current is not None and best.slot != current_slot:
+            current_p = self.probability(current)
+            if best_p - current_p < prob_margin:
+                return None
         try:
             min_score = float(self.cfg.get("switch_min_score", 0.30))
         except (TypeError, ValueError):

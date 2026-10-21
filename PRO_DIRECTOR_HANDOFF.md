@@ -1,8 +1,8 @@
 # CS2 AI 专业导播 — 目标、开发日志与关键词
 
 最后更新：2026-10-21  
-当前主程序源码：**v1.10.6（Yuzi_CS2_AIDirector；Phase 0/1 + 映射/防碎切/MulNX 时序；窗口标题 v1.10.6）**  
-当前训练器：**v1.1.1（Yuzi_CS2_AIDecisionTrainer；共享核心已同步 v1.10.6）**  
+当前主程序源码：**v1.10.7（Yuzi_CS2_AIDirector；训练/仲裁对齐当前导播逻辑）**  
+当前训练器：**v1.1.2（Yuzi_CS2_AIDecisionTrainer；分组切分/加权/top-1/伤害标签）**  
 现有通用交接：`HANDOFF.md`
 
 > **v1.10.5 已移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名。**
@@ -509,7 +509,7 @@ manual_override
 - README.md
 
 当前系统：
-- 主程序源码 v1.10.6，训练器 v1.1.1；
+- 主程序源码 v1.10.7，训练器 v1.1.2；
 - 已具备 GSI/POV/HLAE/事件动作/OBS/决策日志/RF-ExtraTrees；
 - v1.10 Phase 1 已有镜头 timeline、六项指标、回合故事状态；
 - 仍是反应式 POV 切换器，没有镜头候选/调度器；
@@ -634,7 +634,15 @@ MulNX 的 `InputSystem::UpdateKeysState` 每 10ms 调 `GetAsyncKeyState`：
 - 数据目录仍为 %APPDATA%\CS2AIDirector，避免破坏现有配置与训练器路径；
 - 逻辑/评分/模型未改；96 项测试通过。
 
-### 14.10 下一步（Phase 2）
+### 14.10 v1.10.7：训练器对齐当前导播
+
+- 训练/验证按 group（map|round 或 demo 击杀事件）切分，避免同回合泄漏；
+- is_ambiguous=1 的规则前两名接近样本加权，贴近模型实际被调用场景；
+- demo 标签改为“窗口内造成过伤害/击杀”，与 decisions.csv 对齐；
+- 评估输出 AUC + top-1，不再只看 AUC；
+- 主程序仲裁要求概率 ≥ decision_model_min_prob 且领先当前目标 decision_model_prob_margin。
+
+### 14.11 下一步（Phase 2）
 
 - 把 `StoryState` + `ShotTimeline` 作为输入，生成 `ShotCandidate`（POV/BOMB/OVERVIEW/不切）；
 - 先实现最短停留、最大切率、切换成本、事件优先级；

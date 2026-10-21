@@ -838,6 +838,36 @@ class TestDecisionModel(unittest.TestCase):
             self.assertEqual(logger.positive, 0)
 
 
+class TestModelArbiterMargin(unittest.TestCase):
+    def _arbiter(self, probs):
+        from types import SimpleNamespace
+        cfg = dict(d.DEFAULT_CONFIG)
+        cfg["decision_model_margin"] = 0.08
+        cfg["decision_model_min_factor"] = 0.5
+        cfg["decision_model_prob_margin"] = 0.10
+        cfg["decision_model_min_prob"] = 0.50
+        arb = d.dm.ModelArbiter(cfg)
+        arb.loaded = True
+        arb.probability = lambda c: probs[c.slot]  # type: ignore[assignment]
+        cands = [
+            SimpleNamespace(slot=1, score=0.50),
+            SimpleNamespace(slot=2, score=0.45),
+        ]
+        return arb, cands
+
+    def test_small_probability_margin_keeps_current(self):
+        arb, cands = self._arbiter({1: 0.50, 2: 0.54})
+        self.assertIsNone(arb.arbitrate(cands, 0.50, current_slot=1))
+
+    def test_clear_probability_margin_switches(self):
+        arb, cands = self._arbiter({1: 0.40, 2: 0.65})
+        self.assertEqual(arb.arbitrate(cands, 0.50, current_slot=1), 2)
+
+    def test_min_probability_blocks_weak_model(self):
+        arb, cands = self._arbiter({1: 0.10, 2: 0.49})
+        self.assertIsNone(arb.arbitrate(cands, 0.50, current_slot=1))
+
+
 class TestConfigPersistence(unittest.TestCase):
     def test_roundtrip(self):
         old = os.environ.get("APPDATA")

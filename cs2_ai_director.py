@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.6"
+VERSION = "1.10.7"
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -181,6 +181,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "decision_model_enabled": True,
     "decision_model_margin": 0.08,
     "decision_model_min_factor": 0.9,
+    "decision_model_prob_margin": 0.05,  # 模型推荐目标需领先当前目标的概率
+    "decision_model_min_prob": 0.55,     # 模型推荐目标的最低概率
     # ---- 专业导播 Phase 1：镜头时间线 / 专业指标 / 回合故事 ----
     "shot_timeline_enabled": True,
     "shot_timeline_dir": "",       # 空 = %APPDATA%\CS2AIDirector
@@ -2900,7 +2902,8 @@ class DirectorEngine:
         model_slot: Optional[int] = None
         if (self.model_arbiter is not None and len(cands) >= 2
                 and cands[0].score >= float(self.cfg["switch_min_score"])):
-            model_slot = self.model_arbiter.arbitrate(cands, cands[0].score)
+            model_slot = self.model_arbiter.arbitrate(
+                cands, cands[0].score, snap.observer_slot)
             if model_slot is not None:
                 idx = next((i for i, c in enumerate(cands) if c.slot == model_slot), None)
                 if idx is not None and idx > 0:
