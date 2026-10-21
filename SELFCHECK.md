@@ -361,10 +361,9 @@ enemy_damaged、hp_advantage。
 
 ### 13.4 训练与仲裁
 
-```bash
-python -m pip install -r requirements-train.txt
-python train_decision_model.py --min-samples 1000
-```
+训练器已拆到独立仓库：
+
+https://github.com/YuGaN525/cs2-ai-decision-trainer
 
 - 随机森林（300 棵树，max_depth=8，class_weight=balanced）；
 - 输出 AUC、混淆矩阵、分类报告、特征重要性；
@@ -413,7 +412,13 @@ dist\CS2AIDirector.exe  约 35 MB
 
 ---
 
-## 15. v1.9.1：独立训练器
+## 15. v1.9.1：独立训练器（已拆仓库）
+
+训练器源码与发布已移到：
+
+https://github.com/YuGaN525/cs2-ai-decision-trainer
+
+本仓库只保留主程序和静态 demo 模型；以下记录保留作历史。
 
 ### 15.1 产物
 

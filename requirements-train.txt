@@ -1,4 +1,5 @@
 # 仅用于“从 demo 训练”功能；导播运行时不需要
 demoparser2>=0.42.0
+pandas>=2.0
 scikit-learn>=1.4
 joblib>=1.3

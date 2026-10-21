@@ -16,12 +16,11 @@
 
 ## 0. 直接运行 exe（推荐）
 
-仓库 Release 提供两个 Windows x64 onefile：
+本仓库 Release 只提供 AI 导播主程序：
 
 | 程序 | 用途 |
 |---|---|
 | `CS2AIDirector.exe` | AI 导播主程序，约 35 MB |
-| `CS2AIDecisionTrainer.exe` | 独立随机森林训练器，约 179 MB（内置 scikit-learn + demo 解析） |
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -30,28 +29,20 @@
   `decision_model.json.gz`；
 - 未签名，Windows SmartScreen 可能提示，选择“更多信息 → 仍要运行”。
 
-训练器：
+**训练器已拆到独立私密仓库**：
 
-- 默认读取 `%APPDATA%\CS2AIDirector\decisions.csv`；
-- 也可以直接导入已有的 `.dem` 文件/文件夹，自动生成 `demo_decisions.csv` 再训练；
-- 默认输出到 `%APPDATA%\CS2AIDirector\`；
-- 少于 1000 条时拒绝训练；
-- 训练完成显示 AUC/特征重要性，并写出 `decision_model.json.gz`；
-- 主程序每 5 秒检测文件更新，**训练完无需重启导播**；也可在主程序“专业导播 → 重新加载模型”。
+https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-自行重新打包：
+训练器支持 `decisions.csv` 和 `.dem`，输出 `decision_model.json.gz`。
+主程序每 5 秒检测文件更新，训练完无需重启；也可在“专业导播 → 重新加载模型”。
+
+自行重新打包主程序：
 
 ```bat
 powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
-powershell -ExecutionPolicy Bypass -File .\build_trainer.ps1
 ```
 
-产物：
-
-```text
-dist\CS2AIDirector.exe
-dist\CS2AIDecisionTrainer.exe
-```
+产物：`dist\CS2AIDirector.exe`。
 
 ## 1. 环境与安装
 
@@ -161,25 +152,15 @@ GUI 的“从 demo 训练…”按钮执行同一脚本；训练后重启导播�
 行内包含目标 slot、规则分、8 个候选特征；3 秒后按目标选手的 `round_totaldmg` / `round_kills`
 增量回填 `label`（1=造成伤害或击杀，0=没有）。样本达到 1000 条后：
 
-```bat
-python train_decision_model.py --min-samples 1000
-```
+训练器已拆到独立仓库，下载 `CS2AIDecisionTrainer.exe`：
 
-生成 `decision_model.pkl` / `decision_model.json.gz`，并在验证集打印 AUC、混淆矩阵和特征重要性。
-也可以直接运行独立的 `CS2AIDecisionTrainer.exe`，用 GUI 选择 CSV、样本阈值和树参数。
+https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-**从 demo 训练**：训练器 GUI 的“从 .dem 导入”支持选文件或文件夹，默认回看 160 tick（64tick ≈ 2.5 秒）：
+训练器支持：
 
-- 解析每个 `player_death`；
-- 回看击杀前 2.5 秒的所有存活候选；
-- 击杀者 label=1，同刻其他候选 label=0；
-- 先写 `demo_decisions.csv`，再走同一个随机森林训练流程。
-
-命令行等价：
-
-```bat
-CS2AIDecisionTrainer.exe --cli --demos "D:\demos" --min-samples 1000
-```
+- 导入本程序的 `decisions.csv`；
+- 直接导入 `.dem` 文件/文件夹，生成 `demo_decisions.csv`；
+- 训练后输出 `decision_model.json.gz` 并显示 AUC/特征重要性。
 
 只有当规则前两名分差 ≤ `decision_model_margin` 时，导播才用模型概率重排候选；
 模型推荐目标的规则分不得低于当前第一名的 `decision_model_min_factor`，随后仍走原有阈值/迟滞/冷却检查。
@@ -386,11 +367,8 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 - `test_cs2_ai_director.py`：核心逻辑测试，共 80 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS、FFmpeg 回放、玩家改名
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁
-- `train_decision_model.py`：从 `decisions.csv` 训练随机森林（CLI + 训练器后端）
-- `trainer_gui.py`：独立模型训练器 GUI
-- `demo_dataset.py`：从 `.dem` 生成决策模型 CSV
-- `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`
-- `build_exe.ps1` / `build_trainer.ps1`：两个 exe 的打包脚本
+- `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`（主程序旧 demo 模型）
+- `build_exe.ps1`：主程序 exe 的打包脚本
 - `SELFCHECK.md`：自检清单、修复记录与仍需实机验证的步骤
 - `frozen_v1.0.0/`：优化前冻结基线（含 SHA256）
 - `requirements.txt`：依赖
