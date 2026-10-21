@@ -522,7 +522,7 @@ OK
 - `pre_fight_coverage` 与人工标注的一致性；
 - OBS/FFmpeg 的 `REPLAY` 机位尚未接入 timeline；
 - 回合中停止/重开会产生 `completed=0` 的 partial 行，累计指标包含这些行；
-- 训练器仓库尚未同步 v1.10（需复制 `director_story.py`）。
+- 训练器仓库已同步 v1.10 共享核心（`5384a16`）；训练器 exe 未重建，指标不作为训练特征。
 
 ### 16.4 exe
 

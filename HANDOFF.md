@@ -2,7 +2,7 @@
 
 最后更新：2026-10-21  
 当前主程序源码版本：**v1.10.0（Phase 1 已完成，已重新打包 exe）**  
-当前训练器版本：**v1.1.0（未改模型/特征，无需重训）**  
+当前训练器版本：**v1.1.0（共享核心已同步 v1.10；模型/特征未变，无需重训）**  
 专业导播新目标：见 `PRO_DIRECTOR_HANDOFF.md`
 
 ---
@@ -50,8 +50,8 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`cc2df51 Optimize trainer with RF/ExtraTrees CV search; fix onefile multiprocessing hang`
-- Release：`v1.1.0`
+- 最新提交：`5384a16 Sync v1.10.0 shared core and observation module`
+- Release：`v1.1.0`（exe 未重建；训练功能/模型格式未变）
 - 资产：`CS2AIDecisionTrainer.exe`
 - 大小：178,826,787 字节（约 179 MB）
 - SHA256：`A8FDA480D229FE0C21621C72D14BF16769CF0B8BF4D52411538009C739D8C539`
@@ -96,6 +96,7 @@ demo_dataset.py           # .dem -> demo_decisions.csv
 decision_model.py         # 共享模型/CSV 定义
 train_from_demos.py
 cs2_ai_director.py        # 共享评分/快照核心（demo 解析需要）
+director_story.py         # v1.10 同步的镜头/指标/故事观测模块（训练不使用）
 director_pro.py           # 主程序依赖
 test_cs2_ai_director.py
 requirements.txt
@@ -317,7 +318,7 @@ player_api_base_url
 
 ```text
 主仓库 86 项测试通过（v1.10；新增 6 项 timeline/story/integration）
-训练器仓库 80 项测试通过（v1.1.0，未同步 v1.10）
+训练器仓库 86 项测试通过（已同步 v1.10 共享核心；模型/特征未变）
 Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
 模拟 GSI 序列验证镜头/指标/故事落盘
@@ -364,7 +365,7 @@ Python 编译通过（cs2_ai_director.py / director_story.py）
 18. **经济分档是近似**：freezetime 用金钱（可能买到一半）、live 用武器+护甲平均档位；不读装备价值。
 19. **残局/阶段判定依赖 GSI 字段**：若 `allplayers` 缺失、`observer_slot` 延迟，镜头目标会以 GSI 实际值为准，指标可能少算。
 20. **回合切换/中途停止会产生 partial 行**：`round_metrics.csv` 用 `completed=1/0` 区分；累计指标会包含 partial 行。
-21. **训练器仓库尚未同步 v1.10**：见下方同步清单；未同步时训练器仍可运行旧 `cs2_ai_director.py`。
+21. **训练器仓库已同步 v1.10 共享核心**（`5384a16`），但训练器 exe 仍是 v1.1.0；因训练功能/模型格式未变，暂未重建。
 
 ---
 
@@ -405,25 +406,30 @@ python demo_dataset.py --demos "D:\demos" --out demo_decisions.csv
 
 ## 10.1 共享核心同步清单（v1.10）
 
-训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 尚未同步 v1.10。评分核心没有改，但主程序新增了
-`import director_story`，因此**如果复制新的 `cs2_ai_director.py`，必须同时复制 `director_story.py`**，
-否则训练器的 demo 解析会 ImportError。
+训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 已于 `5384a16` 同步 v1.10 共享核心。
+评分核心没有改，但主程序新增了 `import director_story`，因此**复制新的 `cs2_ai_director.py` 时必须同时复制
+`director_story.py`**，否则训练器的 demo 解析会 ImportError。
 
 | 文件 | 主仓库状态 | 训练器仓库动作 |
 |---|---|---|
-| `cs2_ai_director.py` | v1.10 引擎集成 + 新增配置默认值 | 复制；评分函数未变 |
-| `director_story.py` | 新增 | **必须复制** |
-| `director_pro.py` | 未改 | 可保持旧版 |
+| `cs2_ai_director.py` | v1.10 引擎集成 + 新增配置默认值 | 已复制；评分函数未变 |
+| `director_story.py` | 新增 | 已复制 |
+| `director_pro.py` | 未改 | 保持旧版 |
 | `decision_model.py` | 未改 | 保持 |
-| `test_cs2_ai_director.py` | 新增 6 项测试 | 建议复制 |
+| `test_cs2_ai_director.py` | 新增 6 项测试 | 已复制 |
 
 不需要重新训练模型：`DECISION_FEATURES`、`score_candidates`、`choose_slot` 都没改。
-同步后建议在训练器仓库执行：
+训练器仓库已验证：
 
-```bat
-python -m py_compile cs2_ai_director.py director_story.py
+```text
 python -m unittest test_cs2_ai_director
+Ran 86 tests ... OK
+ruff F/E9: All checks passed!
 ```
+
+**指标不作为训练特征**：`kill_coverage` 等是回合/镜头级评估指标，存在训练/推理时点不一致与
+“镜头影响指标、指标再影响镜头”的循环；当前 8 特征 `decision_model.json.gz` 格式保持不变。
+后续做 Phase 2 镜头候选/偏好学习时，另建镜头级数据集与模型。
 
 ---
 
@@ -433,8 +439,7 @@ python -m unittest test_cs2_ai_director
 
 1. **Phase 2 镜头调度器**：把 `StoryState` + `ShotTimeline` 接入 `ShotCandidate/ShotScheduler`，先做“不切”候选与最短停留，不改模型；
 2. **实机验证 Phase 1**：用真实 GSI + HLAE 跑 1–2 场，校准 `corpse_time` / `shot_duration` / `pre_fight_coverage` 口径；
-3. **同步训练器仓库**：按 10.1 清单复制 `director_story.py` + `cs2_ai_director.py`；
-4. **实机联调 OBS/FFmpeg**：连接 OBS WebSocket，验证场景/媒体源/录制/回放/恢复录制；
+3. **实机联调 OBS/FFmpeg**：连接 OBS WebSocket，验证场景/媒体源/录制/回放/恢复录制；
 5. **积累 1000+ 真实决策样本**，训练并观察 AUC 与线上误切；
 6. **多 demo 训练**：至少 5–10 场完整 demo，按比赛留出验证，避免同场泄漏；
 7. **实现回合上下文特征**：alive 数、炸弹、时间、比分、经济；
@@ -558,7 +563,7 @@ YuGaN525/cs2-ai-decision-trainer
 - 86 项测试通过；OBS/FFmpeg 尚未实机联调；Phase 1 只有模拟 GSI 序列验证；
 - 模型使用 RF/ExtraTrees 交叉验证选择，导出纯 JSON，导播自动重载；
 - 决策样本 decisions.csv 尚未达到 1000 条；
-- 训练器仓库尚未同步 director_story.py（见 10.1）。
+- 训练器仓库已同步 director_story.py（`5384a16`）；训练器 exe 仍是 v1.1.0。
 
 硬性约束：
 - 只读 GSI，不读内存/不注入/不发控制台命令；
