@@ -16,7 +16,8 @@
 - **v1.10.1 增量（2026-10-21）**：尝试修复 `observer_slot` 与观察者数字键错位，但方向写反（键 N→slot N+1），已废弃。
 - **v1.10.2 增量（2026-10-21）**：按完整实测表更正为键 N→slot (N-1) mod 10（键1→slot0、键0→slot9）。
 - **v1.10.3 增量（2026-10-21）**：防碎切（最短停留 2s、10 秒最多 3 次）、当前 POV 交火/拆包锁定、HLAE 管理员权限诊断。
-- **v1.10.4 增量（2026-10-21）**：适配 MulNX 的 200ms 连击缓冲，Alt 在最后按键后保持 300ms；当前测试 95 项。
+- **v1.10.4 增量（2026-10-21）**：适配 MulNX 的 200ms 连击缓冲，Alt 在最后按键后保持 300ms。
+- **v1.10.5 增量（2026-10-21）**：移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名；当前测试 94 项。
 
 ---
 
@@ -724,6 +725,50 @@ Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.4
 > 构建时旧 v1.10.3 仍在运行，因此先把新 exe 构建为 `CS2AIDirector_v1104.exe`，
 > 再复制替换为 `CS2AIDirector.exe`；旧文件备份为 `CS2AIDirector_v1103_backup.exe`。
 > 正在运行的旧进程需要关闭并重新启动才会使用 v1.10.4。
+
+---
+
+## 20. v1.10.5：移除 FFmpeg 回放与玩家改名
+
+### 20.1 删除范围
+
+- GUI“专业导播”页：
+  - 删除“录制 / FFmpeg 回放”整块（ffmpeg 路径、输出目录、游戏/回放场景、回放源、开始录制、记录击杀点、生成回放）；
+  - 删除“玩家改名（赛事 API → HLAE 命令）”整块（API BaseUrl、获取命令并复制）。
+- director_pro.py：
+  - 删除 ClipSegment、merge_clips、build_clip_commands、FfmpegService、ReplayManager；
+  - 删除 build_rename_commands；
+  - 删除事件动作 start_recording / record_kill / generate_replay；
+  - 删除 OBS 的录制/媒体源写入/媒体结束轮询方法；
+  - 导播日志类别缩为 GSI / OBS / EventAction / App。
+- 配置默认值删除 ffmpeg_path、replay_output_dir、obs_game_scene、obs_replay_scene、
+  obs_replay_source、player_api_base_url。
+- timeline 删除未使用的 REPLAY 类型，保留 POV/BOMB/SPAWN/OVERVIEW。
+
+保留：OBS WebSocket 连接、场景切换、媒体源播放/停止、事件动作规则。
+
+### 20.2 回归
+
+```text
+python -m unittest test_cs2_ai_director
+Ran 94 tests ... OK
+
+ruff F/E9: All checks passed!
+GUI 构造 smoke test: GUI_OK 1.10.5
+```
+
+删除 1 项旧的 test_merge_clips；事件动作测试改为播放/停止媒体源 + 切换场景。
+
+### 20.3 exe / Release
+
+```text
+dist\CS2AIDirector_v1105.exe
+大小：35,026,519 字节
+SHA256：373B53E613AB74823EB65990B86F9DC9F90C0C9698D2C8696E9E6EAF9207BC30
+窗口标题：CS2 AI 导播 v1.10.5
+```
+
+Release：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.5
 
 ## 12. v1.8：专业导播整合
 

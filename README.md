@@ -7,11 +7,12 @@
 - 炸弹剩余 ≤ 8 秒按 A/B 包点触发对应 HLAE 包点运镜宏；
 - 观察对象阵亡后自动切到离尸体最近的敌人（通常是击杀者），不会停在尸体视角；
 - 即时学习已移除；保留离线 demo 静态权重，并新增决策 CSV 记录 + 随机森林离线仲裁模型；
-- 专业导播：独立导播日志、事件动作规则、OBS WebSocket、FFmpeg 击杀回放、玩家改名命令；
+- 专业导播：独立导播日志、事件动作规则、OBS WebSocket 场景/媒体控制；
 - **v1.10 Phase 1**：镜头时间线（ShotTimeline）+ 六项专业指标 + 回合故事状态（阶段/经济/残局/下包/比分），不参与评分；
 - **v1.10.2**：修复 GSI `observer_slot` 与观察者数字键错位（键 N→slot N-1 mod 10），日志/GUI 同时显示 slot 与键；
 - **v1.10.3**：防碎切（最短停留 2s + 10 秒切率上限 3）+ 当前 POV 交火/拆包锁定不切；HLAE 增加管理员权限检测与提示；
 - **v1.10.4**：适配 MulNX 的 200ms 连击缓冲——最后一次按键后 Alt 保持 300ms 再松开，修复“日志已发送但运镜不触发”；
+- **v1.10.5**：移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名；只保留 OBS 场景/媒体事件动作；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -24,9 +25,9 @@
 
 | 程序 | 用途 |
 |---|---|
-| `CS2AIDirector.exe` | AI 导播主程序 v1.10.4，约 35 MB（Release v1.10.4） |
+| `CS2AIDirector.exe` | AI 导播主程序 v1.10.5，约 35 MB（Release v1.10.5） |
 
-当前本地构建：35,039,316 字节，SHA256 `358364B65296961C014C5764F37C6C95886F4A76BBC19FC35DDEE133B596D2D1`。
+当前本地构建：35,026,519 字节，SHA256 `373B53E613AB74823EB65990B86F9DC9F90C0C9698D2C8696E9E6EAF9207BC30`。
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -201,7 +202,7 @@ https://github.com/YuGaN525/cs2-ai-decision-trainer
 
 ---
 
-## 4.5 专业导播（OBS / 回放 / 事件动作 / 改名）
+## 4.5 专业导播（OBS / 事件动作）
 
 这部分按 CS2-Director-Tool 的行为独立重写，未复制其 C# 代码；入口是 GUI 的 **“专业导播”** 页。
 
@@ -210,7 +211,7 @@ https://github.com/YuGaN525/cs2-ai-decision-trainer
 “导播日志”页与原来的 AI 日志分开，类别为：
 
 ```text
-GSI / OBS / FFmpeg / Replay / EventAction / Player / App
+GSI / OBS / EventAction / App
 ```
 
 支持按类别、级别、时间窗口（1/5/30 分钟）和关键字过滤。
@@ -232,43 +233,23 @@ GSI / OBS / FFmpeg / Replay / EventAction / Player / App
 | 播放媒体源 | OBS 媒体源名 |
 | 停止媒体源 | OBS 媒体源名 |
 | 切换场景 | OBS 场景名（不存在会自动创建） |
-| 开始录制 | 无 |
-| 记录击杀点 | 无 |
-| 生成回放 | 无 |
 
 规则可添加多条、每条可含多个动作，支持启用/禁用；规则可保存为 JSON 预设并重新加载。
 典型配置：
 
 ```text
-回合开始 → 开始录制
-玩家击杀 → 记录击杀点
-回合结束 → 生成回放
 暂停开始 → 播放媒体源（暂停音乐）
 暂停结束 → 停止媒体源（暂停音乐）
+回合结束 → 切换场景
 ```
 
-### OBS / FFmpeg 回放
+### OBS WebSocket
 
 1. OBS 开启 WebSocket Server（默认 4455），在“专业导播”页填地址/端口/密码并连接；
-2. 选择 `ffmpeg.exe`；
-3. 配置游戏场景、回放场景、回放媒体源；
-4. 事件动作里用“开始录制 / 记录击杀点 / 生成回放”。
+2. 用事件动作播放/停止媒体源、切换场景；
+3. OBS 是可选依赖，未配置时 AI 导播、GSI、HLAE 运镜不受影响。
 
-回放规则：首个击杀取 `击杀点-4s` 起 5 秒，后续击杀取 `-1s` 起 2 秒，重叠片段自动合并；
-停止录制后用 FFmpeg 重编码为 `.ts` 片段并 concat，切换到回放场景播放，结束后切回游戏场景并恢复录制。
-
-### 玩家改名
-
-填赛事 API BaseUrl（默认 `https://majo-cup.laffeynyaa.com`），点击“获取命令并复制”：
-
-```text
-GET {BaseUrl}/api/v1/players/steam/{steam64}
-→ mirv_replace_name byXuid add "<steam64>" "<登记名>"
-```
-
-所有命令用 `;` 连接后复制到剪贴板，粘贴到 HLAE 控制台执行。
-
-> OBS/FFmpeg 是可选依赖；未配置时 AI 导播、GSI、HLAE 运镜不受影响。
+> v1.10.5 起已移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名功能。
 
 ## 4.6 镜头时间线、专业指标与回合故事（v1.10 Phase 1）
 
@@ -279,7 +260,7 @@ GET {BaseUrl}/api/v1/players/steam/{steam64}
 每个镜头写入 `shot_timeline.csv`：
 
 ```text
-shot_type     POV / BOMB / SPAWN / OVERVIEW / REPLAY
+shot_type     POV / BOMB / SPAWN / OVERVIEW
 target        slot=3 P3 / site=A / side=CT
 start / end   开始与结束时间
 duration      停留秒数
@@ -325,7 +306,7 @@ story         当时的回合故事快照
 它目前**不参与** `score_candidates` / `choose_slot`，也不影响模型；这是 Phase 2 镜头调度器的输入。
 
 > 已知边界：GSI 不直接告诉程序 HLAE 当前是哪个机位，所以 `SPAWN/BOMB` 镜头按“已发送运镜 + 预计归还时间”记录；
-> 真实 OBS/FFmpeg 回放机位暂未接入 timeline 的 `REPLAY` 类型。指标是启发式统计，需用真实比赛录像校准。
+> `OVERVIEW` 仅在 timeline 类型中预留，当前不会产生；指标是启发式统计，需用真实比赛录像校准。
 
 ## 5. 关键参数（config.json）
 
@@ -379,13 +360,9 @@ story         当时的回合故事快照
 | `economy_equip_full` / `economy_equip_force` | 1.5 / 0.8 | live 装备平均档位分档 |
 | `match_point_score` | 12 | MR12 赛点分数 |
 | `obs_host` / `obs_port` / `obs_password` | 127.0.0.1 / 4455 / 空 | OBS WebSocket 连接（密码明文保存） |
-| `obs_game_scene` / `obs_replay_scene` | Game / Replay | 游戏与回放场景名 |
-| `obs_replay_source` | Replay | 回放媒体源名 |
-| `ffmpeg_path` | 空 | ffmpeg.exe 路径 |
-| `replay_output_dir` | 空 | 回放输出目录，空则用系统临时目录 |
+
 | `event_actions_enabled` | true | 事件动作总开关 |
 | `event_rules` | [] | 事件动作规则数组（GUI 编辑） |
-| `player_api_base_url` | majo-cup | 玩家登记名 API |
 | `auto_focus` | true | 按键前自动把 CS2 拉到前台 |
 | `dry_run` | false | 演练模式 |
 
@@ -464,8 +441,7 @@ story         当时的回合故事快照
 14. 自动化输入是否符合你所在平台/比赛规则（本程序不碰内存与进程，但仍是模拟按键）。
 15. 即时学习已移除；静态 demo 模型需要 `demoparser2`，训练后重启导播加载 `learner.json`。
 16. 决策模型需要至少 1000 条已标注 CSV；训练用 `scikit-learn`，生成 `decision_model.pkl`，重启导播加载。
-17. 专业导播需要 OBS WebSocket 与 FFmpeg；先在“专业导播”页连接/选路径，再用事件动作或手动按钮测试录制、回放。
-18. 玩家改名 API 默认是魔女杯地址；换赛事时填自己的 BaseUrl，并确认返回 JSON 的 `name` 字段。
+17. 专业导播只剩 OBS WebSocket：先在“专业导播”页连接，再用事件动作播放/停止媒体源或切换场景；FFmpeg 回放、录制/击杀点动作和玩家改名已在 v1.10.5 移除。
 19. 若显示器缩放不是 100%，检查窗口是否完整显示（GUI 采用分页以适配较小高度）。
 
 ---
@@ -473,8 +449,8 @@ story         当时的回合故事快照
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 95 项（不启动 GUI、不发真实按键）
-- `director_pro.py`：独立日志、事件动作、OBS、FFmpeg 回放、玩家改名
+- `test_cs2_ai_director.py`：核心逻辑测试，共 94 项（不启动 GUI、不发真实按键）
+- `director_pro.py`：独立日志、事件动作、OBS WebSocket 场景/媒体控制
 - `director_story.py`：镜头时间线、六项专业指标、回合故事状态（Phase 1）
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁
 - `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`（主程序旧 demo 模型）

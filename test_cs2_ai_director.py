@@ -745,7 +745,7 @@ class TestProDirectorModule(unittest.TestCase):
     def test_pro_log_filter(self):
         log = d.pro_mod.ProLog()
         log.info("OBS", "connected")
-        log.error("FFmpeg", "failed")
+        log.error("EventAction", "failed")
         self.assertEqual(len(log.filtered(category="OBS")), 1)
         self.assertEqual(len(log.filtered(keyword="fail")), 1)
         self.assertEqual(len(log.filtered(level="ERROR")), 1)
@@ -762,13 +762,6 @@ class TestProDirectorModule(unittest.TestCase):
         self.assertIn("kill", kinds)
         self.assertIn("bomb_planted", kinds)
 
-    def test_merge_clips(self):
-        clips = [d.pro_mod.ClipSegment(1, 2), d.pro_mod.ClipSegment(2, 3),
-                 d.pro_mod.ClipSegment(10, 2)]
-        merged = d.pro_mod.merge_clips(clips)
-        self.assertEqual(len(merged), 2)
-        self.assertEqual(merged[0].duration, 4)
-
     def test_event_action_executes_actions(self):
         class FakeObs:
             def __init__(self):
@@ -777,27 +770,17 @@ class TestProDirectorModule(unittest.TestCase):
                 self.calls.append((target, action))
             def switch_scene(self, target):
                 self.calls.append((target, "scene"))
-        class FakeReplay:
-            def __init__(self):
-                self.calls = []
-            def start_recording(self):
-                self.calls.append("start")
-            def record_kill(self):
-                self.calls.append("kill")
-            def generate_replay(self):
-                self.calls.append("gen")
         cfg = dict(d.DEFAULT_CONFIG)
         obs = FakeObs()
-        rep = FakeReplay()
-        eng = d.pro_mod.EventActionEngine(cfg, obs, rep, d.pro_mod.ProLog())
+        eng = d.pro_mod.EventActionEngine(cfg, obs, d.pro_mod.ProLog())
         try:
             eng.execute({"name": "r", "actions": [
                 {"type": "play_media", "target": "music"},
+                {"type": "stop_media", "target": "music"},
                 {"type": "switch_scene", "target": "Game"},
-                {"type": "record_kill"},
             ]})
-            self.assertEqual(obs.calls, [("music", "restart"), ("Game", "scene")])
-            self.assertEqual(rep.calls, ["kill"])
+            self.assertEqual(obs.calls, [
+                ("music", "restart"), ("music", "stop"), ("Game", "scene")])
         finally:
             eng.stop()
 
@@ -962,6 +945,7 @@ class TestInputSafety(unittest.TestCase):
             raise RuntimeError("boom")
 
         watcher = d.ManualKeyWatcher(boom, lambda d: False, bus)
+        watcher._modifier_down = lambda: False  # type: ignore[assignment]
         watcher._handle("3")
         logs = [msg for _, msg in list(bus.queue.queue)]
         self.assertTrue(any("手动接管处理异常" in m for m in logs))
@@ -1027,6 +1011,7 @@ class TestInputSafety(unittest.TestCase):
         ctl = d.InputController(dict(d.DEFAULT_CONFIG), bus)
         hits = []
         watcher = d.ManualKeyWatcher(hits.append, ctl.is_self_press, bus)
+        watcher._modifier_down = lambda: False  # type: ignore[assignment]
 
         class Event:
             event_type = "down"

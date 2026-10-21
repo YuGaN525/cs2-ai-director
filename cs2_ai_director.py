@@ -50,7 +50,7 @@ from typing import Any, Callable, Optional
 
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "CS2 AI 导播"
-VERSION = "1.10.4"
+VERSION = "1.10.5"
 IS_WINDOWS = os.name == "nt"
 
 GSI_CFG_NAME = "gamestate_integration_ai_director.cfg"
@@ -156,18 +156,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "demo_model_enabled": True,
     "demo_model_min_samples": 20,
     "demo_model_blend": 0.25,
-    # ---- 专业导播：OBS / FFmpeg / 事件动作 / 玩家改名 ----
+    # ---- 专业导播：OBS / 事件动作 ----
     "obs_host": "127.0.0.1",
     "obs_port": 4455,
     "obs_password": "",
-    "obs_game_scene": "Game",
-    "obs_replay_scene": "Replay",
-    "obs_replay_source": "Replay",
-    "ffmpeg_path": "",
-    "replay_output_dir": "",
     "event_actions_enabled": True,
     "event_rules": [],
-    "player_api_base_url": "https://majo-cup.laffeynyaa.com",
     # ---- 决策日志 + 轻量模型 ----
     "decision_log_enabled": True,
     "decision_log_interval": 1.0,
@@ -3316,14 +3310,7 @@ class DirectorApp:
         self.var_obs_host = tk.StringVar(value=str(cfg.get("obs_host", "127.0.0.1")))
         self.var_obs_port = tk.StringVar(value=str(cfg.get("obs_port", 4455)))
         self.var_obs_pwd = tk.StringVar(value=str(cfg.get("obs_password", "")))
-        self.var_game_scene = tk.StringVar(value=str(cfg.get("obs_game_scene", "Game")))
-        self.var_replay_scene = tk.StringVar(value=str(cfg.get("obs_replay_scene", "Replay")))
-        self.var_replay_source = tk.StringVar(value=str(cfg.get("obs_replay_source", "Replay")))
-        self.var_ffmpeg = tk.StringVar(value=str(cfg.get("ffmpeg_path", "")))
-        self.var_replay_out = tk.StringVar(value=str(cfg.get("replay_output_dir", "")))
         self.var_pro_enabled = tk.BooleanVar(value=bool(cfg.get("event_actions_enabled", True)))
-        self.var_player_api = tk.StringVar(
-            value=str(cfg.get("player_api_base_url", "https://majo-cup.laffeynyaa.com")))
         self.var_api = tk.StringVar(value=str(cfg.get("deepseek_api_key", "")))
         self.var_model = tk.StringVar(value=str(cfg.get("deepseek_model", "deepseek-chat")))
         self.var_ai = tk.BooleanVar(value=bool(cfg.get("ai_enabled", True)))
@@ -3381,36 +3368,8 @@ class DirectorApp:
         self.lbl_obs = ttk.Label(lf, text="OBS：未连接", foreground="#555555")
         self.lbl_obs.grid(row=1, column=0, columnspan=8, sticky="w", pady=(6, 0))
 
-        lf2 = ttk.LabelFrame(parent, text=" 录制 / FFmpeg 回放 ", padding=8)
-        lf2.grid(row=1, column=0, sticky="ew", pady=(0, 6))
-        lf2.columnconfigure(1, weight=1)
-        ttk.Label(lf2, text="ffmpeg.exe").grid(row=0, column=0, sticky="w")
-        ttk.Entry(lf2, textvariable=self.var_ffmpeg).grid(
-            row=0, column=1, sticky="ew", padx=4)
-        ttk.Button(lf2, text="浏览…", width=8, command=self._pro_browse_ffmpeg).grid(
-            row=0, column=2)
-        ttk.Label(lf2, text="回放输出目录").grid(row=1, column=0, sticky="w", pady=(6, 0))
-        ttk.Entry(lf2, textvariable=self.var_replay_out).grid(
-            row=1, column=1, sticky="ew", padx=4, pady=(6, 0))
-        ttk.Button(lf2, text="浏览…", width=8, command=self._pro_browse_out).grid(
-            row=1, column=2, pady=(6, 0))
-        row = ttk.Frame(lf2)
-        row.grid(row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
-        ttk.Label(row, text="游戏场景").pack(side="left")
-        ttk.Entry(row, textvariable=self.var_game_scene, width=12).pack(side="left", padx=4)
-        ttk.Label(row, text="回放场景").pack(side="left", padx=(10, 0))
-        ttk.Entry(row, textvariable=self.var_replay_scene, width=12).pack(side="left", padx=4)
-        ttk.Label(row, text="回放源").pack(side="left", padx=(10, 0))
-        ttk.Entry(row, textvariable=self.var_replay_source, width=12).pack(side="left", padx=4)
-        row2 = ttk.Frame(lf2)
-        row2.grid(row=3, column=0, columnspan=3, sticky="w", pady=(6, 0))
-        ttk.Button(row2, text="开始录制", command=self._pro_start_record).pack(side="left")
-        ttk.Button(row2, text="记录击杀点", command=self._pro_kill_point).pack(
-            side="left", padx=6)
-        ttk.Button(row2, text="生成回放", command=self._pro_generate_replay).pack(side="left")
-
         lf3 = ttk.LabelFrame(parent, text=" 事件动作（独立于 AI 决策） ", padding=8)
-        lf3.grid(row=2, column=0, sticky="ew", pady=(0, 6))
+        lf3.grid(row=1, column=0, sticky="ew", pady=(0, 6))
         lf3.columnconfigure(0, weight=1)
         top = ttk.Frame(lf3)
         top.grid(row=0, column=0, sticky="ew")
@@ -3436,19 +3395,8 @@ class DirectorApp:
             self.rule_tree.column(col, width=width, anchor="w")
         self.rule_tree.grid(row=1, column=0, sticky="ew", pady=(6, 0))
 
-        lf4 = ttk.LabelFrame(parent, text=" 玩家改名（赛事 API → HLAE 命令） ", padding=8)
-        lf4.grid(row=3, column=0, sticky="ew")
-        lf4.columnconfigure(1, weight=1)
-        ttk.Label(lf4, text="API BaseUrl").grid(row=0, column=0, sticky="w")
-        ttk.Entry(lf4, textvariable=self.var_player_api).grid(
-            row=0, column=1, sticky="ew", padx=4)
-        ttk.Button(lf4, text="获取命令并复制", command=self._pro_rename).grid(
-            row=0, column=2)
-        self.lbl_rename = ttk.Label(lf4, text="", foreground="#555555")
-        self.lbl_rename.grid(row=1, column=0, columnspan=3, sticky="w", pady=(4, 0))
-
         lf5 = ttk.LabelFrame(parent, text=" 决策模型（独立训练器） ", padding=8)
-        lf5.grid(row=4, column=0, sticky="ew", pady=(6, 0))
+        lf5.grid(row=2, column=0, sticky="ew", pady=(6, 0))
         ttk.Button(lf5, text="打开训练器…", command=self._open_trainer).pack(side="left")
         ttk.Button(lf5, text="重新加载模型", command=self._reload_model).pack(
             side="left", padx=6)
@@ -3456,7 +3404,7 @@ class DirectorApp:
         self.lbl_model.pack(side="left", padx=6)
 
         lf6 = ttk.LabelFrame(parent, text=" 镜头时间线 / 专业指标（Phase 1） ", padding=8)
-        lf6.grid(row=5, column=0, sticky="ew", pady=(6, 0))
+        lf6.grid(row=3, column=0, sticky="ew", pady=(6, 0))
         lf6.columnconfigure(0, weight=1)
         self.lbl_pro_shot = ttk.Label(
             lf6, text="当前镜头：-    故事：-", foreground="#444444",
@@ -3547,13 +3495,7 @@ class DirectorApp:
         except Exception:
             c["obs_port"] = 4455
         c["obs_password"] = self.var_obs_pwd.get()
-        c["obs_game_scene"] = self.var_game_scene.get().strip() or "Game"
-        c["obs_replay_scene"] = self.var_replay_scene.get().strip() or "Replay"
-        c["obs_replay_source"] = self.var_replay_source.get().strip() or "Replay"
-        c["ffmpeg_path"] = self.var_ffmpeg.get().strip()
-        c["replay_output_dir"] = self.var_replay_out.get().strip()
         c["event_actions_enabled"] = bool(self.var_pro_enabled.get())
-        c["player_api_base_url"] = self.var_player_api.get().strip()
 
     def _pro_thread(self, fn: Callable[[], None]) -> None:
         threading.Thread(target=fn, daemon=True).start()
@@ -3606,28 +3548,6 @@ class DirectorApp:
     def _pro_disconnect(self) -> None:
         self.pro.obs.disconnect()
         self.lbl_obs.configure(text="OBS：未连接", foreground="#555555")
-
-    def _pro_browse_ffmpeg(self) -> None:
-        path = filedialog.askopenfilename(
-            title="选择 ffmpeg.exe", filetypes=[("ffmpeg", "ffmpeg.exe"), ("exe", "*.exe")])
-        if path:
-            self.var_ffmpeg.set(path)
-
-    def _pro_browse_out(self) -> None:
-        path = filedialog.askdirectory(title="选择回放输出目录")
-        if path:
-            self.var_replay_out.set(path)
-
-    def _pro_start_record(self) -> None:
-        self._sync_pro_cfg()
-        self._pro_thread(lambda: self.pro.replay.start_recording())
-
-    def _pro_kill_point(self) -> None:
-        self.pro.replay.record_kill()
-
-    def _pro_generate_replay(self) -> None:
-        self._sync_pro_cfg()
-        self._pro_thread(self.pro.replay.generate_replay)
 
     def _pro_add_rule(self) -> None:
         self._pro_rule_dialog(None)
@@ -3769,31 +3689,6 @@ class DirectorApp:
 
         ttk.Button(top, text="保存", command=save).grid(
             row=4, column=3, sticky="e", padx=8, pady=(0, 6))
-
-    def _pro_rename(self) -> None:
-        self._sync_pro_cfg()
-        snap = self.pro.latest_snap
-        if snap is None or not getattr(snap, "players", None):
-            messagebox.showwarning("玩家改名", "还没有 GSI 玩家数据。")
-            return
-        self.lbl_rename.configure(text="正在查询赛事 API…")
-        players = dict(snap.players)
-        base = self.var_player_api.get().strip()
-
-        def worker() -> None:
-            cmds, failed = pro_mod.build_rename_commands(players, base)
-            text = "; ".join(cmds)
-            def done() -> None:
-                if text:
-                    self.root.clipboard_clear()
-                    self.root.clipboard_append(text)
-                    self.lbl_rename.configure(
-                        text=f"已生成 {len(cmds)} 条命令并复制；失败 {len(failed)} 人")
-                else:
-                    self.lbl_rename.configure(text="没有查到登记名（API/网络/SteamID 不匹配）")
-            self.root.after(0, done)
-
-        self._pro_thread(worker)
 
     def _build(self) -> None:
         outer = ttk.Frame(self.root, padding=8)
@@ -4271,13 +4166,7 @@ class DirectorApp:
         except Exception:
             cfg["obs_port"] = 4455
         cfg["obs_password"] = self.var_obs_pwd.get()
-        cfg["obs_game_scene"] = self.var_game_scene.get().strip() or "Game"
-        cfg["obs_replay_scene"] = self.var_replay_scene.get().strip() or "Replay"
-        cfg["obs_replay_source"] = self.var_replay_source.get().strip() or "Replay"
-        cfg["ffmpeg_path"] = self.var_ffmpeg.get().strip()
-        cfg["replay_output_dir"] = self.var_replay_out.get().strip()
         cfg["event_actions_enabled"] = bool(self.var_pro_enabled.get())
-        cfg["player_api_base_url"] = self.var_player_api.get().strip()
         cfg["deepseek_api_key"] = self.var_api.get().strip()
         cfg["deepseek_model"] = self.var_model.get().strip() or "deepseek-chat"
         cfg["ai_enabled"] = bool(self.var_ai.get())

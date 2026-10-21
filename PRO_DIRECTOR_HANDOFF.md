@@ -1,9 +1,12 @@
 # CS2 AI 专业导播 — 目标、开发日志与关键词
 
 最后更新：2026-10-21  
-当前主程序源码：**v1.10.4（Phase 0/1 + 映射修正 + 防碎切/交火锁定 + MulNX 时序；exe 已重新打包，窗口标题 v1.10.4）**  
-当前训练器：**v1.1.0（共享核心已同步 v1.10.4；模型/特征未变）**  
+当前主程序源码：**v1.10.5（Phase 0/1 + 映射修正 + 防碎切 + MulNX 时序；已移除 FFmpeg 回放/改名；窗口标题 v1.10.5）**  
+当前训练器：**v1.1.0（共享核心已同步 v1.10.5；模型/特征未变）**  
 现有通用交接：`HANDOFF.md`
+
+> **v1.10.5 已移除 FFmpeg 回放、录制/击杀点/生成回放动作和玩家改名。**
+> 本文中涉及回放/REPLAY 的段落是历史设计或未实现规划，不再作为当前功能。
 
 ---
 
@@ -309,7 +312,7 @@ manual_override_active
   - 人工接管；
   - 实际 observer_slot。
 - 统计上面的指标。
-- 实机联调 OBS/FFmpeg，确保回放不会打断叙事。
+- 实机联调 OBS 场景/媒体动作。
 
 **没有 timeline，就无法判断“像不像专业导播”。**
 
@@ -396,20 +399,20 @@ transition_quality: 切点是否自然
 
 - GSI 读取、POV 评分、HLAE 出生点/包点；
 - 观察对象阵亡回切；
-- 独立日志、事件动作、OBS、FFmpeg 回放；
+- 独立日志、事件动作、OBS 场景/媒体控制；
 - 决策 CSV、RF/ExtraTrees、自动重载；
 - 独立训练器、demo 导入；
-- **v1.10：镜头 timeline / 镜头类型**（POV/BOMB/SPAWN，OVERVIEW/REPLAY 预留）；
+- **v1.10：镜头 timeline / 镜头类型**（POV/BOMB/SPAWN，OVERVIEW 预留）；
 - **v1.10：回合故事状态**（阶段/经济/残局/下包/比分/赛点）；
 - **v1.10：六项专业指标与数据落盘**（shot/round/event/summary）。
 
 仍然缺少：
 
 - 镜头调度器（候选 + 约束 + “不切”）；
-- 多机位 HLAE 宏库 / OVERVIEW / REPLAY 实际机位接入；
+- 多机位 HLAE 宏库 / OVERVIEW 实际机位接入；
 - 人工偏好标签（好/坏镜头、A/B）；
 - 用真实比赛校准指标与镜头语言；
-- 真实 OBS/FFmpeg 联调。
+- 真实 OBS 联调。
 
 > 当前 v1.10 仍是“反应式 POV 切换器 + 专业观测层”；
 > 故事状态和时间线已经是 Phase 2 调度器的输入，但调度器尚未接入决策。
@@ -506,11 +509,11 @@ manual_override
 - README.md
 
 当前系统：
-- 主程序源码 v1.10.4，训练器 v1.1.0；
-- 已具备 GSI/POV/HLAE/事件动作/OBS/FFmpeg/决策日志/RF-ExtraTrees；
+- 主程序源码 v1.10.5，训练器 v1.1.0；
+- 已具备 GSI/POV/HLAE/事件动作/OBS/决策日志/RF-ExtraTrees；
 - v1.10 Phase 1 已有镜头 timeline、六项指标、回合故事状态；
 - 仍是反应式 POV 切换器，没有镜头候选/调度器；
-- OBS/FFmpeg 尚未实机联调；
+- OBS 尚未实机联调；
 - 训练样本不足 1000 条。
 
 硬性约束：
@@ -578,10 +581,10 @@ reason / end_reason / source / manual / story`。
 ### 14.4 已知限制
 
 1. GSI 不提供 HLAE 当前机位：`SPAWN/BOMB` 按“已发送运镜 + 预计归还”记录；
-   `OVERVIEW/REPLAY` 只定义类型，尚未接入实际机位/OBS 回放。
+   `OVERVIEW` 只定义类型，尚未接入实际机位；FFmpeg 回放已移除。
 2. 经济分档是近似：freezetime 用金钱（可能在买入过程中），live 用武器+护甲平均档位。
 3. 指标是启发式统计，未经真实比赛人工标注校准；不要用它直接下“比 v1.9 更好”的结论。
-4. 训练器仓库已于 `792e4a3` 同步 `director_story.py` + `cs2_ai_director.py`（含 v1.10.4 MulNX 时序）；训练器 exe 未重建，指标未进入训练特征。
+4. 训练器仓库已于 `077a17c` 同步 `director_story.py` + `cs2_ai_director.py` + `director_pro.py`（含 v1.10.5 回放/改名移除）；训练器 exe 未重建，指标未进入训练特征。
 
 ### 14.5 v1.10.2：observer_slot/按键映射修正
 
@@ -613,9 +616,19 @@ MulNX 的 `InputSystem::UpdateKeysState` 每 10ms 调 `GetAsyncKeyState`：
 
 修正：`hotkey_modifier_hold_after=0.30`，最后按键后保持 Alt 300ms；导播单次/双击必须与 MulNX 宏 YAML 的 `comboClick` 一致。CS2 进程实测未提升权限，所以本次不是 UIPI 问题。
 
-### 14.8 下一步（Phase 2）
+### 14.8 v1.10.5：移除 FFmpeg 回放与玩家改名
 
-- 把 `StoryState` + `ShotTimeline` 作为输入，生成 `ShotCandidate`（POV/BOMB/OVERVIEW/REPLAY/不切）；
+- GUI 删除“录制 / FFmpeg 回放”和“玩家改名”两整块；
+- 删除 FfmpegService、ReplayManager、build_rename_commands；
+- 事件动作只保留播放媒体源/停止媒体源/切换场景；
+- 导播日志类别缩为 GSI / OBS / EventAction / App；
+- 配置删除 ffmpeg_path、replay_output_dir、obs_*_scene、obs_replay_source、player_api_base_url；
+- timeline 删除未使用的 REPLAY 类型；OBS WebSocket 场景/媒体控制保留；
+- 94 项测试通过。
+
+### 14.9 下一步（Phase 2）
+
+- 把 `StoryState` + `ShotTimeline` 作为输入，生成 `ShotCandidate`（POV/BOMB/OVERVIEW/不切）；
 - 先实现最短停留、最大切率、切换成本、事件优先级；
 - 仍然不改 RF/ExtraTrees 模型；等镜头偏好样本足够再做效用学习。
 
