@@ -1019,9 +1019,51 @@ class _FakePD:
         self.keys.append(key)
 
 
+class TestSlotKeyMapping(unittest.TestCase):
+    """GSI observer_slot 与观察者数字键的实测映射：键 N → slot (N+1) mod 10。"""
+
+    def test_slot_to_key_examples(self):
+        self.assertEqual(d.slot_to_key(0), "9")
+        self.assertEqual(d.slot_to_key(1), "0")
+        self.assertEqual(d.slot_to_key(3), "2")
+        self.assertEqual(d.slot_to_key(4), "3")
+        self.assertEqual(d.slot_to_key(9), "8")
+
+    def test_key_to_slot_examples(self):
+        self.assertEqual(d.key_to_slot(0), 1)
+        self.assertEqual(d.key_to_slot(9), 0)
+        self.assertEqual(d.key_to_slot(3), 4)
+
+    def test_roundtrip_all_slots(self):
+        for slot in range(10):
+            key = d.slot_to_key(slot)
+            self.assertIsNotNone(key)
+            self.assertEqual(d.key_to_slot(key), slot)
+        self.assertIsNone(d.slot_to_key(-1))
+        self.assertIsNone(d.slot_to_key(10))
+        self.assertIsNone(d.key_to_slot(-1))
+        self.assertIsNone(d.key_to_slot(10))
+
+    def test_manual_key_is_converted_for_timeline(self):
+        class FakeTimeline:
+            def __init__(self):
+                self.calls = []
+
+            def note_manual(self, *args):
+                self.calls.append(args)
+
+        eng = d.DirectorEngine(dict(d.DEFAULT_CONFIG), d.LogBus())
+        fake = FakeTimeline()
+        eng.timeline = fake  # type: ignore[assignment]
+        eng._last_observed_slot = 4
+        eng._on_manual_key("0")
+        self.assertEqual(fake.calls[0][0], 1)   # 键 0 → GSI slot 1
+        self.assertEqual(fake.calls[0][1], 4)   # from_slot 仍是 GSI slot 4
+
+
 @unittest.skipUnless(d.HAS_PYDIRECTINPUT, "pydirectinput 未安装")
 class TestInputIdentity(unittest.TestCase):
-    """observer_slot 0-9 必须原样变成 0-9 数字键，且按键前必须通过焦点检查。"""
+    """slot→按键必须用实测映射，且按键前必须通过焦点检查。"""
 
     def setUp(self):
         self.cfg = dict(d.DEFAULT_CONFIG)
@@ -1038,12 +1080,14 @@ class TestInputIdentity(unittest.TestCase):
         d.pydirectinput = self.old_pd
         d.keyboard = self.old_kb
 
-    def test_slot_0_to_9_identity(self):
-        for slot in range(10):
+    def test_slot_to_key_mapping_0_to_9(self):
+        expected = {0: "9", 1: "0", 2: "1", 3: "2", 4: "3",
+                    5: "4", 6: "5", 7: "6", 8: "7", 9: "8"}
+        for slot, key in expected.items():
             self.fake.keys.clear()
             self.assertTrue(self.ctl.press_slot(slot), slot)
-            self.assertEqual(self.fake.keys, [str(slot), str(slot)])
-            self.assertTrue(self.ctl.is_self_press(str(slot)))
+            self.assertEqual(self.fake.keys, [key, key])
+            self.assertTrue(self.ctl.is_self_press(key))
 
     def test_out_of_range_slots_rejected(self):
         for slot in (-1, 10, 99):

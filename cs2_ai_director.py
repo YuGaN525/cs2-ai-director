@@ -50,7 +50,7 @@ from typing import Any, Callable, Optional
 
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "CS2 AI 导播"
-VERSION = "1.10.0"
+VERSION = "1.10.1"
 IS_WINDOWS = os.name == "nt"
 
 GSI_CFG_NAME = "gamestate_integration_ai_director.cfg"
@@ -519,6 +519,36 @@ def _b(v: Any) -> bool:
     if isinstance(v, str):
         return v.strip().lower() in ("1", "true", "yes", "on")
     return False
+
+
+def slot_to_key(slot: Any) -> Optional[str]:
+    """GSI observer_slot → 观察者数字键。
+
+    实测 CS2：按数字键 N 会选中 GSI slot (N+1) mod 10
+    （键 0→slot 1，键 9→slot 0，键 3→slot 4）。
+    所以反推 slot S 对应键 (S-1) mod 10；不能再直接把 slot 当按键。
+    """
+    s = _i(slot)
+    if s is None or not (0 <= s <= 9):
+        return None
+    return str((s - 1) % 10)
+
+
+def key_to_slot(key: Any) -> Optional[int]:
+    """观察者数字键 → GSI observer_slot（slot_to_key 的逆映射）。"""
+    k = _i(key)
+    if k is None or not (0 <= k <= 9):
+        return None
+    return (k + 1) % 10
+
+
+def format_slot(slot: Any) -> str:
+    """日志/GUI 用：同时显示 GSI slot 和实际要按的数字键。"""
+    s = _i(slot)
+    if s is None:
+        return "-"
+    key = slot_to_key(s)
+    return f"slot={s}（键{key}）" if key is not None else f"slot={s}"
 
 
 def _vec(v: Any) -> Optional[tuple[float, float, float]]:
@@ -1623,11 +1653,12 @@ class InputController:
 
     # ---- 按键 ----
     def press_slot(self, slot: int) -> bool:
-        key = str(int(slot))
-        if key not in DIGITS:
+        key = slot_to_key(slot)
+        if key is None:
             return False
         if bool(self.cfg.get("dry_run")):
-            self.log.info(f"[演练] 模拟按下观察者切换键 {key}")
+            self.log.info(
+                f"[演练] 模拟按下观察者切换键 {key}（GSI slot={int(slot)}）")
             return True
         if not HAS_PYDIRECTINPUT or pydirectinput is None:
             self.log.warning("pydirectinput 未安装，无法模拟按键（请先安装依赖）")
@@ -2317,13 +2348,16 @@ class DirectorEngine:
         now = time.monotonic()
         pause = float(self.cfg["manual_pause_seconds"])
         self._manual_until = max(self._manual_until, now + pause)
-        if self.timeline is not None:
+        slot = key_to_slot(digit)
+        if self.timeline is not None and slot is not None:
             try:
-                self.timeline.note_manual(int(digit), self._last_observed_slot,
+                self.timeline.note_manual(slot, self._last_observed_slot,
                                           now, pause)
             except Exception:
                 self.bus.exception("记录人工接管时出现异常")
-        self.bus.info(f"检测到手动切换（按 {digit}），AI 自动切换暂停 {pause:.0f} 秒。")
+        self.bus.info(
+            f"检测到手动切换（按 {digit}，对应 GSI slot={slot}），"
+            f"AI 自动切换暂停 {pause:.0f} 秒。")
 
     # ---- 主循环 ----
     def _loop(self) -> None:
@@ -2768,7 +2802,8 @@ class DirectorEngine:
                             self.timeline.expect_switch(
                                 death_slot, status["reason"], "death", now)
                         self.bus.info(
-                            f"切换视角 → slot={death_slot}（观战对象已阵亡，切到最近敌人）"
+                            f"切换视角 → {format_slot(death_slot)}"
+                            f"（观战对象已阵亡，切到最近敌人）"
                         )
                         return
                     self._press_retry_after = now + 1.0
@@ -2834,7 +2869,8 @@ class DirectorEngine:
                         self.timeline.expect_switch(
                             decision.slot, decision.reason, "death", now)
                     self.bus.info(
-                        f"切换视角 → slot={decision.slot}（观战对象已阵亡，切到最近敌人）"
+                        f"切换视角 → {format_slot(decision.slot)}"
+                        f"（观战对象已阵亡，切到最近敌人）"
                     )
                 else:
                     source = ("AI" if (hint and hint[0] == decision.slot)
@@ -2845,7 +2881,8 @@ class DirectorEngine:
                         self.timeline.expect_switch(
                             decision.slot, decision.reason, timeline_source, now)
                     self.bus.info(
-                        f"切换视角 → slot={decision.slot} {cand.name if cand else '?'}"
+                        f"切换视角 → {format_slot(decision.slot)} "
+                        f"{cand.name if cand else '?'}"
                         f" [{source}] " + (format_candidate(cand) if cand else "")
                     )
                     if self.decision_logger is not None:
@@ -4278,10 +4315,12 @@ class DirectorApp:
         target = st.get("target")
         tname = st.get("target_name") or ""
         paused = float(st.get("paused_for") or 0)
-        target_txt = f"slot={target} {tname}" if target is not None else "-"
+        observed_txt = format_slot(observed) if observed is not None else "-"
+        target_txt = f"{format_slot(target)} {tname}" if target is not None else "-"
         self.lbl_play.configure(
-            text=f"阶段：{st.get('phase', '-')}    当前视角：{('slot=' + str(observed)) if observed is not None else '-'}"
-                 f"    AI 目标：{target_txt}" + (f"    手动接管剩余：{paused:.1f}s" if paused > 0 else "")
+            text=f"阶段：{st.get('phase', '-')}    当前视角：{observed_txt}"
+                 f"    AI 目标：{target_txt}"
+                 + (f"    手动接管剩余：{paused:.1f}s" if paused > 0 else "")
         )
 
         ai = st.get("ai") or {}
@@ -4308,9 +4347,14 @@ class DirectorApp:
         story_txt = st.get("story_text") or story.get("story") or "-"
         cur = st.get("current_shot") or {}
         if cur:
+            target_label = str(cur.get("target", "-"))
+            if cur.get("target_slot") is not None:
+                key = slot_to_key(cur.get("target_slot"))
+                if key is not None:
+                    target_label += f"（键{key}）"
             shot_txt = (
                 f"{cur.get('type_label', cur.get('type', '?'))} "
-                f"{cur.get('target', '-')} "
+                f"{target_label} "
                 f"({float(cur.get('duration') or 0):.1f}s / {cur.get('source', '-')})"
             )
         else:
