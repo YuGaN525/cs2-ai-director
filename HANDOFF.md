@@ -38,7 +38,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - 当前源码版本：`v1.10.2`（Phase 1 + 映射修正）
 - Phase 1 源码提交：`b78bbd3 Add Phase 1 shot timeline, pro metrics, and round story`
 - v1.10.1 映射方向错误（已废弃）：`02c770e`
-- v1.10.2 修正提交：以 `git log` 中 `Correct observer_slot keyboard mapping` 为准
+- v1.10.2 修正提交：`44640a3 Correct observer_slot keyboard mapping direction`
 - Release：`v1.10.2`
 - 资产：`CS2AIDirector.exe`
 - 大小：35,036,437 字节（约 35.0 MB）
