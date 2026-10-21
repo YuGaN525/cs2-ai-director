@@ -306,6 +306,9 @@ class ModelArbiter:
         self.error = ""
         self.loaded = False
         self.format = ""
+        self.calibration: Optional[dict[str, Any]] = None
+        self.calibration_path = self.json_path.with_name("decision_calibration.json")
+        self._calibration_stamp = 0.0
         self._lock = threading.Lock()
         self._stamp = 0.0
         self.load()
@@ -330,7 +333,14 @@ class ModelArbiter:
         self.loaded = False
         self.error = ""
         self.format = ""
+        self.calibration = None
         self._stamp = self._stamp_now()
+        self._load_calibration()
+        try:
+            self._calibration_stamp = (self.calibration_path.stat().st_mtime
+                                       if self.calibration_path.is_file() else 0.0)
+        except Exception:
+            self._calibration_stamp = 0.0
         if not self.enabled:
             return False
         if self.json_path.is_file():
@@ -384,11 +394,42 @@ class ModelArbiter:
             total += (float(counts[1]) / denom) if denom > 0 else 0.0
         return total / max(1, len(trees))
 
-    def probability(self, c: Any) -> float:
+    def _load_calibration(self) -> None:
+        self.calibration = None
+        try:
+            from decision_calibration import load_calibration
+            data = load_calibration(self.calibration_path)
+            if data is not None:
+                # 模型重训后旧校准失效，必须重新拟合。
+                try:
+                    model_mtime = (self.path.stat().st_mtime
+                                   if self.path.is_file() else
+                                   (self.json_path.stat().st_mtime
+                                    if self.json_path.is_file() else 0.0))
+                    if data.get("model_mtime") and abs(
+                            float(data["model_mtime"]) - model_mtime) > 0.5:
+                        return
+                except Exception:
+                    pass
+                self.calibration = data
+        except Exception:
+            pass
+
+    def _apply_calibration(self, p: float) -> float:
+        cal = self.calibration
+        if not cal:
+            return p
+        try:
+            from decision_calibration import apply_platt
+            return apply_platt(p, float(cal["a"]), float(cal["b"]))
+        except Exception:
+            return p
+
+    def probability_from_features(self, x: list[float]) -> float:
+        """未校准的原始森林概率，用于校准器拟合，避免递归校准。"""
         if not self.loaded:
             return 0.5
         try:
-            x = candidate_features(c)
             with self._lock:
                 forest = self.forest
                 model = self.model
@@ -396,8 +437,16 @@ class ModelArbiter:
                 return self._forest_probability(x, forest)
             if model is None:
                 return 0.5
-            p = model.predict_proba([x])[0]
-            return float(p[1])
+            return float(model.predict_proba([x])[0][1])
+        except Exception:
+            return 0.5
+
+    def probability(self, c: Any) -> float:
+        if not self.loaded:
+            return 0.5
+        try:
+            return self._apply_calibration(
+                self.probability_from_features(candidate_features(c)))
         except Exception:
             return 0.5
 
@@ -408,6 +457,15 @@ class ModelArbiter:
         stamp = self._stamp_now()
         if stamp and stamp != self._stamp:
             return self.load()
+        try:
+            cal_stamp = (self.calibration_path.stat().st_mtime
+                         if self.calibration_path.is_file() else 0.0)
+        except Exception:
+            cal_stamp = 0.0
+        if cal_stamp != self._calibration_stamp:
+            self._calibration_stamp = cal_stamp
+            self._load_calibration()
+            return True
         return False
 
     def arbitrate(self, cands: list[Any], top_score: float,
@@ -423,10 +481,16 @@ class ModelArbiter:
             margin = max(0.0, float(self.cfg.get("decision_model_margin", 0.08)))
             min_factor = max(0.5, min(1.0, float(
                 self.cfg.get("decision_model_min_factor", 0.9))))
-            min_prob = max(0.5, min(0.95, float(
-                self.cfg.get("decision_model_min_prob", 0.55))))
+            if self.calibration:
+                min_prob_key = "decision_model_calibrated_min_prob"
+                margin_key = "decision_model_calibrated_prob_margin"
+            else:
+                min_prob_key = "decision_model_min_prob"
+                margin_key = "decision_model_prob_margin"
+            min_prob = max(0.01, min(0.95, float(
+                self.cfg.get(min_prob_key, 0.16 if self.calibration else 0.55))))
             prob_margin = max(0.0, min(0.5, float(
-                self.cfg.get("decision_model_prob_margin", 0.05))))
+                self.cfg.get(margin_key, 0.02 if self.calibration else 0.05))))
         except (TypeError, ValueError):
             margin, min_factor, min_prob, prob_margin = 0.08, 0.9, 0.55, 0.05
         if float(cands[0].score) - float(cands[1].score) > margin:
@@ -459,4 +523,6 @@ class ModelArbiter:
             "format": self.format,
             "path": str(self.json_path if self.format == "json" else self.path),
             "error": self.error,
+            "calibrated": bool(self.calibration),
+            "calibration": (self.calibration or {}).get("trained_at", ""),
         }

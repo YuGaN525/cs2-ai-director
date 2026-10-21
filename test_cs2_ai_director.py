@@ -869,6 +869,22 @@ class TestDecisionModel(unittest.TestCase):
             self.assertEqual(logger.positive, 0)
 
 
+class TestCalibration(unittest.TestCase):
+    def test_auc_handles_ties_and_direction(self):
+        import decision_calibration as cal
+        self.assertAlmostEqual(cal._auc([0, 0, 1, 1], [0.1, 0.2, 0.3, 0.4]), 1.0)
+        self.assertAlmostEqual(cal._auc([0, 1, 0, 1], [0.5, 0.5, 0.5, 0.5]), 0.5)
+
+    def test_platt_improves_overconfident_probabilities(self):
+        import decision_calibration as cal
+        y = [0] * 90 + [1] * 10
+        p = [0.7] * 90 + [0.9] * 10
+        a, b = cal.fit_platt(y, p)
+        before = cal._brier(y, p)
+        after = cal._brier(y, [cal.apply_platt(x, a, b) for x in p])
+        self.assertLess(after, before)
+
+
 class TestEventActionDispatch(unittest.TestCase):
     def test_dispatch_executes_matching_rule(self):
         calls = []
@@ -911,6 +927,7 @@ class TestModelArbiterMargin(unittest.TestCase):
         cfg["decision_model_min_prob"] = 0.50
         arb = d.dm.ModelArbiter(cfg)
         arb.loaded = True
+        arb.calibration = None  # 本测试验证 raw 阈值/边际
         arb.probability = lambda c: probs[c.slot]  # type: ignore[assignment]
         cands = [
             SimpleNamespace(slot=1, score=0.50),

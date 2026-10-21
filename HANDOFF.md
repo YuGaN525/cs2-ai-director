@@ -1,8 +1,8 @@
 # CS2 AI 导播 — 开发交接日志
 
 最后更新：2026-10-21  
-当前主程序源码版本：**v1.10.11（Yuzi_CS2_AIDirector；回合边界/指标修复）**  
-当前训练器版本：**v1.1.3（Yuzi_CS2_AIDecisionTrainer；demo 特征/模糊元数据对齐）**  
+当前主程序源码版本：**v1.10.12（Yuzi_CS2_AIDirector；在线概率校准）**  
+当前训练器版本：**v1.1.4（Yuzi_CS2_AIDecisionTrainer；校准 + top-1/模糊诊断）**  
 专业导播新目标：见 `PRO_DIRECTOR_HANDOFF.md`
 
 ---
@@ -35,7 +35,7 @@ CS2 观战/转播导播工具，核心目标：
 
 https://github.com/YuGaN525/cs2-ai-director
 
-- 当前源码版本：`v1.10.11`（Yuzi_CS2_AIDirector；回合边界/指标修复）
+- 当前源码版本：`v1.10.12`（Yuzi_CS2_AIDirector；在线概率校准）
 - Phase 1 源码提交：`b78bbd3 Add Phase 1 shot timeline, pro metrics, and round story`
 - v1.10.1 映射方向错误（已废弃）：`02c770e`
 - v1.10.2 映射修正提交：`44640a3 Correct observer_slot keyboard mapping direction`
@@ -48,25 +48,26 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.9 GSI 阶段修复：`8ecf010 Fix GSI gameover phase priority`
 - v1.10.10 暂停兜底：`a948704 Add manual pause fallback`
 - v1.10.11 回合边界修复：`ee05a1d Fix round boundary during over`
-- Release：`v1.10.11`
+- v1.10.12 在线校准：以 `git log` 中 `Add online probability calibration` 为准
+- Release：`v1.10.12`
 - 资产：`Yuzi_CS2_AIDirector.exe`
-- 大小：35,955,842 字节（约 36.0 MB）
-- SHA256：`C3E40F98FA1E6B389536C717A8E27A0B96B0A98EFB9CC85B71632B2D372014FC`
-- Release 页面：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.11
+- 大小：35,969,393 字节（约 36.0 MB）
+- SHA256：`8DBEDAB7C275070D911EE9709DCFF84163D9EF2CB64AA265B8D06E306A71152C`
+- Release 页面：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.12
 
-> v1.10.11 已用 PyInstaller 6.22.3 / Python 3.14 打包，并通过启动验证（窗口标题 `Yuzi_CS2_AIDirector v1.10.11 · CS2 AI 专业导播`）；
-> exe 已作为 v1.10.11 Release 资产上传。v1.10.1 映射方向错误，请勿使用。
+> v1.10.12 已用 PyInstaller 6.22.3 / Python 3.14 打包，并通过启动验证（窗口标题 `Yuzi_CS2_AIDirector v1.10.12 · CS2 AI 专业导播`）；
+> exe 已作为 v1.10.12 Release 资产上传。v1.10.1 映射方向错误，请勿使用。
 
 ### 训练器仓库（私密）
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`9dd71fb Align demo features and ambiguity metadata`
-- Release：`v1.1.3`
+- 最新提交：以 `git log` 中 `Add online calibration to trainer` 为准
+- Release：`v1.1.4`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
-- 大小：179,784,415 字节（约 179 MB）
-- SHA256：`679634328964DE6BDD1E38E3107F28399C0EC252C3C96FB2AC2FECE0BDDE4A66`
-- Release 页面：https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.1.3
+- 大小：179,802,315 字节（约 179 MB）
+- SHA256：`8F05CA7F77E885AE2AB88F9651D4F54C1BC024C34858CDF03B2745A7C4F29516`
+- Release 页面：https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.1.4
 
 ### 本地产物
 
@@ -87,7 +88,7 @@ director_story.py         # 镜头时间线/六项专业指标/回合故事状�
 director_pro.py           # 独立日志/事件动作/OBS 场景/媒体控制
 decision_model.py         # 决策 CSV、3 秒标签、纯 JSON 森林加载/仲裁
 train_from_demos.py       # 旧静态 demo 模型（learner.json）
-test_cs2_ai_director.py   # 105 项测试
+test_cs2_ai_director.py   # 107 项测试
 requirements.txt          # 主程序依赖（含 obsws-python）
 requirements-train.txt    # demo 静态模型/训练依赖
 build_exe.ps1             # 主程序 PyInstaller 打包
@@ -349,7 +350,8 @@ event_actions_enabled / event_rules
 - v1.10.8：勾选框改为原生 √；修复事件规则/OBS 配置同步；新增测试规则与 OBS 源/场景校验；
 - v1.10.9：修复 map.phase=gameover 被 countdowns.phase=over 覆盖；增加 GSI 阶段切换日志；
 - v1.10.10：GSI 无暂停状态，新增暂停热键（默认 ctrl+alt+p）与开始/结束按钮，手动派发暂停事件；
-- v1.10.11：修复 over 阶段提前改 round 导致下一回合被立即结算、live=0 空行；新增回归测试。
+- v1.10.11：修复 over 阶段提前改 round 导致下一回合被立即结算、live=0 空行；新增回归测试；
+- v1.10.12：新增 Platt 在线概率校准；训练器增加校准按钮、top-1/模糊样本诊断。
 
 ---
 
@@ -358,12 +360,12 @@ event_actions_enabled / event_rules
 已验证：
 
 ```text
-主仓库 105 项测试通过（v1.10.11；含回合边界回归测试）
+主仓库 107 项测试通过（v1.10.12；含校准/回合边界测试）
 训练器仓库 99 项测试通过（已同步 v1.10.7 共享核心）
 Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
 模拟 GSI 序列验证镜头/指标/故事落盘
-两个 exe 启动成功（Yuzi_CS2_AIDirector v1.10.11 / Yuzi_CS2_AIDecisionTrainer v1.1.3）
+两个 exe 启动成功（Yuzi_CS2_AIDirector v1.10.12 / Yuzi_CS2_AIDecisionTrainer v1.1.4）
 训练器 CSV 训练 exit=0
 训练器 .dem 训练 exit=0（544 行 / 105 击杀事件）
 导播加载 ExtraTrees JSON 成功
@@ -405,7 +407,7 @@ Python 编译通过（cs2_ai_director.py / director_story.py）
 18. **经济分档是近似**：freezetime 用金钱（可能买到一半）、live 用武器+护甲平均档位；不读装备价值。
 19. **残局/阶段判定依赖 GSI 字段**：若 `allplayers` 缺失、`observer_slot` 延迟，镜头目标会以 GSI 实际值为准，指标可能少算。
 20. **回合切换/中途停止会产生 partial 行**：`round_metrics.csv` 用 `completed=1/0` 区分；累计指标会包含 partial 行。
-21. **训练器仓库已同步 v1.10.7 共享核心**；训练器 exe 已重建为 v1.1.3（demo damage_recent + rule_gap/is_ambiguous 对齐）。
+21. **训练器仓库已同步 v1.10.12 共享核心**；训练器 exe 已重建为 v1.1.4（在线校准 + top-1/模糊诊断）。
 22. **observer_slot 映射依赖实测**：v1.10.2 按完整表修正为“键 N→slot (N-1) mod 10”；v1.10.3/v1.10.4 未改映射；若 CS2 更新后映射变化，需重新实测。
 
 ---
@@ -447,7 +449,7 @@ python demo_dataset.py --demos "D:\demos" --out demo_decisions.csv
 
 ## 10.1 共享核心同步清单（v1.10）
 
-训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 已同步 v1.10.7 共享核心，并发布 v1.1.3 demo 对齐 exe。
+训练器仓库 `YuGaN525/cs2-ai-decision-trainer` 已同步 v1.10.12 共享核心，并发布 v1.1.4 校准 exe。
 评分核心没有改，但主程序新增了 `import director_story`，因此**复制新的 `cs2_ai_director.py` 时必须同时复制
 `director_story.py`**，否则训练器的 demo 解析会 ImportError。
 
@@ -593,14 +595,14 @@ YuGaN525/cs2-ai-decision-trainer
 继续开发 CS2 AI 导播项目。请先阅读仓库根目录的 HANDOFF.md 和 README.md。
 
 当前状态：
-- 主程序源码 v1.10.11（Yuzi_CS2_AIDirector），训练器 v1.1.3；
+- 主程序源码 v1.10.12（Yuzi_CS2_AIDirector），训练器 v1.1.4；
 - 主仓库 YuGaN525/cs2-ai-director，训练器仓库 YuGaN525/cs2-ai-decision-trainer，均为私密；
-- 主程序 exe：dist/Yuzi_CS2_AIDirector.exe（v1.10.11，已重新打包）；
+- 主程序 exe：dist/Yuzi_CS2_AIDirector.exe（v1.10.12，已重新打包）；
 - 训练器 exe：dist/Yuzi_CS2_AIDecisionTrainer.exe；
-- 105 项测试通过；GSI 阶段/OBS 事件链路已修复；暂停用热键/按钮兜底；Phase 1 只有模拟 GSI 序列验证；
+- 107 项测试通过；GSI 阶段/OBS 事件链路已修复；暂停用热键/按钮兜底；在线校准已启用；Phase 1 只有模拟 GSI 序列验证；
 - 模型使用 RF/ExtraTrees 交叉验证选择，导出纯 JSON，导播自动重载；
 - 决策样本 decisions.csv 尚未达到 1000 条；
-- 训练器仓库已同步 director_story.py 与训练优化；训练器 exe 为 v1.1.3。
+- 训练器仓库已同步 director_story.py 与训练优化；训练器 exe 为 v1.1.4。
 
 硬性约束：
 - 只读 GSI，不读内存/不注入/不发控制台命令；

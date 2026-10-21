@@ -19,6 +19,7 @@
 - **v1.10.9**：修复比赛结束时 `phase_countdowns="over"` 覆盖 `map.phase="gameover"`，导致“比赛结束”事件不触发；增加 GSI 阶段切换日志；
 - **v1.10.10**：GSI 不提供暂停状态，新增暂停热键/按钮，手动派发 `pause_started/pause_over`；
 - **v1.10.11**：修复 CS2 在 over 阶段提前改 round 导致下一回合被立即结算、真实指标丢失；新增回合边界回归测试；
+- **v1.10.12**：新增 Platt 在线概率校准（比赛结束自动拟合/验证/回滚保护），训练器增加“校准线上模型”和 top-1/模糊样本诊断；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -31,9 +32,9 @@
 
 | 程序 | 用途 |
 |---|---|
-| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.11，约 36 MB（Release v1.10.11） |
+| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.12，约 36 MB（Release v1.10.12） |
 
-当前本地构建：35,955,842 字节，SHA256 `C3E40F98FA1E6B389536C717A8E27A0B96B0A98EFB9CC85B71632B2D372014FC`。
+当前本地构建：35,969,393 字节，SHA256 `8DBEDAB7C275070D911EE9709DCFF84163D9EF2CB64AA265B8D06E306A71152C`。
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -366,7 +367,11 @@ story         当时的回合故事快照
 | `decision_model_margin` | 0.08 | 规则前两名分差 ≤ 该值才让模型仲裁 |
 | `decision_model_min_factor` | 0.9 | 模型推荐目标的规则分下限系数 |
 | `decision_model_prob_margin` | 0.05 | 模型推荐目标需领先当前目标的概率；过低不切 |
-| `decision_model_min_prob` | 0.55 | 模型推荐目标的最低概率 |
+| `decision_model_min_prob` | 0.55 | 未校准模型推荐目标的最低概率 |
+| `decision_calibration_enabled` | true | 是否启用线上 Platt 概率校准 |
+| `decision_calibration_min_samples` | 500 | 自动校准所需的最少已标注样本 |
+| `decision_model_calibrated_min_prob` | 0.16 | 已校准模型的最低概率（对应旧 0.55 所在尺度） |
+| `decision_model_calibrated_prob_margin` | 0.02 | 已校准模型的概率边际 |
 | `shot_timeline_enabled` | true | 是否记录镜头时间线/指标 |
 | `shot_timeline_dir` | 空 | 时间线输出目录，空则 `%APPDATA%\CS2AIDirector` |
 | `metric_kill_lookback` | 2.5 | 击杀覆盖回看窗口（秒） |
@@ -468,10 +473,11 @@ story         当时的回合故事快照
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 99 项（不启动 GUI、不发真实按键）
+- `test_cs2_ai_director.py`：核心逻辑测试，共 107 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS WebSocket 场景/媒体控制
 - `director_story.py`：镜头时间线、六项专业指标、回合故事状态（Phase 1）
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁
+- `decision_calibration.py`：线上 Platt 概率校准、分组验证、自动写入/失效保护
 - `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`（主程序旧 demo 模型）
 - `build_exe.ps1`：主程序 exe 的打包脚本
 - `SELFCHECK.md`：自检清单、修复记录与仍需实机验证的步骤

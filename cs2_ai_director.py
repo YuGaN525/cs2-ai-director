@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.11"
+VERSION = "1.10.12"
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -101,6 +101,7 @@ except Exception:  # pragma: no cover
     pygetwindow = None
     HAS_PYGETWINDOW = False
 
+import decision_calibration as cal_mod
 import decision_model as dm
 import director_pro as pro_mod
 import director_story as story_mod
@@ -184,6 +185,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "decision_model_min_factor": 0.9,
     "decision_model_prob_margin": 0.05,  # 模型推荐目标需领先当前目标的概率
     "decision_model_min_prob": 0.55,     # 模型推荐目标的最低概率
+    "decision_calibration_enabled": True,
+    "decision_calibration_min_samples": 500,
+    "decision_calibration_after_match_only": True,
+    "decision_model_calibrated_min_prob": 0.16,
+    "decision_model_calibrated_prob_margin": 0.02,
     # ---- 专业导播 Phase 1：镜头时间线 / 专业指标 / 回合故事 ----
     "shot_timeline_enabled": True,
     "shot_timeline_dir": "",       # 空 = %APPDATA%\CS2AIDirector
@@ -2319,6 +2325,10 @@ class DirectorEngine:
         self._last_observed_info: Optional[
             tuple[int, str, Optional[tuple[float, float, float]]]
         ] = None
+        self._calibration_due_at: Optional[float] = None
+        self._calibration_running = False
+        self._calibration_gameover_seen = False
+        self._last_calibration_result = ""
 
     # ---- 生命周期 ----
     def start(self) -> None:
@@ -2421,6 +2431,60 @@ class DirectorEngine:
             f"检测到手动切换（按 {digit}，对应 GSI slot={slot}），"
             f"AI 自动切换暂停 {pause:.0f} 秒。")
 
+    # ---- 在线校准 ----
+    def _maybe_start_calibration(self, snap: Snapshot, now: float) -> None:
+        if not bool(self.cfg.get("decision_calibration_enabled", True)):
+            return
+        if self.model_arbiter is None or not self.model_arbiter.loaded:
+            return
+        phase = str(getattr(snap, "phase", "") or "").lower()
+        if phase == "gameover":
+            if not self._calibration_gameover_seen:
+                self._calibration_gameover_seen = True
+                self._calibration_due_at = now + 8.0
+        elif phase not in ("gameover", "intermission"):
+            self._calibration_gameover_seen = False
+        if self._calibration_due_at is None or now < self._calibration_due_at:
+            return
+        if self._calibration_running:
+            return
+        self._calibration_due_at = None
+        try:
+            min_samples = max(100, int(self.cfg.get("decision_calibration_min_samples", 500)))
+        except (TypeError, ValueError):
+            min_samples = 500
+        rows = int(getattr(self.decision_logger, "rows", 0) or 0) if self.decision_logger else 0
+        if rows < min_samples:
+            self.bus.info(f"在线校准跳过：标注样本 {rows} < {min_samples}")
+            return
+        self._calibration_running = True
+        self.bus.info(f"比赛结束，开始在线校准（{rows} 条已标注样本）…")
+        threading.Thread(target=self._run_calibration, daemon=True,
+                         name="decision-calibration").start()
+
+    def _run_calibration(self) -> None:
+        try:
+            out = dm.decision_model_path().with_name("decision_calibration.json")
+            result = cal_mod.calibrate_csv(
+                dm.decision_csv_path(), dm.decision_model_path(), out,
+                min_samples=max(100, int(self.cfg.get("decision_calibration_min_samples", 500))))
+            if result.get("ok"):
+                self._last_calibration_result = (
+                    f"Brier {result.get('brier_before'):.3f}→{result.get('brier_after'):.3f}")
+                self.bus.info(
+                    f"在线校准已应用：{self._last_calibration_result}；"
+                    f"AUC {result.get('auc', 0):.3f}")
+                if self.model_arbiter is not None:
+                    self.model_arbiter.reload_if_changed()
+            else:
+                self._last_calibration_result = f"未应用：{result.get('reason', '')}"
+                self.bus.warning(f"在线校准未应用：{result.get('reason', '')}")
+        except Exception as e:
+            self._last_calibration_result = f"异常：{type(e).__name__}: {e}"
+            self.bus.warning(f"在线校准异常：{type(e).__name__}: {e}")
+        finally:
+            self._calibration_running = False
+
     # ---- 主循环 ----
     def _loop(self) -> None:
         hz = max(5.0, min(60.0, float(self.cfg["loop_hz"])))
@@ -2494,6 +2558,7 @@ class DirectorEngine:
             self._stale_active = False
             self.bus.info("GSI 数据流已恢复。")
         status["gsi"] = "ok"
+        self._maybe_start_calibration(snap, now)
 
         # ---- 回合故事 + 镜头时间线（Phase 1，不影响评分/模型）----
         self._last_observed_slot = snap.observer_slot
@@ -3591,6 +3656,8 @@ class DirectorApp:
         ttk.Button(lf5, text="打开训练器…", command=self._open_trainer).pack(side="left")
         ttk.Button(lf5, text="重新加载模型", command=self._reload_model).pack(
             side="left", padx=6)
+        ttk.Button(lf5, text="校准线上模型", command=self._calibrate_online).pack(
+            side="left", padx=(0, 6))
         self.lbl_model = ttk.Label(lf5, text="随机森林：检查中…", foreground="#555555")
         self.lbl_model.pack(side="left", padx=6)
 
@@ -3701,8 +3768,9 @@ class DirectorApp:
     def _update_model_label(self) -> None:
         st = self.model_arbiter.status()
         if st.get("loaded"):
+            cal = " · 已校准" if st.get("calibrated") else ""
             self.lbl_model.configure(
-                text=f"随机森林：已加载（{st.get('format', '?')}）",
+                text=f"随机森林：已加载（{st.get('format', '?')}）{cal}",
                 foreground="#087f23")
         else:
             self.lbl_model.configure(
@@ -3717,6 +3785,32 @@ class DirectorApp:
         if not ok:
             messagebox.showwarning(
                 "模型", "未找到 decision_model.json.gz，或模型格式不匹配。")
+
+    def _calibrate_online(self) -> None:
+        if not self.model_arbiter.loaded:
+            messagebox.showwarning("校准", "请先加载仲裁模型。")
+            return
+        self.bus.info("开始用线上 decisions.csv 校准概率…")
+        self._pro_thread(self._calibrate_online_worker)
+
+    def _calibrate_online_worker(self) -> None:
+        try:
+            out = dm.decision_model_path().with_name("decision_calibration.json")
+            result = cal_mod.calibrate_csv(
+                dm.decision_csv_path(), dm.decision_model_path(), out,
+                min_samples=max(100, int(self.cfg.get(
+                    "decision_calibration_min_samples", 500))))
+            if result.get("ok"):
+                self.bus.info(
+                    f"校准完成：Brier {result.get('brier_before'):.3f}→"
+                    f"{result.get('brier_after'):.3f}，AUC {result.get('auc', 0):.3f}")
+                self.model_arbiter.reload_if_changed()
+            else:
+                self.bus.warning(f"校准未应用：{result.get('reason', '')}")
+        except Exception as e:
+            self.bus.warning(f"校准异常：{type(e).__name__}: {e}")
+        finally:
+            self.root.after(0, self._update_model_label)
 
     def _open_trainer(self) -> None:
         base = Path(sys.executable).parent if getattr(sys, "frozen", False) \
