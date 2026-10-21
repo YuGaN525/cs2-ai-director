@@ -56,11 +56,12 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`077a17c Remove FFmpeg replay and player rename`
-- Release：`v1.1.1`（品牌化 + 重新打包）
+- 最新提交：`13dd8a6 Brand as Yuzi_CS2_AIDecisionTrainer`
+- Release：`v1.1.1`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
 - 大小：179,769,400 字节（约 179 MB）
 - SHA256：`52F76BFEEA971DE7DF21B3536AF9C91E549C227D476418C18F54FCCEB10B2546`
+- Release 页面：https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.1.1
 
 ### 本地产物
 
