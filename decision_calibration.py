@@ -230,10 +230,28 @@ def calibrate_csv(csv_path: Path, model_path: Path, out_path: Path,
         return {"ok": False, "reason": "切分后某一侧只有一个类别"}
     a, b = fit_platt(y_train, p_train)
     before = _brier(y_test, p_test)
-    after = _brier(y_test, [apply_platt(p, a, b) for p in p_test])
+    calibrated_test = [apply_platt(p, a, b) for p in p_test]
+    after = _brier(y_test, calibrated_test)
     ll_before = _logloss(y_test, p_test)
-    ll_after = _logloss(y_test, [apply_platt(p, a, b) for p in p_test])
+    ll_after = _logloss(y_test, calibrated_test)
     auc = _auc(y_test, p_test)
+    # 用验证集 F1 选校准后的操作阈值；没有正例时退回 0.20。
+    best_f1, best_th = -1.0, 0.20
+    for step in range(5, 51):
+        th = step / 100.0
+        tp = sum(1 for yi, pi in zip(y_test, calibrated_test)
+                 if yi == 1 and pi >= th)
+        fp = sum(1 for yi, pi in zip(y_test, calibrated_test)
+                 if yi == 0 and pi >= th)
+        fn = sum(1 for yi, pi in zip(y_test, calibrated_test)
+                 if yi == 1 and pi < th)
+        if tp <= 0:
+            continue
+        precision = tp / max(1, tp + fp)
+        recall = tp / max(1, tp + fn)
+        f1 = 2 * precision * recall / max(1e-9, precision + recall)
+        if f1 > best_f1 + 1e-9:
+            best_f1, best_th = f1, th
     improved = (after <= before * (1.0 - min_improvement)
                 and ll_after <= ll_before * (1.0 - min_improvement)
                 and a > 0.05)
@@ -242,7 +260,9 @@ def calibrate_csv(csv_path: Path, model_path: Path, out_path: Path,
         "positive": sum(ys), "split": split,
         "brier_before": round(before, 6), "brier_after": round(after, 6),
         "logloss_before": round(ll_before, 6), "logloss_after": round(ll_after, 6),
-        "auc": round(auc, 6), "source": str(csv_path),
+        "auc": round(auc, 6), "min_prob": round(best_th, 4),
+        "f1": round(max(0.0, best_f1), 4),
+        "source": str(csv_path),
         "model": str(model_path), "min_timestamp": float(min_timestamp or 0.0),
         "model_mtime": (Path(model_path).stat().st_mtime
                         if Path(model_path).is_file() else 0.0),

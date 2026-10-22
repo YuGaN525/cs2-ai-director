@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.16"
+VERSION = "1.10.17"
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"

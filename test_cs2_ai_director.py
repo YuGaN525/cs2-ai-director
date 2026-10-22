@@ -1548,12 +1548,12 @@ class TestShotTimeline(unittest.TestCase):
         self.assertEqual(summary["session"]["rounds"], 1)
         self.assertAlmostEqual(summary["session"]["kill_coverage"], 1.0)
 
-        # 重启后从 round_metrics.csv 恢复累计指标
+        # 重启后本次会话指标从头开始；历史只留在 CSV，不污染 session。
         self.timeline.close(109.0, "测试结束")
         tl2 = st.ShotTimeline(self.cfg, base_dir=Path(self.tmp.name))
-        self.assertEqual(tl2.session_metrics()["rounds"], 1)
-        self.assertEqual(tl2.session_metrics()["kills"], 1)
-        self.assertAlmostEqual(tl2.session_metrics()["kill_coverage"], 1.0)
+        self.assertEqual(tl2.session_metrics()["rounds"], 0)
+        self.assertEqual(tl2.session_metrics()["kills"], 0)
+        self.assertIsNone(tl2.session_metrics()["kill_coverage"])
 
     def test_kill_coverage_zero_when_watching_other_player(self):
         players = [player(1, "CT"), player(2, "T", pos=(600, 0, 0))]

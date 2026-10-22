@@ -489,6 +489,15 @@ class ModelArbiter:
                 margin_key = "decision_model_prob_margin"
             min_prob = max(0.01, min(0.95, float(
                 self.cfg.get(min_prob_key, 0.16 if self.calibration else 0.55))))
+            # 校准器会用验证 F1 选阈值；让数据决定操作点，
+            # 避免固定 0.16 在某些模型尺度上过激或过保守。
+            if self.calibration:
+                try:
+                    cal_min = float(self.calibration.get("min_prob", 0.0) or 0.0)
+                    if 0.01 <= cal_min <= 0.95:
+                        min_prob = cal_min
+                except (TypeError, ValueError):
+                    pass
             prob_margin = max(0.0, min(0.5, float(
                 self.cfg.get(margin_key, 0.02 if self.calibration else 0.05))))
         except (TypeError, ValueError):

@@ -684,6 +684,7 @@ class ShotTimeline:
         self._pending_manual: Optional[dict[str, Any]] = None
         self._last_round_metrics: Optional[dict[str, Any]] = None
         self._session_durations: list[float] = []
+        self._history_rounds = 0
         self._last_story: dict[str, Any] = {}
 
         self._agg: dict[str, float] = {
@@ -1385,34 +1386,16 @@ class ShotTimeline:
             }
 
     def _load_history(self) -> None:
-        if not self.round_path.is_file():
-            return
+        # 历史 CSV 只用于复盘，不再累加进“本次会话”。
+        # 旧实现会把前几次启动的回合/人工接管算进当前指标，
+        # 导致用户看到 223 次人工接管，而本次实际只有 13 次。
+        self._history_rounds = 0
         try:
-            with self.round_path.open("r", newline="", encoding="utf-8-sig") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    self._agg["rounds"] += 1
-                    if str(row.get("completed", "0")) == "1":
-                        self._agg["completed_rounds"] += 1
-                    self._agg["kills"] += _i(row.get("kills"), 0) or 0
-                    self._agg["kill_hits"] += _i(row.get("kill_hits"), 0) or 0
-                    self._agg["first_damages"] += _i(row.get("first_damages"), 0) or 0
-                    self._agg["prefight_hits"] += _i(row.get("prefight_hits"), 0) or 0
-                    self._agg["live_seconds"] += _f(row.get("live_seconds"), 0.0)
-                    self._agg["corpse_seconds"] += _f(row.get("corpse_time"), 0.0)
-                    self._agg["cut_count"] += _i(row.get("cut_count"), 0) or 0
-                    self._agg["shot_count"] += _i(row.get("shot_count"), 0) or 0
-                    self._agg["pov_shots"] += _i(row.get("pov_shots"), 0) or 0
-                    self._agg["pov_duration_sum"] += _f(
-                        row.get("pov_duration_sum"), 0.0)
-                    self._agg["pov_duration_count"] += _i(
-                        row.get("pov_duration_count"), 0) or 0
-                    self._agg["manual_takeover"] += _i(
-                        row.get("manual_takeover"), 0) or 0
-                    self._agg["manual_confirmed"] += _i(
-                        row.get("manual_confirmed"), 0) or 0
-        except Exception as e:
-            self._log(f"历史回合指标读取失败（忽略）：{type(e).__name__}: {e}")
+            if self.round_path.is_file():
+                with self.round_path.open("r", newline="", encoding="utf-8-sig") as f:
+                    self._history_rounds = max(0, sum(1 for _ in f) - 1)
+        except Exception:
+            self._history_rounds = 0
 
     # ---- 生命周期 ----
     def close(self, now: float, reason: str = "导播停止") -> None:
