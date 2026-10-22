@@ -67,7 +67,7 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`a69432a Optimize runtime hot paths`
+- 最新提交：`c003ab7 Sync session metrics and F1 threshold`
 - Release：`v1.1.7`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
 - 大小：179,817,210 字节（约 179 MB）
