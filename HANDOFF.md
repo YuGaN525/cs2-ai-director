@@ -53,7 +53,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.14 回合叙事：`f8a3860 Add round narrative hint`
 - v1.10.15 性能优化：`ee4c5b5 Optimize runtime hot paths`
 - v1.10.16 模型/配置备份：`80f86ba Add model/config bundle export/import`
-- v1.10.17 会话/阈值：以 `git log` 中 `Fix session metrics and calibration threshold` 为准
+- v1.10.17 会话/阈值：`87c3ec3 Fix session metrics and calibration threshold`
 - Release：`v1.10.17`
 - 资产：`Yuzi_CS2_AIDirector.exe`
 - 大小：35,983,768 字节（约 36.0 MB）
