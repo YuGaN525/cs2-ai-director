@@ -16,6 +16,7 @@ from collections import deque
 from pathlib import Path
 from unittest import mock
 
+import backup_bundle as bundle
 import cs2_ai_director as d
 import director_narrative as narrative
 import director_story as st
@@ -868,6 +869,33 @@ class TestDecisionModel(unittest.TestCase):
             logger.poll(self._snap(dmg=0), 13.1)
             self.assertEqual(logger.rows, 1)
             self.assertEqual(logger.positive, 0)
+
+
+class TestBackupBundle(unittest.TestCase):
+    def test_export_import_roundtrip_and_secret_redaction(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            src, dst = Path(a), Path(b)
+            cfg = {"gsi_port": 32100, "deepseek_api_key": "SECRET",
+                   "obs_password": "PW", "unknown": 1}
+            (src / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
+            (src / "decision_model.json.gz").write_bytes(b"model-json")
+            (src / "decision_model.pkl").write_bytes(b"model-pkl")
+            (src / "decision_model_metrics.json").write_text("{}", encoding="utf-8")
+            (src / "decision_calibration.json").write_text(
+                json.dumps({"a": 1, "b": 0, "model_mtime": 1}), encoding="utf-8")
+            archive = dst / "backup.zip"
+            result = bundle.export_bundle(
+                archive, cfg, src, "test", include_secrets=False)
+            self.assertIn("config.json", result["files"])
+            info = bundle.inspect_bundle(archive)
+            self.assertFalse(info["manifest"]["secrets_included"])
+            self.assertEqual(info["config"]["deepseek_api_key"], "")
+            imported = bundle.import_bundle(archive, dst)
+            self.assertTrue(Path(imported["backup_dir"]).is_dir())
+            self.assertEqual((dst / "decision_model.pkl").read_bytes(), b"model-pkl")
+            new_cfg = json.loads((dst / "config.json").read_text(encoding="utf-8"))
+            self.assertEqual(new_cfg["gsi_port"], 32100)
+            self.assertEqual(new_cfg["deepseek_api_key"], "")
 
 
 class TestNarrative(unittest.TestCase):

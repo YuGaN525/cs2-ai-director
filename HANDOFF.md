@@ -1,7 +1,7 @@
 # CS2 AI 导播 — 开发交接日志
 
 最后更新：2026-10-21  
-当前主程序源码版本：**v1.10.15（Yuzi_CS2_AIDirector；运行时性能优化）**  
+当前主程序源码版本：**v1.10.16（Yuzi_CS2_AIDirector；模型/配置一键备份）**  
 当前训练器版本：**v1.1.6（Yuzi_CS2_AIDecisionTrainer；批量校准/性能优化）**  
 专业导播新目标：见 `PRO_DIRECTOR_HANDOFF.md`
 
@@ -35,7 +35,7 @@ CS2 观战/转播导播工具，核心目标：
 
 https://github.com/YuGaN525/cs2-ai-director
 
-- 当前源码版本：`v1.10.15`（Yuzi_CS2_AIDirector；运行时性能优化）
+- 当前源码版本：`v1.10.16`（Yuzi_CS2_AIDirector；模型/配置一键备份）
 - Phase 1 源码提交：`b78bbd3 Add Phase 1 shot timeline, pro metrics, and round story`
 - v1.10.1 映射方向错误（已废弃）：`02c770e`
 - v1.10.2 映射修正提交：`44640a3 Correct observer_slot keyboard mapping direction`
@@ -52,14 +52,15 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.13 校准窗口修复：`4ff7177 Calibrate only on post-model samples`
 - v1.10.14 回合叙事：`f8a3860 Add round narrative hint`
 - v1.10.15 性能优化：`ee4c5b5 Optimize runtime hot paths`
-- Release：`v1.10.15`
+- v1.10.16 模型/配置备份：以 `git log` 中 `Add model/config bundle export/import` 为准
+- Release：`v1.10.16`
 - 资产：`Yuzi_CS2_AIDirector.exe`
-- 大小：35,976,527 字节（约 36.0 MB）
-- SHA256：`FC22ACCD974D1D312556896B240756581B483D831F5317F7831381F19A925B90`
-- Release 页面：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.15
+- 大小：35,984,144 字节（约 36.0 MB）
+- SHA256：`7A848AAB5003E7E006F8492B197BC49968B7BEF59B1F850241F8EBE1EC3EA904`
+- Release 页面：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.16
 
-> v1.10.15 已用 PyInstaller 6.22.3 / Python 3.14 打包，并通过启动验证（窗口标题 `Yuzi_CS2_AIDirector v1.10.15 · CS2 AI 专业导播`）；
-> exe 已作为 v1.10.15 Release 资产上传。v1.10.1 映射方向错误，请勿使用。
+> v1.10.16 已用 PyInstaller 6.22.3 / Python 3.14 打包，并通过启动验证（窗口标题 `Yuzi_CS2_AIDirector v1.10.16 · CS2 AI 专业导播`）；
+> exe 已作为 v1.10.16 Release 资产上传。v1.10.1 映射方向错误，请勿使用。
 
 ### 训练器仓库（私密）
 
@@ -91,7 +92,7 @@ director_story.py         # 镜头时间线/六项专业指标/回合故事状�
 director_pro.py           # 独立日志/事件动作/OBS 场景/媒体控制
 decision_model.py         # 决策 CSV、3 秒标签、纯 JSON 森林加载/仲裁
 train_from_demos.py       # 旧静态 demo 模型（learner.json）
-test_cs2_ai_director.py   # 108 项测试
+test_cs2_ai_director.py   # 109 项测试
 requirements.txt          # 主程序依赖（含 obsws-python）
 requirements-train.txt    # demo 静态模型/训练依赖
 build_exe.ps1             # 主程序 PyInstaller 打包
@@ -362,7 +363,8 @@ event_actions_enabled / event_rules
 - v1.10.12：新增 Platt 在线概率校准；训练器增加校准按钮、top-1/模糊样本诊断；
 - v1.10.13：校准只使用模型训练后的线上样本；用 5 张 demo 重训（2955 行，top1 67.3%）；
 - v1.10.14：新增回合叙事提示（freeze/回合结束），可选推送 OBS 文本源，不自动切镜；
-- v1.10.15：候选评分快照缓存、GUI 日志批量刷新、训练器校准批量推理/AUC O(n log n)；不改变决策结果。
+- v1.10.15：候选评分快照缓存、GUI 日志批量刷新、训练器校准批量推理/AUC O(n log n)；不改变决策结果；
+- v1.10.16：新增模型/配置 ZIP 导出导入，导入前自动备份，密钥默认脱敏。
 
 ---
 
@@ -371,12 +373,12 @@ event_actions_enabled / event_rules
 已验证：
 
 ```text
-主仓库 108 项测试通过（v1.10.15；含叙事/校准/回合边界测试）
+主仓库 109 项测试通过（v1.10.16；含备份/叙事/校准/回合边界测试）
 训练器仓库 99 项测试通过（已同步 v1.10.7 共享核心）
 Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
 模拟 GSI 序列验证镜头/指标/故事落盘
-两个 exe 启动成功（Yuzi_CS2_AIDirector v1.10.15 / Yuzi_CS2_AIDecisionTrainer v1.1.6）
+两个 exe 启动成功（Yuzi_CS2_AIDirector v1.10.16 / Yuzi_CS2_AIDecisionTrainer v1.1.6）
 训练器 CSV 训练 exit=0
 训练器 .dem 训练 exit=0（544 行 / 105 击杀事件）
 导播加载 ExtraTrees JSON 成功
@@ -606,11 +608,11 @@ YuGaN525/cs2-ai-decision-trainer
 继续开发 CS2 AI 导播项目。请先阅读仓库根目录的 HANDOFF.md 和 README.md。
 
 当前状态：
-- 主程序源码 v1.10.15（Yuzi_CS2_AIDirector），训练器 v1.1.6；
+- 主程序源码 v1.10.16（Yuzi_CS2_AIDirector），训练器 v1.1.6；
 - 主仓库 YuGaN525/cs2-ai-director，训练器仓库 YuGaN525/cs2-ai-decision-trainer，均为私密；
-- 主程序 exe：dist/Yuzi_CS2_AIDirector.exe（v1.10.15，已重新打包）；
+- 主程序 exe：dist/Yuzi_CS2_AIDirector.exe（v1.10.16，已重新打包）；
 - 训练器 exe：dist/Yuzi_CS2_AIDecisionTrainer.exe；
-- 108 项测试通过；GSI 阶段/OBS 事件链路已修复；暂停用热键/按钮兜底；在线校准已启用；回合叙事提示已启用；
+- 109 项测试通过；GSI 阶段/OBS 事件链路已修复；暂停用热键/按钮兜底；在线校准/回合叙事/模型配置备份已启用；
 - 模型使用 RF/ExtraTrees 交叉验证选择，导出纯 JSON，导播自动重载；
 - 决策样本 decisions.csv 尚未达到 1000 条；
 - 训练器仓库已同步 director_story.py 与训练优化；训练器 exe 为 v1.1.6。

@@ -27,7 +27,8 @@
 - **v1.10.12 增量（2026-10-22）**：新增 Platt 在线概率校准；训练器增加校准按钮、top-1/模糊样本诊断。
 - **v1.10.13 增量（2026-10-22）**：校准只使用模型训练后的线上样本；用 5 张 demo 重训，top-1 67.3%。
 - **v1.10.14 增量（2026-10-22）**：新增回合叙事提示（freeze/回合结束），可选推送 OBS 文本源，不自动切镜。
-- **v1.10.15 增量（2026-10-22）**：候选评分快照缓存、GUI 日志批量刷新、训练器校准批量推理/AUC O(n log n)；当前测试 108 项。
+- **v1.10.15 增量（2026-10-22）**：候选评分快照缓存、GUI 日志批量刷新、训练器校准批量推理/AUC O(n log n)。
+- **v1.10.16 增量（2026-10-22）**：新增模型/配置 ZIP 一键导出导入；导入前自动备份、密钥默认脱敏；当前测试 109 项。
 
 ---
 
@@ -1251,6 +1252,50 @@ SHA256：FC22ACCD974D1D312556896B240756581B483D831F5317F7831381F19A925B90
 Yuzi_CS2_AIDecisionTrainer.exe v1.1.6
 大小：179,810,090 字节
 SHA256：BA346FA1C7FD35C739F3D2EB92F5B0B9925B3C0459C969475E965B00A7220337
+```
+
+---
+
+## 30. v1.10.16：模型/配置一键导出导入
+
+### 30.1 归档内容
+
+```text
+manifest.json
+config.json
+decision_model.pkl
+decision_model.json.gz
+decision_model_metrics.json
+decision_calibration.json
+learner.json（如果存在）
+```
+
+不包含 decisions.csv、日志、截图。
+
+### 30.2 安全与恢复
+
+- 导出时询问是否包含 DeepSeek API Key / OBS 密码，默认“否”；
+- 导入前备份到 data_dir/backup_import_时间戳；
+- 校验 ZIP 路径、总解压大小、manifest、config JSON；
+- 拒绝 zip-slip 和未知文件；
+- 导入使用临时文件替换，避免半写；
+- 归档没有的模型文件会删除，避免旧 json.gz 被优先加载；
+- 导入后按新模型 mtime 重绑校准；配置需重启生效。
+
+### 30.3 验证
+
+```text
+Python 单元测试：109 项通过
+ruff F/E9：通过
+GUI 构造：OK
+```
+
+### 30.4 产物
+
+```text
+Yuzi_CS2_AIDirector.exe v1.10.16
+大小：35,984,144 字节
+SHA256：7A848AAB5003E7E006F8492B197BC49968B7BEF59B1F850241F8EBE1EC3EA904
 ```
 
 ## 12. v1.8：专业导播整合

@@ -23,6 +23,7 @@
 - **v1.10.13**：校准只使用模型训练之后的线上样本，避免用训练 demo 自我校准；
 - **v1.10.14**：新增回合叙事提示（freeze 比分/经济/出生位参考，回合结束胜方/比分），可选推送 OBS 文本源，不自动切镜；
 - **v1.10.15**：运行时优化：候选评分按快照缓存、日志批量刷新、训练器校准批量推理/AUC O(n log n)；不改变评分与镜头结果；
+- **v1.10.16**：新增一键导出/导入模型与配置 ZIP，导入前自动备份，密钥默认不导出；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -35,9 +36,9 @@
 
 | 程序 | 用途 |
 |---|---|
-| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.15，约 36 MB（Release v1.10.15） |
+| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.16，约 36 MB（Release v1.10.16） |
 
-当前本地构建：35,976,527 字节，SHA256 `FC22ACCD974D1D312556896B240756581B483D831F5317F7831381F19A925B90`。
+当前本地构建：35,984,144 字节，SHA256 `7A848AAB5003E7E006F8492B197BC49968B7BEF59B1F850241F8EBE1EC3EA904`。
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -45,6 +46,24 @@
 - 主程序内置 OBS WebSocket 依赖，但不打包 scikit-learn；它读取训练器生成的
   `decision_model.json.gz`；
 - 未签名，Windows SmartScreen 可能提示，选择“更多信息 → 仍要运行”。
+
+### 一键备份/恢复
+
+控制条“导出备份…”/“导入备份…”会打包：
+
+```text
+config.json
+decision_model.pkl
+decision_model.json.gz
+decision_model_metrics.json
+decision_calibration.json
+learner.json（如果存在）
+```
+
+- 导出时可选是否包含 DeepSeek API Key / OBS 密码；默认不包含；
+- 导入前自动备份到 `%APPDATA%\CS2AIDirector\backup_import_时间戳`；
+- 导入会校验 ZIP 路径/大小/JSON，并拒绝非法归档；
+- 导入后模型立即重载，端口/快捷键/密钥等配置需重启程序生效。
 
 **训练器已拆到独立私密仓库**：
 
@@ -479,12 +498,13 @@ story         当时的回合故事快照
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 108 项（不启动 GUI、不发真实按键）
+- `test_cs2_ai_director.py`：核心逻辑测试，共 109 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS WebSocket 场景/媒体控制
 - `director_story.py`：镜头时间线、六项专业指标、回合故事状态（Phase 1）
 - `director_narrative.py`：freeze/回合结束叙事文案；可选 OBS 文本源
 - `decision_model.py`：决策 CSV、3 秒标签回填、随机森林模型加载/仲裁
 - `decision_calibration.py`：线上 Platt 概率校准、分组验证、自动写入/失效保护
+- `backup_bundle.py`：模型/配置 ZIP 一键导出导入、校验、备份
 - `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`（主程序旧 demo 模型）
 - `build_exe.ps1`：主程序 exe 的打包脚本
 - `SELFCHECK.md`：自检清单、修复记录与仍需实机验证的步骤

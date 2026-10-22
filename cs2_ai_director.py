@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.15"
+VERSION = "1.10.16"
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -101,6 +101,7 @@ except Exception:  # pragma: no cover
     pygetwindow = None
     HAS_PYGETWINDOW = False
 
+import backup_bundle as bundle_mod
 import decision_calibration as cal_mod
 import decision_model as dm
 import director_narrative as narrative_mod
@@ -4267,6 +4268,10 @@ class DirectorApp:
             style="Stop.TButton")
         self.btn_stop.pack(side="left", padx=6)
         ttk.Button(ctrl, text="保存配置", command=self._save_only).pack(side="left")
+        ttk.Button(ctrl, text="导出备份…", command=self._export_bundle).pack(
+            side="left", padx=(12, 0))
+        ttk.Button(ctrl, text="导入备份…", command=self._import_bundle).pack(
+            side="left", padx=4)
         self.lbl_conn = ttk.Label(ctrl, text="GSI：未启动", foreground=UI_GOLD_DARK)
         self.lbl_conn.pack(side="right")
 
@@ -4721,6 +4726,68 @@ class DirectorApp:
         self.btn_start.configure(state="normal")
         self.btn_stop.configure(state="disabled")
         self.lbl_conn.configure(text="GSI：未启动", foreground="#555555")
+
+    def _export_bundle(self) -> None:
+        cfg = self._collect_cfg()
+        path = filedialog.asksaveasfilename(
+            title="导出模型与配置", defaultextension=".zip",
+            initialfile=f"Yuzi_CS2_AIDirector_backup_{datetime.now():%Y%m%d_%H%M%S}.zip",
+            filetypes=[("Yuzi 备份", "*.zip"), ("所有文件", "*.*")])
+        if not path:
+            return
+        include = messagebox.askyesno(
+            "导出密钥",
+            "是否包含 DeepSeek API Key 和 OBS 密码？\n\n"
+            "选择“否”更安全，适合分享；导入后需要重新填写。\n"
+            "选择“是”会把明文密钥写入 ZIP。",
+            parent=self.root, default="no")
+        try:
+            result = bundle_mod.export_bundle(
+                Path(path), cfg, app_data_dir(), VERSION, include)
+            self.bus.info(f"已导出备份：{result['path']}（{len(result['files'])} 个文件）")
+            messagebox.showinfo(
+                "导出完成",
+                f"已导出：\n{result['path']}\n\n"
+                f"文件：{', '.join(result['files'])}\n"
+                + ("包含密钥，请妥善保管。" if include else "未包含密钥。"),
+                parent=self.root)
+        except Exception as e:
+            messagebox.showerror("导出失败", f"{type(e).__name__}: {e}",
+                                 parent=self.root)
+
+    def _import_bundle(self) -> None:
+        if self.engine is not None:
+            messagebox.showwarning("导入备份", "请先停止导播，再导入模型/配置。",
+                                   parent=self.root)
+            return
+        path = filedialog.askopenfilename(
+            title="导入模型与配置", filetypes=[("Yuzi 备份", "*.zip"),
+                                               ("所有文件", "*.*")])
+        if not path:
+            return
+        try:
+            info = bundle_mod.inspect_bundle(Path(path))
+            manifest = info["manifest"]
+            if not messagebox.askyesno(
+                    "确认导入",
+                    f"备份时间：{manifest.get('created_at', '?')}\n"
+                    f"程序版本：{manifest.get('app_version', '?')}\n"
+                    f"包含密钥：{'是' if manifest.get('secrets_included') else '否'}\n\n"
+                    "导入会覆盖当前配置和模型，并先自动备份。继续？",
+                    parent=self.root, default="no"):
+                return
+            result = bundle_mod.import_bundle(Path(path), app_data_dir())
+            self.model_arbiter.load()
+            self._update_model_label()
+            messagebox.showinfo(
+                "导入完成",
+                f"已导入 {len(result['files'])} 个文件。\n"
+                f"旧文件备份：\n{result['backup_dir']}\n\n"
+                "模型已重新加载；配置（端口/快捷键/密钥等）需要重启程序后生效。",
+                parent=self.root)
+        except Exception as e:
+            messagebox.showerror("导入失败", f"{type(e).__name__}: {e}",
+                                 parent=self.root)
 
     def _save_only(self) -> None:
         cfg = self._collect_cfg()
