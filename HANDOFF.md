@@ -68,7 +68,8 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`cef0d06 Prefer compact models and show size`
+- 最新提交：`3854773 Sync v1.10.18 shared core`
+- 共享核心：已同步 v1.10.18（`cs2_ai_director.py` / `director_pro.py` / 测试，129 项通过）；exe 仍为 v1.1.8，本次同步不改训练/模型格式，无需重建
 - Release：`v1.1.8`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
 - 大小：179,816,796 字节（约 179 MB）
@@ -394,7 +395,7 @@ event_actions_enabled / event_rules
 
 ```text
 主仓库 129 项测试通过（v1.10.18；含道具镜头/备份/叙事/校准/回合边界测试）
-训练器仓库 99 项测试通过（已同步 v1.10.7 共享核心）
+训练器仓库 129 项测试通过（已同步 v1.10.18 共享核心）
 Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
 模拟 GSI 序列验证镜头/指标/故事落盘
