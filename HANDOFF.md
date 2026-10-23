@@ -2,7 +2,7 @@
 
 最后更新：2026-10-21  
 当前主程序源码版本：**v1.10.17（Yuzi_CS2_AIDirector；会话指标/校准阈值）**  
-当前训练器版本：**v1.1.7（Yuzi_CS2_AIDecisionTrainer；F1 阈值/会话同步）**  
+当前训练器版本：**v1.1.8（Yuzi_CS2_AIDecisionTrainer；紧凑模型选择）**  
 专业导播新目标：见 `PRO_DIRECTOR_HANDOFF.md`
 
 ---
@@ -67,12 +67,12 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`c003ab7 Sync session metrics and F1 threshold`
-- Release：`v1.1.7`
+- 最新提交：以 `git log` 中 `Prefer compact models and show size` 为准
+- Release：`v1.1.8`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
-- 大小：179,817,210 字节（约 179 MB）
-- SHA256：`CD7699108991D368D3645224DCD3BC572912A7CB442F4DE7E2AEC5E1D22332E2`
-- Release 页面：https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.1.7
+- 大小：179,816,796 字节（约 179 MB）
+- SHA256：`E06BA26FB31E07364AE5791306504E81983EFD65552CE7A1D3B46BD4EA8AC0E5`
+- Release 页面：https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.1.8
 
 ### 本地产物
 
@@ -200,7 +200,9 @@ label, label_damage, label_kill
 模型：
 
 - 训练器在 **RandomForest** 与 **ExtraTrees** 之间做 3 折 CV + 8 组随机搜索；
-- 按 CV AUC 选最终模型；
+- 指标接近时优先小模型：AUC 差 ≤0.005、top-1 差 ≤1pp 时比较节点数；
+- 当前线上紧凑模型：RandomForest，pkl 9.2MB / JSON 2.05MB，AUC 0.7074，top-1 59.1%；
+- 重型 ExtraTrees 备份已保留，JSON 36.3MB，AUC 0.7114，top-1 59.9%；
 - 导出：
 
 ```text
