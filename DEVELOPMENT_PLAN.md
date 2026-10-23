@@ -1,6 +1,6 @@
 # Yuzi CS2 AI Director 开发计划书
 
-> 更新时间：2026-10-23  
+> 更新时间：2026-10-24  
 > 工作区：`D:\AIdirector`  
 > 主程序：**v1.10.18**  
 > 训练器：**v1.1.8**  
@@ -87,7 +87,7 @@ E06BA26FB31E07364AE5791306504E81983EFD65552CE7A1D3B46BD4EA8AC0E5
 
 - 主仓库：https://github.com/YuGaN525/cs2-ai-director
 - 训练器：https://github.com/YuGaN525/cs2-ai-decision-trainer
-- 当前主仓库提交：`c44744f Record trainer v1.1.8 commit`
+- 当前主仓库提交：`8631949 Add utility camera for opening and control phase`
 - 当前训练器提交：`cef0d06 Prefer compact models and show size`
 
 ### 2.3 运行时数据

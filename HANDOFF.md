@@ -54,6 +54,7 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.15 性能优化：`ee4c5b5 Optimize runtime hot paths`
 - v1.10.16 模型/配置备份：`80f86ba Add model/config bundle export/import`
 - v1.10.17 会话/阈值：`87c3ec3 Fix session metrics and calibration threshold`
+- v1.10.18 开局道具镜头：`8631949 Add utility camera for opening and control phase`
 - Release：`v1.10.18`
 - 资产：`Yuzi_CS2_AIDirector.exe`
 - 大小：36,527,430 字节（约 36.5 MB）
