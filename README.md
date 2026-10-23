@@ -509,6 +509,7 @@ story         当时的回合故事快照
 - `train_from_demos.py`：从 `.dem` 离线训练静态 `learner.json`（主程序旧 demo 模型）
 - `build_exe.ps1`：主程序 exe 的打包脚本
 - `SELFCHECK.md`：自检清单、修复记录与仍需实机验证的步骤
+- `DEVELOPMENT_PLAN.md`：开发计划、模块进度、线上指标与下一阶段优先级
 - `frozen_v1.0.0/`：优化前冻结基线（含 SHA256）
 - `requirements.txt`：依赖
 - `start_cs2_director.bat`：无控制台启动脚本
