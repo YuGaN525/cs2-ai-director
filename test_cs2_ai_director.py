@@ -14,6 +14,7 @@ import urllib.error
 import urllib.request
 from collections import deque
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 import backup_bundle as bundle
@@ -41,6 +42,22 @@ def player(slot, team, hp=100, pos=(0, 0, 0), fwd=(1, 0, 0),
         "weapons": {"weapon_0": {"name": weapon, "type": typ,
                                  "state": "active", "ammo_clip": ammo}},
     }
+
+
+def utility_player(slot, team, grenades=(), active_grenade=None, **kwargs):
+    p = player(slot, team, **kwargs)
+    for idx, grenade in enumerate(grenades):
+        p["weapons"][f"weapon_g{idx}"] = {
+            "name": grenade, "type": "Grenade", "state": "holstered",
+        }
+    if active_grenade:
+        for weapon in p["weapons"].values():
+            weapon["state"] = "holstered"
+        for weapon in p["weapons"].values():
+            if weapon.get("name") == active_grenade:
+                weapon["state"] = "active"
+                break
+    return p
 
 
 def payload(players, phase="live", round_no=1, bomb=None, player_slot=0,
@@ -751,6 +768,248 @@ class TestDeathFallback(unittest.TestCase):
         snap = d.parse_snapshot(data, time.monotonic())
         eng._decide_and_switch(snap, time.monotonic(), {})
         self.assertEqual(pressed, [2])
+
+
+class TestUtilityThrowTracker(unittest.TestCase):
+    def _snap(self, grenades=(), phase="live", rnd=1, hp=100):
+        return snapshot(
+            players=[utility_player(1, "CT", grenades, hp=hp)],
+            phase=phase, round_no=rnd,
+        )
+
+    def test_detects_smoke_throw(self):
+        tracker = d.UtilityThrowTracker(dict(d.DEFAULT_CONFIG))
+        tracker.update(self._snap(("weapon_smokegrenade",)), 10.0)
+        throws = tracker.update(self._snap(()), 10.2)
+        self.assertEqual(len(throws), 1)
+        self.assertEqual(throws[0].slot, 1)
+        self.assertEqual(throws[0].grenade, "weapon_smokegrenade")
+        self.assertEqual(throws[0].label, "烟雾弹")
+        self.assertEqual(tracker.recent(11.0).slot, 1)
+        self.assertIsNone(tracker.recent(13.0))
+
+    def test_pickup_and_new_round_do_not_trigger(self):
+        tracker = d.UtilityThrowTracker(dict(d.DEFAULT_CONFIG))
+        tracker.update(self._snap(()), 10.0)
+        self.assertEqual(
+            tracker.update(self._snap(("weapon_flashbang",)), 10.2), [])
+        self.assertEqual(
+            tracker.update(self._snap((), rnd=2), 10.3), [])
+
+    def test_freezetime_to_live_is_baseline_only(self):
+        tracker = d.UtilityThrowTracker(dict(d.DEFAULT_CONFIG))
+        tracker.update(self._snap(("weapon_smokegrenade",), phase="freezetime"), 10.0)
+        self.assertEqual(tracker.update(self._snap(()), 10.2), [])
+
+    def test_ammo_reserve_decrease_is_detected(self):
+        before = utility_player(1, "CT")
+        before["weapons"]["weapon_g0"] = {
+            "name": "weapon_smokegrenade", "type": "Grenade",
+            "ammo_reserve": "2",
+        }
+        after = utility_player(1, "CT")
+        after["weapons"]["weapon_g0"] = {
+            "name": "weapon_smokegrenade", "type": "Grenade",
+            "ammo_reserve": "1",
+        }
+        tracker = d.UtilityThrowTracker(dict(d.DEFAULT_CONFIG))
+        tracker.update(snapshot(players=[before]), 10.0)
+        throws = tracker.update(snapshot(players=[after]), 10.2)
+        self.assertEqual(len(throws), 1)
+        self.assertEqual(throws[0].grenade, "weapon_smokegrenade")
+
+    def test_decoy_excluded_by_default(self):
+        tracker = d.UtilityThrowTracker(dict(d.DEFAULT_CONFIG))
+        tracker.update(self._snap(("weapon_decoy",)), 10.0)
+        self.assertEqual(tracker.update(self._snap(()), 10.2), [])
+        cfg = dict(d.DEFAULT_CONFIG)
+        cfg["utility_cam_types"] = list(cfg["utility_cam_types"]) + ["weapon_decoy"]
+        tracker = d.UtilityThrowTracker(cfg)
+        tracker.update(self._snap(("weapon_decoy",)), 10.0)
+        self.assertEqual(len(tracker.update(self._snap(()), 10.2)), 1)
+
+    def test_missing_weapons_packet_is_ignored(self):
+        tracker = d.UtilityThrowTracker(dict(d.DEFAULT_CONFIG))
+        tracker.update(self._snap(("weapon_smokegrenade",)), 10.0)
+        after = player(1, "CT")
+        after.pop("weapons", None)
+        self.assertEqual(
+            tracker.update(snapshot(players=[after]), 10.2), [])
+
+    def test_hold_requires_pre_buffer(self):
+        tracker = d.UtilityThrowTracker(dict(d.DEFAULT_CONFIG))
+        snap = snapshot(players=[utility_player(
+            1, "CT", ("weapon_smokegrenade",),
+            active_grenade="weapon_smokegrenade",
+        )])
+        tracker.update(snap, 10.0)
+        self.assertIsNone(tracker.recent_hold(10.2, 0.35))
+        hold = tracker.recent_hold(10.4, 0.35)
+        self.assertIsNotNone(hold)
+        assert hold is not None
+        self.assertEqual(hold.kind, "hold")
+        self.assertEqual(hold.label, "烟雾弹")
+        self.assertGreaterEqual(hold.held_for, 0.35)
+        self.assertEqual(tracker.recent_action(10.4, 0.35, 0.35).kind, "hold")
+
+    def test_hold_clears_after_switching_to_gun(self):
+        tracker = d.UtilityThrowTracker(dict(d.DEFAULT_CONFIG))
+        holding = snapshot(players=[utility_player(
+            1, "CT", ("weapon_smokegrenade",),
+            active_grenade="weapon_smokegrenade",
+        )])
+        tracker.update(holding, 10.0)
+        tracker.update(snapshot(players=[utility_player(
+            1, "CT", ("weapon_smokegrenade",),
+        )]), 10.4)
+        self.assertIsNone(tracker.recent_hold(10.4, 0.0))
+
+
+class TestUtilityCameraRule(unittest.TestCase):
+    def _engine(self, phase="opening", enabled=True):
+        cfg = dict(d.DEFAULT_CONFIG)
+        cfg["utility_cam_enabled"] = enabled
+        eng = d.DirectorEngine(cfg, d.LogBus())
+        eng.story = SimpleNamespace(state=SimpleNamespace(phase=phase))
+        pressed = []
+        eng.input.press_slot = lambda slot: pressed.append(slot) or True  # type: ignore[assignment]
+        return eng, pressed
+
+    def _snaps(self, player_slot=0, before_grenades=("weapon_smokegrenade",),
+               after_grenades=()):
+        before = snapshot(players=[
+            utility_player(1, "CT", before_grenades, pos=(0, 0, 0)),
+            player(2, "T", pos=(4000, 0, 0)),
+        ], player_slot=player_slot)
+        after = snapshot(players=[
+            utility_player(1, "CT", after_grenades, pos=(0, 0, 0)),
+            player(2, "T", pos=(4000, 0, 0)),
+        ], player_slot=player_slot)
+        return before, after
+
+    def _trigger(self, eng, before, after, now=100.2):
+        eng.utility_tracker.update(before, now - 0.2)
+        eng.utility_tracker.update(after, now)
+        status = {}
+        eng._decide_and_switch(after, now, status)
+        return status
+
+    def test_opening_utility_throw_gets_priority(self):
+        eng, pressed = self._engine()
+        before, after = self._snaps()
+        status = self._trigger(eng, before, after)
+        self.assertEqual(pressed, [1])
+        self.assertEqual(status.get("source"), "utility")
+        self.assertIn("烟雾弹", status.get("reason", ""))
+        self.assertEqual(eng._utility_hold_slot, 1)
+        self.assertGreater(eng._utility_hold_until, 100.2)
+
+    def test_holding_utility_cuts_before_throw(self):
+        eng, pressed = self._engine()
+        snap = snapshot(players=[
+            utility_player(1, "CT", ("weapon_smokegrenade",),
+                           active_grenade="weapon_smokegrenade", pos=(0, 0, 0)),
+            player(2, "T", pos=(4000, 0, 0)),
+        ], player_slot=0)
+        eng.utility_tracker.update(snap, 100.0)
+        eng.utility_tracker.update(snap, 100.6)
+        status = {}
+        eng._decide_and_switch(snap, 100.6, status)
+        self.assertEqual(pressed, [1])
+        self.assertIn("手持", status.get("reason", ""))
+
+    def test_holding_utility_confirms_quickly_and_sets_buffer(self):
+        eng, pressed = self._engine()
+        snap = snapshot(players=[
+            utility_player(1, "CT", ("weapon_smokegrenade",),
+                           active_grenade="weapon_smokegrenade", pos=(0, 0, 0)),
+            player(2, "T", pos=(4000, 0, 0)),
+        ], player_slot=0)
+        eng.utility_tracker.update(snap, 100.0)
+        eng.utility_tracker.update(snap, 100.2)
+        status = {}
+        eng._decide_and_switch(snap, 100.2, status)
+        self.assertEqual(pressed, [1])
+        self.assertIn("手持", status.get("reason", ""))
+        self.assertGreaterEqual(eng._utility_hold_until, 100.45)
+
+    def test_same_hold_is_not_retriggered(self):
+        eng, pressed = self._engine()
+        snap = snapshot(players=[
+            utility_player(1, "CT", ("weapon_smokegrenade",),
+                           active_grenade="weapon_smokegrenade", pos=(0, 0, 0)),
+            player(2, "T", pos=(4000, 0, 0)),
+        ], player_slot=0)
+        eng.utility_tracker.update(snap, 100.0)
+        eng.utility_tracker.update(snap, 100.2)
+        eng._decide_and_switch(snap, 100.2, {})
+        self.assertEqual(pressed, [1])
+        # 模拟镜头已切走、缓冲和冷却都已结束，但仍是同一次手持。
+        eng._utility_hold_until = 0.0
+        eng._last_switch_at = 0.0
+        eng._last_switch_slot = None
+        eng._last_utility_cut_at = 0.0
+        eng._utility_round_key = ""
+        eng.utility_tracker.update(snap, 105.0)
+        eng._decide_and_switch(snap, 105.0, {})
+        self.assertEqual(pressed, [1])
+
+    def test_buffers_adjust_with_fight_heat(self):
+        eng, _ = self._engine()
+        quiet_pre, quiet_post = eng._utility_buffers(False)
+        hot_pre, hot_post = eng._utility_buffers(True)
+        self.assertAlmostEqual(quiet_pre, 0.50)
+        self.assertAlmostEqual(quiet_post, 0.50)
+        self.assertAlmostEqual(hot_pre, 0.25)
+        self.assertAlmostEqual(hot_post, 0.25)
+
+    def test_post_throw_hold_blocks_immediate_cut(self):
+        eng, pressed = self._engine()
+        snap = snapshot(players=[
+            utility_player(1, "CT", pos=(0, 0, 0)),
+            player(2, "T", pos=(600, 0, 0)),
+        ], player_slot=1)
+        eng._utility_hold_slot = 1
+        eng._utility_hold_until = 100.4
+        status = {}
+        eng._decide_and_switch(snap, 100.2, status)
+        self.assertEqual(pressed, [])
+        self.assertEqual(status.get("reason"), "道具镜头缓冲")
+
+    def test_only_opening_and_control_phases(self):
+        for phase in ("engage", "post_plant", "clutch"):
+            eng, pressed = self._engine(phase=phase)
+            before, after = self._snaps()
+            self._trigger(eng, before, after)
+            self.assertEqual(pressed, [], phase)
+
+    def test_disabled_does_not_switch(self):
+        eng, pressed = self._engine(enabled=False)
+        before, after = self._snaps()
+        self._trigger(eng, before, after)
+        self.assertEqual(pressed, [])
+
+    def test_current_observer_is_not_repressed(self):
+        eng, pressed = self._engine()
+        before, after = self._snaps(player_slot=1)
+        self._trigger(eng, before, after)
+        self.assertEqual(pressed, [])
+
+    def test_min_interval_blocks_second_utility_cut(self):
+        eng, pressed = self._engine()
+        before, after = self._snaps()
+        eng._utility_round_key = f"{after.map_name}|{after.round_num}"
+        eng._last_utility_cut_at = 99.0
+        self._trigger(eng, before, after, now=100.2)
+        self.assertEqual(pressed, [])
+
+    def test_max_per_round_blocks_utility_cut(self):
+        eng, pressed = self._engine()
+        before, after = self._snaps()
+        eng._utility_round_key = f"{after.map_name}|{after.round_num}"
+        eng._utility_cuts = 4
+        self._trigger(eng, before, after)
+        self.assertEqual(pressed, [])
 
 
 class TestVerticalEngagement(unittest.TestCase):
@@ -1617,6 +1876,29 @@ class TestEngineTimelineIntegration(unittest.TestCase):
             self.assertTrue(timeline.shot_path.is_file())
             timeline.close(time.monotonic())
             eng.timeline = None  # 避免 eng 析构/后续状态影响
+
+    def test_tick_detects_utility_and_switches_in_opening(self):
+        cfg = dict(d.DEFAULT_CONFIG)
+        eng = d.DirectorEngine(cfg, d.LogBus())
+        pressed = []
+        eng.input.press_slot = lambda slot: pressed.append(slot) or True  # type: ignore[assignment]
+        eng.store.update(snapshot(players=[
+            utility_player(1, "CT", ("weapon_smokegrenade",), pos=(0, 0, 0)),
+            player(2, "T", pos=(4000, 0, 0)),
+            player(3, "CT", pos=(-2000, 0, 0)),
+            player(4, "T", pos=(4000, 2000, 0)),
+        ], phase="live", round_no=1, player_slot=0))
+        eng._tick()
+        self.assertEqual(pressed, [])
+        eng.store.update(snapshot(players=[
+            utility_player(1, "CT", (), pos=(0, 0, 0)),
+            player(2, "T", pos=(4000, 0, 0)),
+            player(3, "CT", pos=(-2000, 0, 0)),
+            player(4, "T", pos=(4000, 2000, 0)),
+        ], phase="live", round_no=1, player_slot=0))
+        eng._tick()
+        self.assertEqual(pressed, [1])
+        self.assertEqual(eng.status().get("source"), "utility")
 
 
 class TestDirectorStability(unittest.TestCase):

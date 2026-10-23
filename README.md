@@ -25,6 +25,7 @@
 - **v1.10.15**：运行时优化：候选评分按快照缓存、日志批量刷新、训练器校准批量推理/AUC O(n log n)；不改变评分与镜头结果；
 - **v1.10.16**：新增一键导出/导入模型与配置 ZIP，导入前自动备份，密钥默认不导出；
 - **v1.10.17**：会话指标按启动重置；校准阈值由验证集 F1 自动选择；
+- **v1.10.18**：开局/控图阶段优先把镜头给手持或刚投掷手雷的选手；手持约 100ms 确认后预切，投掷前后保留 250–500ms 缓冲，场上偏热时自动缩短；默认不含诱饵弹；
 - tkinter GUI：检测/选择 `cs2.exe`、一键安装 GSI 配置、录入快捷键与 API Key、持久化配置。
 
 > 安全边界：程序**只**读取 GSI HTTP 推送。对游戏的动作只有“模拟 0–9 数字键”和“模拟 HLAE 快捷键（出生点 + A/B 包点）”，不读内存、不注入、不发送游戏控制台命令。
@@ -37,9 +38,10 @@
 
 | 程序 | 用途 |
 |---|---|
-| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.17，约 36 MB（Release v1.10.17） |
+| `Yuzi_CS2_AIDirector.exe` | AI 导播主程序 v1.10.18，约 36 MB（Release v1.10.18） |
 
-当前本地构建：35,983,768 字节，SHA256 `02AAAC860F52B165022E89E3DC6102CEDAAF65A9E0E07B1FB2C3C01E52155091`。
+当前本地构建：36,527,430 字节（约 36.5 MB），SHA256 `22D1D7CA6412A1ED835DDEA2C4B906C52251744527D7CB3CC0E71A9D9261754E`。
+v1.10.18 exe 已打包并通过启动验证（窗口标题 `Yuzi_CS2_AIDirector v1.10.18 · CS2 AI 专业导播`）。
 
 - 不需要安装 Python；
 - 双击即可，建议右键“以管理员身份运行”；
@@ -375,6 +377,13 @@ story         当时的回合故事快照
 | `hard_min_switch_interval` | 0.2 | 任意两次切换的硬下限（200ms） |
 | `repeat_guard_seconds` | 4.0 | 防止 GSI 延迟导致重复按同一键 |
 | `max_vertical_diff` | 300.0 | 楼层高度差超过此值视为不可能交火（Nuke 自动放宽） |
+| `utility_cam_enabled` | true | 开局/控图阶段优先镜头给手持/刚投掷道具的选手 |
+| `utility_cam_pre_buffer` | 0.35 | 手持道具确认并预切的缓冲；运行时夹在 0.25–0.5s，场上偏热时缩短 |
+| `utility_cam_post_hold` | 0.35 | 投掷后保持镜头的缓冲；运行时夹在 0.25–0.5s，场上偏热时缩短 |
+| `utility_cam_fight_lookback` | 2.5 | 多久内出现伤害/高威胁候选算“场上偏热” |
+| `utility_cam_min_interval` | 3.0 | 两次道具镜头的最小间隔（秒） |
+| `utility_cam_max_per_round` | 4 | 每回合最多道具镜头次数；<=0 不限制 |
+| `utility_cam_types` | 烟雾/闪光/燃烧/高爆 | 识别的手雷类型；默认不含诱饵弹 |
 | `bomb_cam_countdown` | 8.0 | 炸弹剩余多少秒触发包点运镜 |
 | `bomb_cam_policy` | pov_first | `pov_first`：场上仍有可交火目标时跳过包点运镜；`always`：总是触发 |
 | `bomb_cam_grace` | 1.5 | 包点运镜后 AI 让位秒数，设 0 可让 AI 立刻接管 |
@@ -417,6 +426,16 @@ story         当时的回合故事快照
 | `dry_run` | false | 演练模式 |
 
 其余参数见 `DEFAULT_CONFIG`（文件顶部）。
+
+**开局道具镜头（v1.10.18）**：程序用 `active_weapon` 识别“手持手雷”，手持约
+100ms 确认后预切；用两次快照之间 `allplayers_weapons` 的手雷条目/弹药数减少识别
+“刚投掷”。只在回合故事的 `opening`/`control` 阶段生效，仍受最短停留、10 秒切率、
+交火锁定和人工接管约束。投掷前后使用 250–500ms 缓冲：场上安静时用 500ms，
+有近期伤害或高威胁候选时缩短到 250ms。全局 `min_shot_duration`（默认 2s）和
+`min_dwell_seconds`（默认 1s）仍然优先，所以实际镜头通常会长于缓冲时间；
+希望更短的道具镜头可同时调低这两项。
+默认识别烟雾弹、闪光弹、燃烧弹和高爆手雷，不含诱饵弹。若选手只是把道具丢给队友，
+也可能被识别为一次投掷；正式使用前建议先用真实 GSI 跑一局确认日志与实际一致。
 
 ---
 
@@ -499,7 +518,7 @@ story         当时的回合故事快照
 ## 8. 文件
 
 - `cs2_ai_director.py`：完整程序（单文件）
-- `test_cs2_ai_director.py`：核心逻辑测试，共 109 项（不启动 GUI、不发真实按键）
+- `test_cs2_ai_director.py`：核心逻辑测试，共 129 项（不启动 GUI、不发真实按键）
 - `director_pro.py`：独立日志、事件动作、OBS WebSocket 场景/媒体控制
 - `director_story.py`：镜头时间线、六项专业指标、回合故事状态（Phase 1）
 - `director_narrative.py`：freeze/回合结束叙事文案；可选 OBS 文本源

@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.17"
+VERSION = "1.10.18"
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -225,6 +225,17 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "repeat_guard_seconds": 4.0,  # 同一 slot 的重复按键保护
     "fight_lock_enabled": True,  # 当前 POV 正在交火时不切走
     "fight_lock_aim": 0.60,      # 双方都瞄准到该阈值也视为交火
+    # ---- 开局控图：优先把镜头给手持/投掷道具的选手 ----
+    "utility_cam_enabled": True,
+    "utility_cam_pre_buffer": 0.35,   # 手持道具后确认并预切的缓冲（运行时夹在 0.25-0.5s）
+    "utility_cam_post_hold": 0.35,    # 投掷后继续保持镜头的缓冲（运行时夹在 0.25-0.5s）
+    "utility_cam_fight_lookback": 2.5,  # 多久内出现伤害/高威胁候选视为“场上偏热”
+    "utility_cam_min_interval": 3.0,  # 两次道具镜头的间隔
+    "utility_cam_max_per_round": 4,   # 每回合最多道具镜头次数；<=0 不限制
+    "utility_cam_types": [            # 默认不含诱饵弹
+        "weapon_smokegrenade", "weapon_flashbang", "weapon_molotov",
+        "weapon_incgrenade", "weapon_hegrenade",
+    ],
     "gsi_stale_seconds": 3.0,   # 超过该时间没有 GSI 数据视为断流
     "self_press_guard": 0.30,   # 模拟按键后多久内忽略同键，防自捕获
     # ---- 运镜 ----
@@ -1379,6 +1390,251 @@ class TriggerTracker:
 
 
 # --------------------------------------------------------------------------
+# 8.5 开局控图：投掷道具识别
+# --------------------------------------------------------------------------
+
+UTILITY_LABELS = {
+    "weapon_smokegrenade": "烟雾弹",
+    "weapon_flashbang": "闪光弹",
+    "weapon_molotov": "燃烧弹",
+    "weapon_incgrenade": "燃烧弹",
+    "weapon_hegrenade": "高爆手雷",
+    "weapon_decoy": "诱饵弹",
+}
+
+UTILITY_PRIORITY = {
+    "weapon_smokegrenade": 5,
+    "weapon_flashbang": 4,
+    "weapon_molotov": 3,
+    "weapon_incgrenade": 3,
+    "weapon_hegrenade": 2,
+    "weapon_decoy": 1,
+}
+
+
+@dataclass
+class UtilityThrow:
+    slot: int
+    steamid: str
+    name: str
+    team: str
+    grenade: str
+    label: str
+    at: float
+    kind: str = "throw"       # hold = 手持道具，throw = 刚投掷
+    held_for: float = 0.0
+
+
+def _grenade_stock(weapons: Any) -> dict[str, tuple[int, int]]:
+    """统计每种手雷的条目数和弹药数，兼容不同 GSI 表示方式。"""
+    stock: dict[str, tuple[int, int]] = {}
+    for w in weapons or []:
+        if not isinstance(w, dict):
+            continue
+        name = str(w.get("name") or "").lower()
+        if name not in UTILITY_LABELS:
+            continue
+        count, ammo = stock.get(name, (0, 0))
+        count += 1
+        for key in ("ammo_reserve", "ammo_clip"):
+            try:
+                value = int(float(w.get(key)))
+            except (TypeError, ValueError):
+                continue
+            if value > 0:
+                ammo += value
+        stock[name] = (count, ammo)
+    return stock
+
+
+class UtilityThrowTracker:
+    """跟踪手持手雷（active_weapon）与库存减少推断的投掷。
+
+    GSI 没有“投掷”事件，只能在两次快照之间比较手雷条目/弹药数。
+    只在 live 阶段记录；freeze 买枪、回合切换、阵亡都不触发。
+    """
+
+    def __init__(self, cfg: dict[str, Any]) -> None:
+        self.cfg = cfg
+        self._stock: dict[str, dict[str, tuple[int, int]]] = {}
+        self._held: dict[str, dict[str, Any]] = {}
+        self._used_holds: set[str] = set()
+        self._throws: deque[UtilityThrow] = deque()
+        self._round_key = ""
+        self._last_phase = ""
+        self._types = self._configured_types()
+
+    def _configured_types(self) -> set[str]:
+        raw = self.cfg.get("utility_cam_types")
+        if isinstance(raw, str):
+            raw = [x.strip() for x in raw.split(",") if x.strip()]
+        if not isinstance(raw, (list, tuple, set)):
+            raw = DEFAULT_CONFIG["utility_cam_types"]
+        names = {str(x).strip().lower() for x in raw if str(x).strip()}
+        return names or set(DEFAULT_CONFIG["utility_cam_types"])
+
+    def _round_key_of(self, snap: Snapshot) -> str:
+        rnd = getattr(snap, "round_num", None)
+        return f"{getattr(snap, 'map_name', '')}|{rnd}" if rnd is not None else ""
+
+    def _active_grenade(self, p: Any) -> str:
+        active = getattr(p, "active_weapon", None)
+        if isinstance(active, dict):
+            name = str(active.get("name") or "").lower()
+            if name in self._types:
+                return name
+        return ""
+
+    def reset(self) -> None:
+        self._stock.clear()
+        self._held.clear()
+        self._used_holds.clear()
+        self._throws.clear()
+        self._round_key = ""
+        self._last_phase = ""
+
+    def update(self, snap: Snapshot, now: float) -> list[UtilityThrow]:
+        key = self._round_key_of(snap)
+        phase = str(getattr(snap, "phase", "") or "").lower()
+        if key and key != self._round_key:
+            self._stock.clear()
+            self._held.clear()
+            self._used_holds.clear()
+            self._throws.clear()
+            self._round_key = key
+        elif not key and phase == "freezetime" and self._last_phase != "freezetime":
+            self._stock.clear()
+            self._held.clear()
+            self._used_holds.clear()
+            self._throws.clear()
+        # freeze 结束后的第一包只建立基线，避免买枪/丢弃造成误判。
+        if self._last_phase == "freezetime" and phase != "freezetime":
+            self._stock.clear()
+            self._held.clear()
+            self._used_holds.clear()
+
+        current: dict[str, dict[str, tuple[int, int]]] = {}
+        held: dict[str, dict[str, Any]] = {}
+        found: list[UtilityThrow] = []
+        for p in getattr(snap, "players", {}).values():
+            if int(getattr(p, "health", 0) or 0) <= 0:
+                continue
+            slot = getattr(p, "slot", None)
+            if slot is None:
+                continue
+            weapons = getattr(p, "weapons", [])
+            stock = {
+                name: value for name, value in _grenade_stock(weapons).items()
+                if name in self._types
+            }
+            if not stock and not weapons:
+                continue  # 精简/缺字段的包，不拿它当“手雷用完”
+            sid = str(getattr(p, "steamid", ""))
+            active = self._active_grenade(p)
+            if active:
+                prev_hold = self._held.get(sid)
+                since = (float(prev_hold["since"])
+                         if prev_hold and prev_hold.get("grenade") == active
+                         else now)
+                held[sid] = {
+                    "slot": int(slot),
+                    "name": str(getattr(p, "name", "") or ""),
+                    "team": str(getattr(p, "team", "") or ""),
+                    "grenade": active,
+                    "label": UTILITY_LABELS.get(active, active),
+                    "since": since,
+                }
+            prev = self._stock.get(sid)
+            if prev:
+                for name in set(prev) | set(stock):
+                    old_count, old_ammo = prev.get(name, (0, 0))
+                    new_count, new_ammo = stock.get(name, (0, 0))
+                    if new_count < old_count or new_ammo < old_ammo:
+                        found.append(UtilityThrow(
+                            slot=int(slot),
+                            steamid=sid,
+                            name=str(getattr(p, "name", "") or ""),
+                            team=str(getattr(p, "team", "") or ""),
+                            grenade=name,
+                            label=UTILITY_LABELS.get(name, name),
+                            at=now,
+                        ))
+            current[sid] = stock
+
+        self._stock = current
+        self._held = held if phase == "live" else {}
+        self._last_phase = phase
+        if phase != "live":
+            return []
+        for throw in found:
+            self._throws.append(throw)
+        cutoff = now - 10.0
+        while self._throws and self._throws[0].at < cutoff:
+            self._throws.popleft()
+        return found
+
+    def recent(self, now: float, window: float = 2.0) -> Optional[UtilityThrow]:
+        try:
+            window = max(0.1, min(10.0, float(window)))
+        except (TypeError, ValueError):
+            window = 2.0
+        cutoff = now - window
+        recent = [t for t in self._throws if t.at >= cutoff]
+        if not recent:
+            return None
+        # 最新投掷优先；同一包内按道具价值排序。
+        return max(recent, key=lambda t: (t.at, UTILITY_PRIORITY.get(t.grenade, 0)))
+
+    def recent_hold(self, now: float,
+                    min_hold: float = 0.0) -> Optional[UtilityThrow]:
+        try:
+            min_hold = max(0.0, min(10.0, float(min_hold)))
+        except (TypeError, ValueError):
+            min_hold = 0.0
+        eligible = [
+            (sid, info) for sid, info in self._held.items()
+            if now - float(info["since"]) >= min_hold
+            and self._hold_key(sid, info) not in self._used_holds
+        ]
+        if not eligible:
+            return None
+        sid, info = max(
+            eligible,
+            key=lambda item: (float(item[1]["since"]),
+                              UTILITY_PRIORITY.get(str(item[1]["grenade"]), 0)),
+        )
+        return UtilityThrow(
+            slot=int(info["slot"]), steamid=sid, name=str(info["name"]),
+            team=str(info["team"]), grenade=str(info["grenade"]),
+            label=str(info["label"]), at=float(info["since"]),
+            kind="hold", held_for=now - float(info["since"]),
+        )
+
+    @staticmethod
+    def _hold_key(sid: str, info: dict[str, Any]) -> str:
+        return f"{sid}|{info.get('grenade')}|{float(info.get('since', 0.0)):.3f}"
+
+    def mark_hold_used(self, action: UtilityThrow) -> None:
+        if action.kind != "hold":
+            return
+        self._used_holds.add(
+            f"{action.steamid}|{action.grenade}|{action.at:.3f}")
+
+    def recent_action(self, now: float, pre_buffer: float,
+                      post_hold: float) -> Optional[UtilityThrow]:
+        """投掷后的 post_hold 内优先保留投掷者，否则返回正在手持道具的选手。
+
+        手持只做约 100ms 的确认，避免武器切换抖动；pre_buffer 由调用方
+        用作切过去后的最短保持时间。
+        """
+        throw = self.recent(now, post_hold)
+        if throw is not None:
+            return throw
+        confirm = min(0.10, max(0.0, float(pre_buffer)))
+        return self.recent_hold(now, confirm)
+
+
+# --------------------------------------------------------------------------
 # 9. Windows 窗口 / 进程 / 按键工具
 # --------------------------------------------------------------------------
 
@@ -2297,6 +2553,7 @@ class DirectorEngine:
         self.arbiter = AIArbiter(cfg, bus)
         self.learner = DemoModel(cfg, bus)
         self.triggers = TriggerTracker(cfg)
+        self.utility_tracker = UtilityThrowTracker(cfg)
         self.watcher: Optional[ManualKeyWatcher] = None
 
         self._stop = threading.Event()
@@ -2328,6 +2585,11 @@ class DirectorEngine:
         self._round_kills: dict[str, int] = {}
         self._cut_times: deque[float] = deque()
         self._last_fight_lock_log = 0.0
+        self._last_utility_cut_at = 0.0
+        self._utility_cuts = 0
+        self._utility_round_key = ""
+        self._utility_hold_until = 0.0
+        self._utility_hold_slot: Optional[int] = None
         self._last_round_winner: Optional[str] = None
         self._last_scores: Optional[tuple[int, int]] = None
         self._last_map_name = ""
@@ -2636,6 +2898,23 @@ class DirectorEngine:
 
         if snap.seq != self._last_seq:
             self._update_damage(snap, now)
+            for throw in self.utility_tracker.update(snap, now):
+                if bool(self.cfg.get("utility_cam_enabled", True)):
+                    try:
+                        phase_ok = str(self.story.state.phase) in (
+                            "opening", "control")
+                    except Exception:
+                        phase_ok = False
+                    if phase_ok:
+                        post_hold = self._utility_buffers(
+                            self._utility_is_hot(now, []))[1]
+                        self._utility_hold_slot = throw.slot
+                        self._utility_hold_until = max(
+                            self._utility_hold_until, now + post_hold)
+                    self.bus.info(
+                        f"检测到投掷道具：{format_slot(throw.slot)} "
+                        f"{throw.name or '?'} {throw.label}"
+                    )
             if self.decision_logger is not None:
                 self.decision_logger.poll(snap, now)
             if self.pro is not None:
@@ -3003,6 +3282,159 @@ class DirectorEngine:
             return cands[0].slot
         return pool[0].slot
 
+    def _utility_is_hot(self, now: float,
+                        cands: list[Candidate]) -> bool:
+        """场上是否有近期伤害或高威胁候选，用于微调道具镜头缓冲。"""
+        try:
+            lookback = max(0.5, min(10.0, float(
+                self.cfg.get("utility_cam_fight_lookback", 2.5))))
+        except (TypeError, ValueError):
+            lookback = 2.5
+        for t in self._damage_at.values():
+            try:
+                if now - float(t) <= lookback:
+                    return True
+            except (TypeError, ValueError):
+                continue
+        if cands:
+            try:
+                threshold = max(0.05, float(
+                    self.cfg.get("switch_min_score", 0.30))) * 0.9
+            except (TypeError, ValueError):
+                threshold = 0.27
+            if float(getattr(cands[0], "score", 0.0)) >= threshold:
+                return True
+        return False
+
+    def _utility_buffers(self, hot: bool) -> tuple[float, float]:
+        """返回 (预切确认, 投掷后保持)；场上有交火时缩短，安静时放宽。"""
+        try:
+            pre = float(self.cfg.get("utility_cam_pre_buffer", 0.35))
+            post = float(self.cfg.get("utility_cam_post_hold", 0.35))
+        except (TypeError, ValueError):
+            pre, post = 0.35, 0.35
+        pre = max(0.25, min(0.50, pre))
+        post = max(0.25, min(0.50, post))
+        if hot:
+            pre = max(0.25, pre - 0.10)
+            post = max(0.25, post - 0.10)
+        else:
+            pre = min(0.50, pre + 0.15)
+            post = min(0.50, post + 0.15)
+        return pre, post
+
+    def _try_utility_cut(self, snap: Snapshot, cands: list[Candidate],
+                         now: float, status: dict[str, Any]) -> bool:
+        """开局/控图阶段，优先拍手持或刚投掷道具的选手。
+
+        手持道具时提前切过去；投掷后保留 post_hold 缓冲。投掷者可能不在
+        score_candidates 里（例如开局在后场扔烟），所以这里走独立规则，
+        但仍遵守最短停留、切率、硬间隔和重复保护。
+        """
+        if not bool(self.cfg.get("utility_cam_enabled", True)):
+            return False
+        try:
+            phase = str(self.story.state.phase)
+        except Exception:
+            return False
+        if phase not in ("opening", "control"):
+            return False
+
+        hot = self._utility_is_hot(now, cands)
+        pre_buffer, post_hold = self._utility_buffers(hot)
+        action = self.utility_tracker.recent_action(
+            now, pre_buffer, post_hold)
+        if action is None:
+            return False
+        player = next(
+            (p for p in snap.players.values()
+             if getattr(p, "slot", None) == action.slot
+             and int(getattr(p, "health", 0) or 0) > 0),
+            None,
+        )
+        if player is None:
+            return False
+
+        current_slot = snap.observer_slot
+        if (current_slot is None and self._last_switch_at is not None
+                and now - self._last_switch_at < 5.0):
+            current_slot = self._last_switch_slot
+        if current_slot == action.slot:
+            self._utility_hold_slot = action.slot
+            self._utility_hold_until = max(
+                self._utility_hold_until,
+                now + (post_hold if action.kind == "throw" else pre_buffer),
+            )
+            if action.kind == "hold":
+                self.utility_tracker.mark_hold_used(action)
+            status["reason"] = ("道具镜头：保持投掷者"
+                                if action.kind == "throw"
+                                else "道具镜头：已在手持道具选手")
+            self._last_reason = status["reason"]
+            return True
+        if now < self._press_retry_after:
+            return False
+        try:
+            hard_floor = max(0.2, float(
+                self.cfg.get("hard_min_switch_interval", 0.2)))
+            repeat_guard = max(0.0, float(
+                self.cfg.get("repeat_guard_seconds", 4.0)))
+            min_interval = max(0.0, min(30.0, float(
+                self.cfg.get("utility_cam_min_interval", 3.0))))
+            max_per_round = max(0, int(
+                float(self.cfg.get("utility_cam_max_per_round", 4))))
+        except (TypeError, ValueError):
+            hard_floor, repeat_guard, min_interval, max_per_round = 0.2, 4.0, 3.0, 4
+        if (self._last_switch_at is not None
+                and now - self._last_switch_at < hard_floor):
+            return False
+        if (self._last_switch_slot == action.slot
+                and self._last_switch_at is not None
+                and now - self._last_switch_at < repeat_guard):
+            return False
+
+        round_key = f"{snap.map_name}|{snap.round_num}"
+        if round_key != self._utility_round_key:
+            self._utility_round_key = round_key
+            self._utility_cuts = 0
+            self._last_utility_cut_at = 0.0
+            self._utility_hold_until = 0.0
+            self._utility_hold_slot = None
+        if max_per_round > 0 and self._utility_cuts >= max_per_round:
+            return False
+        if (self._last_utility_cut_at > 0
+                and now - self._last_utility_cut_at < min_interval):
+            return False
+
+        verb = "手持" if action.kind == "hold" else "投掷"
+        reason = (f"开局控图：{player.name or format_slot(action.slot)} "
+                  f"{verb}{action.label}")
+        if not self.input.press_slot(action.slot):
+            self._press_retry_after = now + 1.0
+            status["reason"] = "道具镜头按键未发送：窗口未聚焦或依赖缺失"
+            return False
+        self._last_switch_at = now
+        self._last_switch_slot = action.slot
+        self._last_utility_cut_at = now
+        self._utility_cuts += 1
+        self._note_cut(now)
+        self._utility_hold_slot = action.slot
+        self._utility_hold_until = max(
+            self._utility_hold_until,
+            now + (post_hold if action.kind == "throw" else pre_buffer),
+        )
+        if action.kind == "hold":
+            self.utility_tracker.mark_hold_used(action)
+        status["target"] = action.slot
+        status["target_name"] = player.name
+        status["reason"] = reason
+        status["source"] = "utility"
+        if self.timeline is not None:
+            self.timeline.expect_switch(action.slot, reason, "utility", now)
+        self.bus.info(f"切换视角 → {format_slot(action.slot)}（{reason}）")
+        self._last_reason = reason
+        return True
+
     # ---- 核心：评分 + 决策 + 按键 ----
     def _decide_and_switch(self, snap: Snapshot, now: float,
                            status: dict[str, Any]) -> None:
@@ -3068,6 +3500,16 @@ class DirectorEngine:
             max_cuts = self._max_cuts()
             if max_cuts > 0 and self._recent_cut_count(now) >= max_cuts:
                 status["reason"] = f"10 秒内切换已达上限（{max_cuts} 次）"
+                return
+            current_slot = snap.observer_slot
+            if current_slot is None:
+                current_slot = self._last_switch_slot
+            if (now < self._utility_hold_until
+                    and self._utility_hold_slot is not None
+                    and current_slot == self._utility_hold_slot):
+                status["reason"] = "道具镜头缓冲"
+                return
+            if self._try_utility_cut(snap, cands, now, status):
                 return
 
         if not cands:
@@ -3522,6 +3964,8 @@ class DirectorApp:
         self.var_port = tk.StringVar(value=str(cfg.get("gsi_port", 3000)))
         self.var_score = tk.StringVar(value=str(cfg.get("switch_min_score", 0.30)))
         self.var_pause = tk.StringVar(value=str(cfg.get("manual_pause_seconds", 10.0)))
+        self.var_utility_cam = tk.BooleanVar(
+            value=bool(cfg.get("utility_cam_enabled", True)))
 
         self._build()
         self._register_pause_hotkey()
@@ -4245,6 +4689,10 @@ class DirectorApp:
         ttk.Entry(lf4, textvariable=self.var_pause, width=8).grid(row=0, column=5, sticky="w", padx=(4, 0))
         ttk.Label(lf4, text="阈值越低越容易切；0.30 适合大多数情况。其余参数见 config.json。",
                   foreground="#555555").grid(row=1, column=0, columnspan=6, sticky="w", pady=(6, 0))
+        self._checkbutton(
+            lf4, "开局控图阶段优先镜头给手持/投掷道具的选手",
+            self.var_utility_cam).grid(
+            row=2, column=0, columnspan=6, sticky="w", pady=(6, 0))
 
         # 5) 依赖
         lf5 = ttk.LabelFrame(settings, text=" 5. 依赖状态 ", padding=8)
@@ -4626,6 +5074,7 @@ class DirectorApp:
             cfg["manual_pause_seconds"] = max(0.0, min(120.0, float(self.var_pause.get().strip())))
         except Exception:
             cfg["manual_pause_seconds"] = DEFAULT_CONFIG["manual_pause_seconds"]
+        cfg["utility_cam_enabled"] = bool(self.var_utility_cam.get())
         self.decision_logger.cfg = cfg
         self.model_arbiter.cfg = cfg
         self.timeline.cfg = cfg

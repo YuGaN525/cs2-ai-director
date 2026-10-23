@@ -1,7 +1,7 @@
 # CS2 AI 导播 — 开发交接日志
 
-最后更新：2026-10-21  
-当前主程序源码版本：**v1.10.17（Yuzi_CS2_AIDirector；会话指标/校准阈值）**  
+最后更新：2026-10-24  
+当前主程序源码版本：**v1.10.18（Yuzi_CS2_AIDirector；开局道具镜头）**  
 当前训练器版本：**v1.1.8（Yuzi_CS2_AIDecisionTrainer；紧凑模型选择）**  
 专业导播新目标：见 `PRO_DIRECTOR_HANDOFF.md`
 
@@ -35,7 +35,7 @@ CS2 观战/转播导播工具，核心目标：
 
 https://github.com/YuGaN525/cs2-ai-director
 
-- 当前源码版本：`v1.10.17`（Yuzi_CS2_AIDirector；会话指标/校准阈值）
+- 当前源码版本：`v1.10.18`（开局道具镜头；已打包发布）
 - Phase 1 源码提交：`b78bbd3 Add Phase 1 shot timeline, pro metrics, and round story`
 - v1.10.1 映射方向错误（已废弃）：`02c770e`
 - v1.10.2 映射修正提交：`44640a3 Correct observer_slot keyboard mapping direction`
@@ -54,14 +54,14 @@ https://github.com/YuGaN525/cs2-ai-director
 - v1.10.15 性能优化：`ee4c5b5 Optimize runtime hot paths`
 - v1.10.16 模型/配置备份：`80f86ba Add model/config bundle export/import`
 - v1.10.17 会话/阈值：`87c3ec3 Fix session metrics and calibration threshold`
-- Release：`v1.10.17`
+- Release：`v1.10.18`
 - 资产：`Yuzi_CS2_AIDirector.exe`
-- 大小：35,983,768 字节（约 36.0 MB）
-- SHA256：`02AAAC860F52B165022E89E3DC6102CEDAAF65A9E0E07B1FB2C3C01E52155091`
-- Release 页面：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.17
+- 大小：36,527,430 字节（约 36.5 MB）
+- SHA256：`22D1D7CA6412A1ED835DDEA2C4B906C52251744527D7CB3CC0E71A9D9261754E`
+- Release 页面：https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.18
 
-> v1.10.17 已用 PyInstaller 6.22.3 / Python 3.14 打包，并通过启动验证（窗口标题 `Yuzi_CS2_AIDirector v1.10.17 · CS2 AI 专业导播`）；
-> exe 已作为 v1.10.17 Release 资产上传。v1.10.1 映射方向错误，请勿使用。
+> v1.10.18 已用 PyInstaller 6.22.3 / Python 3.14 打包，并通过启动验证（窗口标题 `Yuzi_CS2_AIDirector v1.10.18 · CS2 AI 专业导播`）；
+> exe 已作为 v1.10.18 Release 资产上传。v1.10.1 映射方向错误，请勿使用。
 
 ### 训练器仓库（私密）
 
@@ -93,7 +93,7 @@ director_story.py         # 镜头时间线/六项专业指标/回合故事状�
 director_pro.py           # 独立日志/事件动作/OBS 场景/媒体控制
 decision_model.py         # 决策 CSV、3 秒标签、纯 JSON 森林加载/仲裁
 train_from_demos.py       # 旧静态 demo 模型（learner.json）
-test_cs2_ai_director.py   # 109 项测试
+test_cs2_ai_director.py   # 129 项测试
 requirements.txt          # 主程序依赖（含 obsws-python）
 requirements-train.txt    # demo 静态模型/训练依赖
 build_exe.ps1             # 主程序 PyInstaller 打包
@@ -276,6 +276,20 @@ Yuzi_CS2_AIDecisionTrainer.exe --cli --demos "D:\demos" --min-samples 1000
 - GUI：“运行状态”和“专业导播”页显示故事/指标；可打开数据目录；
 - **不参与** `score_candidates` / `choose_slot` / 模型仲裁；评分特征不变。
 
+### 5.8 开局控图道具镜头（v1.10.18）
+
+- 目标：`opening`/`control` 阶段，无交火时优先把 POV 切给“手持道具”的选手，
+  并在投掷前后保留约 250–500ms 缓冲；
+- 手持检测：`Player.active_weapon` 是允许的手雷类型，约 100ms 确认后预切；
+- 投掷检测：GSI 无投掷事件，用连续快照的 `allplayers_weapons` 手雷条目数/`ammo_reserve` 减少推断；
+- 缓冲：`utility_cam_pre_buffer` / `utility_cam_post_hold` 默认 0.35s，运行时夹在 0.25–0.5s；
+  场上近 2.5s 有伤害或高威胁候选时缩短到 0.25s，安静时放宽到 0.5s；
+- 默认类型：烟雾弹、闪光弹、燃烧弹、高爆手雷；默认不含诱饵弹（`utility_cam_types` 可改）；
+- 安全约束：不绕过交火锁定、最短停留（默认 2s）、`min_dwell_seconds`（默认 1s）、10 秒切率、硬间隔、重复按键保护；
+  另有 `utility_cam_min_interval`（默认 3s）和 `utility_cam_max_per_round`（默认 4）限制；
+- 独立来源 `utility` 写入镜头时间线；不写入 `decisions.csv`（避免污染行为克隆样本）；
+- 已知风险：丢道具给队友也会被识别为“投掷”；同一次手持只触发一次，需实机验证。
+
 ## 6. 当前配置与路径
 
 配置：
@@ -368,7 +382,8 @@ event_actions_enabled / event_rules
 - v1.10.14：新增回合叙事提示（freeze/回合结束），可选推送 OBS 文本源，不自动切镜；
 - v1.10.15：候选评分快照缓存、GUI 日志批量刷新、训练器校准批量推理/AUC O(n log n)；不改变决策结果；
 - v1.10.16：新增模型/配置 ZIP 导出导入，导入前自动备份，密钥默认脱敏；
-- v1.10.17：会话指标按启动重置；校准阈值按验证 F1 自动选择（当前 0.20）。
+- v1.10.17：会话指标按启动重置；校准阈值按验证 F1 自动选择（当前 0.20）；
+- v1.10.18：开局/控图阶段道具镜头：`active_weapon` 为允许手雷时约 100ms 确认后预切；`allplayers_weapons` 库存减少推断已投掷，投掷前后各留 250–500ms 缓冲（近 2.5s 有交火则缩到 0.25s，安静则放宽到 0.5s）；仅 `opening/control` 生效，默认排除诱饵弹。
 
 ---
 
@@ -377,12 +392,12 @@ event_actions_enabled / event_rules
 已验证：
 
 ```text
-主仓库 109 项测试通过（v1.10.17；含备份/叙事/校准/回合边界测试）
+主仓库 129 项测试通过（v1.10.18；含道具镜头/备份/叙事/校准/回合边界测试）
 训练器仓库 99 项测试通过（已同步 v1.10.7 共享核心）
 Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
 模拟 GSI 序列验证镜头/指标/故事落盘
-两个 exe 启动成功（Yuzi_CS2_AIDirector v1.10.17 / Yuzi_CS2_AIDecisionTrainer v1.1.7）
+主程序 exe 启动成功（Yuzi_CS2_AIDirector v1.10.18，窗口标题已核对）；训练器 exe v1.1.8 已发布
 训练器 CSV 训练 exit=0
 训练器 .dem 训练 exit=0（544 行 / 105 击杀事件）
 导播加载 ExtraTrees JSON 成功
@@ -426,6 +441,7 @@ Python 编译通过（cs2_ai_director.py / director_story.py）
 20. **回合切换/中途停止会产生 partial 行**：`round_metrics.csv` 用 `completed=1/0` 区分；累计指标会包含 partial 行。
 21. **训练器仓库已同步 v1.10.17 共享核心**；训练器 exe 已重建为 v1.1.7；5 图模型 top1 67.3%。
 22. **observer_slot 映射依赖实测**：v1.10.2 按完整表修正为“键 N→slot (N-1) mod 10”；v1.10.3/v1.10.4 未改映射；若 CS2 更新后映射变化，需重新实测。
+23. **道具镜头依赖 GSI 武器字段**：手持依赖 `active_weapon`，投掷依赖手雷库存减少；若 `allplayers_weapons` 不逐项列出多颗同类手雷、或包内缺少武器字段，可能漏检；丢给队友会被当成投掷。全局 `min_shot_duration` 仍优先，实际镜头可能长于 0.5s 缓冲。需实机确认日志与实际投掷一致。
 
 ---
 
@@ -612,14 +628,14 @@ YuGaN525/cs2-ai-decision-trainer
 继续开发 CS2 AI 导播项目。请先阅读仓库根目录的 HANDOFF.md 和 README.md。
 
 当前状态：
-- 主程序源码 v1.10.17（Yuzi_CS2_AIDirector），训练器 v1.1.7；
+- 主程序源码 v1.10.18（Yuzi_CS2_AIDirector），训练器 v1.1.8；
 - 主仓库 YuGaN525/cs2-ai-director，训练器仓库 YuGaN525/cs2-ai-decision-trainer，均为私密；
-- 主程序 exe：dist/Yuzi_CS2_AIDirector.exe（v1.10.17，已重新打包）；
-- 训练器 exe：dist/Yuzi_CS2_AIDecisionTrainer.exe；
-- 109 项测试通过；GSI 阶段/OBS 事件链路已修复；暂停用热键/按钮兜底；在线校准/回合叙事/模型配置备份已启用；
+- 主程序 exe：dist/Yuzi_CS2_AIDirector.exe（v1.10.18，已重新打包）；
+- 训练器 exe：dist/Yuzi_CS2_AIDecisionTrainer.exe（v1.1.8）；
+- 129 项测试通过；GSI 阶段/OBS 事件链路已修复；暂停用热键/按钮兜底；在线校准/回合叙事/模型配置备份/开局道具镜头已启用；
 - 模型使用 RF/ExtraTrees 交叉验证选择，导出纯 JSON，导播自动重载；
 - 决策样本 decisions.csv 尚未达到 1000 条；
-- 训练器仓库已同步 director_story.py 与训练优化；训练器 exe 为 v1.1.7。
+- 训练器仓库尚未同步 v1.10.18（本次只改运行时道具镜头，评分核心未变）。
 
 硬性约束：
 - 只读 GSI，不读内存/不注入/不发控制台命令；
@@ -627,11 +643,11 @@ YuGaN525/cs2-ai-decision-trainer
 - 不使用深度学习；
 - 训练器与主程序共享评分核心，修改时两个仓库要同步。
 
-下一步优先：
-1. Phase 2 镜头调度器（不切候选/最短停留/切换成本），不改模型；
-2. 用真实 GSI + HLAE 校准 Phase 1 指标；
-3. 实机联调 OBS；
-4. 同步训练器仓库并消除共享核心副本。
+下一步优先（见 DEVELOPMENT_PLAN.md）：
+1. 用 v1.10.18 实机验证道具镜头，检查 shot_timeline.csv 的 source=utility 与实际投掷是否一致；
+2. P0-2 候选级日志 decision_candidates.csv，记录全部候选而非最终目标；
+3. P0-3 击杀未命中四类归因；P0-1 建立新会话 baseline；
+4. 新模型校准与规则/模型 A/B，达标后再扩大模型接管。
 
 请先检查当前代码和测试，再给出最小改动方案。
 ```

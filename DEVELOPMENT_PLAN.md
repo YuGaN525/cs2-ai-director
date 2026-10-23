@@ -2,9 +2,9 @@
 
 > 更新时间：2026-10-23  
 > 工作区：`D:\AIdirector`  
-> 主程序：**v1.10.17**  
+> 主程序：**v1.10.18**  
 > 训练器：**v1.1.8**  
-> 当前测试：**109 项通过**
+> 当前测试：**129 项通过**
 
 ---
 
@@ -68,13 +68,13 @@ manual_takeover     13
 
 | 项目 | 版本 | 本地产物 | 状态 |
 |---|---|---|---|
-| 主程序 | v1.10.17 | `dist/Yuzi_CS2_AIDirector.exe` | [已发布](https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.17) |
+| 主程序 | v1.10.18 | `dist/Yuzi_CS2_AIDirector.exe` | [已发布](https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.18) |
 | 训练器 | v1.1.8 | `dist/Yuzi_CS2_AIDecisionTrainer.exe` | [已发布](https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.1.8) |
 
 主程序 SHA256：
 
 ```text
-02AAAC860F52B165022E89E3DC6102CEDAAF65A9E0E07B1FB2C3C01E52155091
+22D1D7CA6412A1ED835DDEA2C4B906C52251744527D7CB3CC0E71A9D9261754E
 ```
 
 训练器 SHA256：
@@ -154,7 +154,8 @@ director_metrics.json
 - [x] A/B 包点运镜；
 - [x] 双击/长按/MulNX 类型；
 - [x] 进入 live/保护时间结束自动交还 POV；
-- [x] 出生点预判仅做叙事参考，不自动预切。
+- [x] 出生点预判仅做叙事参考，不自动预切；
+- [x] **v1.10.18：开局/控图道具镜头**，手持约 100ms 预切 + 投掷前后 250–500ms 缓冲（交火时自动缩短），默认排除诱饵弹。
 
 剩余：更多地图包点坐标校准。
 
@@ -316,7 +317,7 @@ pkl         114MB
 
 - 状态：**代码完成，数据待采集**
 - 动作：
-  - 用 v1.10.17 跑 20–30 回合；
+  - 用 v1.10.18 跑 20–30 回合；
   - 确认 `rounds` 只统计本次启动；
   - 记录新的 kill/pre-fight/cut/manual 指标；
 - 验收：
