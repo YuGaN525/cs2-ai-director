@@ -67,7 +67,7 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：以 `git log` 中 `Prefer compact models and show size` 为准
+- 最新提交：`cef0d06 Prefer compact models and show size`
 - Release：`v1.1.8`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
 - 大小：179,816,796 字节（约 179 MB）
