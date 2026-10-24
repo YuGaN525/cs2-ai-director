@@ -232,12 +232,12 @@ def main():
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_before = Pt(18)
-    r = p.add_run("主程序 v1.10.17    ·    训练器 v1.1.8")
+    r = p.add_run("主程序 v1.10.18    ·    训练器 v1.2.0")
     r.font.size = Pt(11)
     r.font.color.rgb = GRAY
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    r = p.add_run("2026-10-23")
+    r = p.add_run("2026-10-25")
     r.font.size = Pt(11)
     r.font.color.rgb = GRAY
     p = doc.add_paragraph()

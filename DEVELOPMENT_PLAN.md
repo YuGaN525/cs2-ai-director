@@ -1,10 +1,10 @@
 # Yuzi CS2 AI Director 开发计划书
 
-> 更新时间：2026-10-24  
+> 更新时间：2026-10-25  
 > 工作区：`D:\AIdirector`  
 > 主程序：**v1.10.18**  
-> 训练器：**v1.1.8**  
-> 当前测试：**129 项通过**
+> 训练器：**v1.2.0**  
+> 当前测试：**129 项（主程序）+ 140 项（训练器）**
 
 ---
 
@@ -20,7 +20,8 @@
 - 离线随机森林仲裁与在线概率校准；
 - 模型/配置一键导出导入；
 - 独立训练器支持 `decisions.csv` 与 `.dem`；
-- 训练器优先选择紧凑模型，控制启动/推理成本。
+- 训练器优先选择紧凑模型，控制启动/推理成本；
+- 训练器 v1.2.0 支持 AI 辅助训练（DeepSeek 诊断 + 本地验证）。
 
 当前最大短板不是“功能缺失”，而是**实际击杀覆盖率仍然偏低**：
 
@@ -69,7 +70,7 @@ manual_takeover     13
 | 项目 | 版本 | 本地产物 | 状态 |
 |---|---|---|---|
 | 主程序 | v1.10.18 | `dist/Yuzi_CS2_AIDirector.exe` | [已发布](https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.10.18) |
-| 训练器 | v1.1.8 | `dist/Yuzi_CS2_AIDecisionTrainer.exe` | [已发布](https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.1.8) |
+| 训练器 | v1.2.0 | `dist/Yuzi_CS2_AIDecisionTrainer.exe` | [已发布](https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.2.0) |
 
 主程序 SHA256：
 
@@ -80,7 +81,7 @@ manual_takeover     13
 训练器 SHA256：
 
 ```text
-E06BA26FB31E07364AE5791306504E81983EFD65552CE7A1D3B46BD4EA8AC0E5
+67D39F87C56FF06D8EB9FE333308EE6FF8770126F69D55746AA035DE5D34BDE7
 ```
 
 ### 2.2 仓库
@@ -88,7 +89,7 @@ E06BA26FB31E07364AE5791306504E81983EFD65552CE7A1D3B46BD4EA8AC0E5
 - 主仓库：https://github.com/YuGaN525/cs2-ai-director
 - 训练器：https://github.com/YuGaN525/cs2-ai-decision-trainer
 - 当前主仓库提交：`8631949 Add utility camera for opening and control phase`
-- 当前训练器提交：`3854773 Sync v1.10.18 shared core`
+- 当前训练器提交：`2f5f1f5 Add AI-assisted training with DeepSeek advisor`
 
 ### 2.3 运行时数据
 
@@ -127,7 +128,7 @@ director_metrics.json
 | 回合故事/叙事辅助 | 85% | 已完成 | freeze/回合结束文案，不自动预切 |
 | 随机森林仲裁 | 65% | 可用，待验证 | 紧凑模型已上线，校准待新样本 |
 | 在线概率校准 | 75% | 代码完成 | F1 阈值自动选择；新模型尚无校准 |
-| 训练器 | 80% | 可用 | CSV/.dem、紧凑模型选择、大小警告 |
+| 训练器 | 85% | 可用 | CSV/.dem、紧凑模型、AI 辅助训练 |
 | 备份/恢复 | 90% | 已完成 | ZIP 导入导出、自动备份、密钥脱敏 |
 | 性能与稳定性 | 85% | 持续优化 | 快照缓存、日志批处理、紧凑模型 |
 | 文档与交付 | 85% | 持续维护 | README/HANDOFF/SELFCHECK/Release |
@@ -201,7 +202,9 @@ director_metrics.json
 - [x] 在线模型校准按钮；
 - [x] **v1.1.8：指标接近时优先小模型**；
 - [x] **v1.1.8：完成弹窗显示 JSON 大小并警告 >20MB**；
-- [ ] 时间切分/跨地图泛化评估；
+- [x] **v1.2.0：AI 辅助训练**（DeepSeek 聚合画像诊断 + 搜索空间建议 + 本地基线/候选验证，报告 `ai_training_report.json`）；
+- [x] **v1.2.0：time 切分选项与搜索预算**（按数据量限制树数量/深度/搜索组数）；
+- [ ] 时间切分/跨地图泛化评估（time 切分已可用，缺跨地图对比）；
 - [ ] 训练结果与线上覆盖率的闭环。
 
 ### M7：备份与运维（90%）
@@ -402,10 +405,10 @@ kill_within_3s, first_damage_within_3s
 
 #### P2-1 时间切分验证
 
-- 状态：**未开始（0%）**
-- 当前是 group 随机切分，可能高估跨时间泛化。
-- 增加按时间排序的 train/validation 切分；
-- 同时保留 group 切分作为对照。
+- 状态：**50%**
+- v1.2.0 已支持 `split_mode=time`，AI 可建议使用；默认仍为 `auto`。
+- 待做：同一批数据上 time vs group 的跨地图/跨时间对比，写入训练报告。
+- 注意：当前 `group_size` 全为 1 时 group 切分等同随机，需依赖 time 切分才能暴露时间泄漏。
 
 #### P2-2 训练数据分层
 

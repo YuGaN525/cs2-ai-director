@@ -2,7 +2,7 @@
 
 最后更新：2026-10-24  
 当前主程序源码版本：**v1.10.18（Yuzi_CS2_AIDirector；开局道具镜头）**  
-当前训练器版本：**v1.1.8（Yuzi_CS2_AIDecisionTrainer；紧凑模型选择）**  
+当前训练器版本：**v1.2.0（Yuzi_CS2_AIDecisionTrainer；AI 辅助训练）**  
 专业导播新目标：见 `PRO_DIRECTOR_HANDOFF.md`
 
 ---
@@ -68,13 +68,16 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`3854773 Sync v1.10.18 shared core`
-- 共享核心：已同步 v1.10.18（`cs2_ai_director.py` / `director_pro.py` / 测试，129 项通过）；exe 仍为 v1.1.8，本次同步不改训练/模型格式，无需重建
-- Release：`v1.1.8`
+- 最新提交：`2f5f1f5 Add AI-assisted training with DeepSeek advisor`
+- 共享核心：已同步 v1.10.18（`cs2_ai_director.py` / `director_pro.py` / 测试）
+- Release：`v1.2.0`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`
-- 大小：179,816,796 字节（约 179 MB）
-- SHA256：`E06BA26FB31E07364AE5791306504E81983EFD65552CE7A1D3B46BD4EA8AC0E5`
-- Release 页面：https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.1.8
+- 大小：183,799,476 字节（约 175 MB）
+- SHA256：`67D39F87C56FF06D8EB9FE333308EE6FF8770126F69D55746AA035DE5D34BDE7`
+- Release 页面：https://github.com/YuGaN525/cs2-ai-decision-trainer/releases/tag/v1.2.0
+
+> v1.2.0 新增 DeepSeek 训练顾问 + 本地验证：只发送聚合统计；AI 候选必须超过基线且体积可控才采用；
+> 无 Key/失败自动回退本地扩展搜索。训练器 exe 已通过启动与 `--cli --ai` 完整链路验证。
 
 ### 本地产物
 
@@ -112,6 +115,8 @@ frozen_v1.0.0/            # 旧版基线
 ```text
 trainer_gui.py            # 独立训练器 GUI + --cli
 train_decision_model.py   # RF/ExtraTrees 训练、CV、JSON 导出
+ai_trainer.py             # AI 辅助训练：数据画像、DeepSeek 顾问、基线/候选验证与报告
+test_ai_trainer.py        # AI 辅助训练测试（11 项）
 demo_dataset.py           # .dem -> demo_decisions.csv
 decision_model.py         # 共享模型/CSV 定义
 train_from_demos.py
@@ -395,11 +400,12 @@ event_actions_enabled / event_rules
 
 ```text
 主仓库 129 项测试通过（v1.10.18；含道具镜头/备份/叙事/校准/回合边界测试）
-训练器仓库 129 项测试通过（已同步 v1.10.18 共享核心）
+训练器仓库 140 项测试通过（129 共享核心 + 11 AI 辅助）
 Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
 模拟 GSI 序列验证镜头/指标/故事落盘
-主程序 exe 启动成功（Yuzi_CS2_AIDirector v1.10.18，窗口标题已核对）；训练器 exe v1.1.8 已发布
+主程序 exe 启动成功（Yuzi_CS2_AIDirector v1.10.18，窗口标题已核对）；训练器 exe v1.2.0 已发布并通过 `--cli --ai` 验证
+AI 辅助训练真实数据验证：11,170 行；AI 候选 AUC 0.7722 < 基线 0.7763，守卫保留基线
 训练器 CSV 训练 exit=0
 训练器 .dem 训练 exit=0（544 行 / 105 击杀事件）
 导播加载 ExtraTrees JSON 成功
@@ -630,14 +636,14 @@ YuGaN525/cs2-ai-decision-trainer
 继续开发 CS2 AI 导播项目。请先阅读仓库根目录的 HANDOFF.md 和 README.md。
 
 当前状态：
-- 主程序源码 v1.10.18（Yuzi_CS2_AIDirector），训练器 v1.1.8；
+- 主程序源码 v1.10.18（Yuzi_CS2_AIDirector），训练器 v1.2.0；
 - 主仓库 YuGaN525/cs2-ai-director，训练器仓库 YuGaN525/cs2-ai-decision-trainer，均为私密；
 - 主程序 exe：dist/Yuzi_CS2_AIDirector.exe（v1.10.18，已重新打包）；
-- 训练器 exe：dist/Yuzi_CS2_AIDecisionTrainer.exe（v1.1.8）；
-- 129 项测试通过；GSI 阶段/OBS 事件链路已修复；暂停用热键/按钮兜底；在线校准/回合叙事/模型配置备份/开局道具镜头已启用；
+- 训练器 exe：dist/Yuzi_CS2_AIDecisionTrainer.exe（v1.2.0，含 AI 辅助训练）；
+- 140 项测试通过；GSI 阶段/OBS 事件链路已修复；暂停用热键/按钮兜底；在线校准/回合叙事/模型配置备份/开局道具镜头已启用；
 - 模型使用 RF/ExtraTrees 交叉验证选择，导出纯 JSON，导播自动重载；
-- 决策样本 decisions.csv 尚未达到 1000 条；
-- 训练器仓库尚未同步 v1.10.18（本次只改运行时道具镜头，评分核心未变）。
+- 训练器 v1.2.0 新增 AI 辅助训练：DeepSeek 聚合画像诊断 + 本地基线/候选验证，报告写入 ai_training_report.json；
+- decisions.csv 约 11,170 行有效样本；训练器仓库已同步 v1.10.18 共享核心。
 
 硬性约束：
 - 只读 GSI，不读内存/不注入/不发控制台命令；
