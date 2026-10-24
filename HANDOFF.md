@@ -68,7 +68,7 @@ https://github.com/YuGaN525/cs2-ai-director
 
 https://github.com/YuGaN525/cs2-ai-decision-trainer
 
-- 最新提交：`2f5f1f5 Add AI-assisted training with DeepSeek advisor`
+- 最新提交：`5dde4dd Clarify AI search iteration budget`（v1.2.0 功能提交 `2f5f1f5`）
 - 共享核心：已同步 v1.10.18（`cs2_ai_director.py` / `director_pro.py` / 测试）
 - Release：`v1.2.0`
 - 资产：`Yuzi_CS2_AIDecisionTrainer.exe`

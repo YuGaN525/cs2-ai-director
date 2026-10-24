@@ -89,7 +89,7 @@ manual_takeover     13
 - 主仓库：https://github.com/YuGaN525/cs2-ai-director
 - 训练器：https://github.com/YuGaN525/cs2-ai-decision-trainer
 - 当前主仓库提交：`8631949 Add utility camera for opening and control phase`
-- 当前训练器提交：`2f5f1f5 Add AI-assisted training with DeepSeek advisor`
+- 当前训练器提交：`5dde4dd Clarify AI search iteration budget`（v1.2.0 功能提交 `2f5f1f5`）
 
 ### 2.3 运行时数据
 
