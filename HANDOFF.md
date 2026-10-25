@@ -102,6 +102,7 @@ test_cs2_ai_director.py   # 129 项测试
 requirements.txt          # 主程序依赖（含 obsws-python）
 requirements-train.txt    # demo 静态模型/训练依赖
 build_exe.ps1             # 主程序 PyInstaller 打包
+tools/lookahead/          # 早源 GOTV 影子录制/评估（外置观察器，不进 exe）
 start_cs2_director.bat
 README.md
 SELFCHECK.md
@@ -297,6 +298,21 @@ Yuzi_CS2_AIDecisionTrainer.exe --cli --demos "D:\demos" --min-samples 1000
 - 独立来源 `utility` 写入镜头时间线；不写入 `decisions.csv`（避免污染行为克隆样本）；
 - 已知风险：丢道具给队友也会被识别为“投掷”；同一次手持只触发一次，需实机验证。
 
+### 5.9 早源 GOTV Lookahead（影子工具，未进 exe）
+
+- 背景：赛事方可提供早于节目画面的 GOTV。它能把击杀覆盖从“预测”变成“预知”，
+  但事件到达时节目画面还在 N 秒前，必须按节目时间排程，不能到达即切。
+- `tools/lookahead/observer_bridge.py`：托管启动第三方 `cs2-headless-observer`，
+  记录 JSONL（含本地接收时间）、stderr 与会话报告；密码只走环境变量/交互 stdin，不落盘。
+- `tools/lookahead/evaluate_lookahead.py`：把早源 death 与 `shot_events.csv` /
+  `shot_timeline.csv` / `decisions.csv` 对齐，输出真实领先（中位/p10/p90/正领先占比）
+  与“杀手不在拍、可预切”的机会明细。
+- 当前只做影子记录/评估，**不改变导播镜头**；4 项合成测试通过。
+- 进入 live 的门槛：领先稳定、正领先 >90%、可预切机会足够、配对完整、赛事规则允许、
+  GSI 回退可用；live 需按 `recv + lead - 1~2s` 排程，并写入 `source=lookahead`。
+- 合规：观察器 AGPL-3.0，外置不打包；账号/ToS 风险需赛事方确认；禁止把未来事件
+  显示到直播/HUD。运行手册见 `tools/lookahead/README.md`。
+
 ## 6. 当前配置与路径
 
 配置：
@@ -400,6 +416,7 @@ event_actions_enabled / event_rules
 
 ```text
 主仓库 129 项测试通过（v1.10.18；含道具镜头/备份/叙事/校准/回合边界测试）
+早源 lookahead 影子链路 4 项测试通过；已用真实观察器包校验 manifest/entrypoint（未启动 GOTV）
 训练器仓库 140 项测试通过（129 共享核心 + 11 AI 辅助）
 Python 编译通过（cs2_ai_director.py / director_story.py）
 核心 ruff F/E9 通过
@@ -655,7 +672,8 @@ YuGaN525/cs2-ai-decision-trainer
 1. 用 v1.10.18 实机验证道具镜头，检查 shot_timeline.csv 的 source=utility 与实际投掷是否一致；
 2. P0-2 候选级日志 decision_candidates.csv，记录全部候选而非最终目标；
 3. P0-3 击杀未命中四类归因；P0-1 建立新会话 baseline；
-4. 新模型校准与规则/模型 A/B，达标后再扩大模型接管。
+4. 新模型校准与规则/模型 A/B，达标后再扩大模型接管；
+5. 早源 GOTV：按 tools/lookahead/README.md 跑一场影子录制 + 评估，领先稳定再谈 live 预切。
 
 请先检查当前代码和测试，再给出最小改动方案。
 ```

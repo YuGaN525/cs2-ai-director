@@ -13,3 +13,7 @@ build/
 dist/
 *.spec
 
+
+lookahead_runs/
+lookahead_eval.json
+lookahead_eval_deaths.csv
