@@ -21,6 +21,8 @@
   "uploaded_commit": "97157ae81df0a8855ad6fb461fedb1df4473e06f",
   "uploaded_tree": "044ca033e75c83382127417689586938d9d4f1f8",
   "upload_method": "Git Data API; exact local commit/tree equality; fast-forward only",
-  "old_remote_delete_status": "blocked-by-github-token-scope",
-  "old_remote_delete_error": "HTTP 403; OAuth token lacks delete_repo; browser control approval timed out"
+  "old_remote_delete_status": "not-required-user-replaced-deletion-with-archive",
+  "old_remote_archived": true,
+  "archive_verified_via_github": true,
+  "latest_user_instruction": "仓库已存档，无需删除"
 }
