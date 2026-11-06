@@ -1,0 +1,28 @@
+{
+  "tested_at": "2026-11-07 Asia/Shanghai",
+  "director_base": "ad3d32648370fc578f4495a032e541c94a81f30f",
+  "trainer_base": "5dde4ddaf58954d2dc91b8605e69351264a7e383",
+  "exe_sha256": "15a75489467c977800f820d522f70a9e1ce5b0289455ce8b8115cd600252d5ed",
+  "exe_bytes": 189304748,
+  "tests": {
+    "existing": 140,
+    "integration": 6,
+    "result": "passed"
+  },
+  "packaged_smoke": {
+    "synthetic_rows": 252,
+    "exported": [
+      "model.pkl",
+      "model.json.gz",
+      "metrics.json"
+    ],
+    "runtime_format": "json",
+    "inference_probability": 0.22835509679092852
+  },
+  "limits": [
+    "No production changes",
+    "No real match effect validation",
+    "No real Demo corpus test",
+    "No remote push or deletion"
+  ]
+}

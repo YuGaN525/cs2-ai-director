@@ -236,6 +236,7 @@ class EventDetector:
 
 class ObsController:
     def __init__(self, cfg: dict[str, Any], log: ProLog) -> None:
+        self.authorization_gate = None
         self.cfg = cfg
         self.log = log
         self.client: Any = None
@@ -282,6 +283,9 @@ class ObsController:
         self.log.info("OBS", "已断开")
 
     def _call(self, name: str, *args: Any, **kwargs: Any) -> Any:
+        if (self.authorization_gate is not None and not name.startswith("get_")
+                and not self.authorization_gate.allowed()):
+            raise RuntimeError("设备离线授权不可用，请联网校验")
         if self.client is None:
             raise RuntimeError("OBS 未连接")
         with self._lock:

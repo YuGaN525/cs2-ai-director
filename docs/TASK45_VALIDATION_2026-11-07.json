@@ -1,0 +1,140 @@
+{
+  "date": "2026-11-07 Asia/Shanghai",
+  "status": "tasks4-local-and-SRV01-02-local-accepted",
+  "tests": {
+    "python": 205,
+    "python_upload_specific": 24,
+    "dotnet_full": 426,
+    "isolated_postgres_storage": 14,
+    "admin_typecheck": "passed",
+    "admin_build": "passed",
+    "json_schema_and_shared_fixtures": "passed"
+  },
+  "packaged_smoke": {
+    "exe_training": "passed",
+    "records": 252,
+    "exported_rows": 252,
+    "queue_survives_process_restart": true,
+    "unbound_data_not_uploaded": true
+  },
+  "real_http_service_roundtrip": {
+    "state": {
+      "records": 1,
+      "states": {
+        "confirmed": 1
+      },
+      "last_error": ""
+    },
+    "same_receipt_id": true,
+    "duplicate_after_lost_receipt": true,
+    "receipt": {
+      "id": "a6c960d0-e30f-4381-b98a-586b9b93aa3e",
+      "contentHash": "a55f769bfac96bd2f8ba82e052a50212073b03b0561b8040c9303ff1adecb618",
+      "rowCount": 1,
+      "positiveCount": 1,
+      "source": "online",
+      "channel": "automatic",
+      "quality": "legacy-selected-only",
+      "createdAt": "2026-11-06T18:18:37.394565Z",
+      "duplicate": true,
+      "uploadHash": "716029f2e35c76192481099e4c183df6e272459367ff1987e9013c9f1de5cc43"
+    },
+    "authentication": "local-test-only-bearer"
+  },
+  "contract_manifest": {
+    "candidate-preview.schema.json": "bb73a34fe312e59d6fc91bdb769820722784fc7a174f3ac6048c959aa3bfc42e",
+    "capabilities.json": "e3b93ba1bcc2db3e1557f9f4dd818e157c0294c4ef1a7e4dcc89fe4075ab082b",
+    "duplicate-header.csv": "ae9f1643f623801dd49b45d232af283e61edd8f628aa9305d9e5158c1cfdf2ec",
+    "fixtures.json": "878c04d031a7f1d83c17885ecc457a82a8a1696b522aa1f8ddbf91d81db136a4",
+    "missing-label.csv": "fad786949a9890672b0b00d5cfc792538c1ec3b58a6196a8b3af9173a2b972f5",
+    "non-finite.csv": "5a340fe3067cc0ded2f2027fa5e626e44102446e5deb9286ee61f21f73378318",
+    "openapi.json": "e37b8caa5ef126f6d65932453f5b361eb7d5f6c2bd41ff5de891c6a8a2de97b4",
+    "private-columns.csv": "5ad0af8dc319d9fc8f4b6708142f9a368f446e3225050b9a935744bd4d4aab40",
+    "private-columns.normalized.csv": "f43ff76be60dc7c1dc806a2a40446a51d80214121cd45d2464817fc7df43f5c6",
+    "ragged-row.csv": "e32631faa8e3f17d1fe07207426bec1d66fc3f897817e2b960c0ba9af26a7c40",
+    "receipt.schema.json": "5b1763e7c5a74e9bb0e1771b85e750599b6ea9f7f72ca9ebddf81bc1cdcb1797",
+    "valid-minimal.csv": "c2c8eb79cc66e9cdf98ec3e0be938a387c821b9f35404f3368946baebd5aecb7",
+    "valid-minimal.normalized.csv": "f544116d6dafb135cd533e977b0a1fd3a4e70fab70f4094f04ef8d8785fb425d"
+  },
+  "artifact": {
+    "path": "D:\\AIdirector\\dist\\task45\\Yuzi_CS2_AIDirector.exe",
+    "bytes": 193149111,
+    "sha256": "caab7523f6304612bcfd6e085e42557f0c1ea7d15e7809f6336f954873519108"
+  },
+  "source_sha256": {
+    "D:\\AIdirector\\ai_trainer.py": "1526b5e401d421172edabf97754050deca96174303d4bc39c085a3e132acb964",
+    "D:\\AIdirector\\backup_bundle.py": "9548504d213897306dd50e9a68f5820dc634314cc2a49e2951ee86e714fc2bde",
+    "D:\\AIdirector\\build_plan_docx.py": "c2d04cfc6ec777cf76ea26d9d4273a5a14288dbbf8d1e126f025ae1cfa84f785",
+    "D:\\AIdirector\\cs2_ai_director.py": "2d4be048f180abe51f3021e5dce09a6ba949c1cde5cd9958532884b5fedc386a",
+    "D:\\AIdirector\\decision_calibration.py": "3e1c7ad904de770ebc771b4c9c1eb3289f3e63f0db87c1900d4078239affc795",
+    "D:\\AIdirector\\decision_model.py": "dbde664425cb4e7d61bf50122e42dc385248246705a605febe266af3fcf10f32",
+    "D:\\AIdirector\\demo_dataset.py": "1b710e62bd09f5b2831d87de89022195b64ba6ff9a5b601c3e3c4f6dbbe672de",
+    "D:\\AIdirector\\device_identity.py": "af51157af72d4de312db811b8c8c5d99ad7b740ce955db62deff6d89ca0a198e",
+    "D:\\AIdirector\\director_narrative.py": "26e95a709d49df4b065d9a86b7c3933bf82facc7c27765108148d611579e61c0",
+    "D:\\AIdirector\\director_pro.py": "e9dbb971803c35ec753dba8ae408a150478f21fa3e6b508e808e13c8ed560fcd",
+    "D:\\AIdirector\\director_story.py": "4be403feb802ef0e970167ccd218d867892343264d5ea86461931677235e0d32",
+    "D:\\AIdirector\\offline_runtime.py": "fd7789c0ddecbc6cc6d6c13c5edc5f6c6f0458b1813ac230eaf2dc146da3df79",
+    "D:\\AIdirector\\test_ai_trainer.py": "9b6318414409565b8c8dc2bf092af1858d02ed2bc1febcdc3461a09c5dcd2b82",
+    "D:\\AIdirector\\test_cs2_ai_director.py": "83337b410d129cb08b8e54f4ee271c38c2be6baed8a8496f72d12ce5ebd6dba0",
+    "D:\\AIdirector\\test_task23.py": "54717850f7f384fcb4fa68ae2e89f46aad9b23828eb14926651ad03b3a32860f",
+    "D:\\AIdirector\\test_trainer_integration.py": "9d98b185db920962b7af3d8707863ed5980ff69c72810232cba08c00e1905328",
+    "D:\\AIdirector\\test_uploads.py": "eaae1793eb9a18842955dce2ee6dcb12f32da6d91db3bcec3b844ed926414b7d",
+    "D:\\AIdirector\\trainer_gui.py": "7004ea0e3e3124cdf6eaafb04123172b615c3d0c7ac57a322878dd9bd808a10b",
+    "D:\\AIdirector\\trainer_launcher.py": "7a752c54c1ab2803e9bdafe4b73b64e0d4c228eec1d532a3d9d2994c4eaf5d0a",
+    "D:\\AIdirector\\training_data_runtime.py": "5d982049b46fa5e2d2c519daed3932650673e7e4cb34f59d5380a61746b81b34",
+    "D:\\AIdirector\\training_recorder.py": "c80743ebac5dec4ff05cb498302e30919d4e865ac25fbcf3fca0612b91657caa",
+    "D:\\AIdirector\\training_splits.py": "e8aac4c4ef5ebd30d5690690394a923f29f7981600d04d8bdef5faf1a506a1b6",
+    "D:\\AIdirector\\train_decision_model.py": "21d784d5f89b5e4b315d1dbcf0fe09486c16e2e9c2fb65af2f66794d405233bd",
+    "D:\\AIdirector\\train_from_demos.py": "a7e749bf7d1eb9e9bfbbee356902d81b01afb63cf264ae93490f74031eb08cba",
+    "D:\\AIdirector\\upload_outbox.py": "7b9bae8647ac4f2820a24daeb73c12bed683afa20bceb0d37d019ee3a12baab9",
+    "D:\\AIdirector\\upload_protocol.py": "d2a8c75646ee1c521661d52b977a79ed8acb74662ab64fc353fea1b07c989c12",
+    "D:\\AIdirector\\upload_worker.py": "8dd381ddf2bf21f602e7aff4dfbbfeb4d48597fd6e570915a16276831a8d32a7",
+    "D:\\AIdirector\\contracts\\director-data-v1\\candidate-preview.schema.json": "bb73a34fe312e59d6fc91bdb769820722784fc7a174f3ac6048c959aa3bfc42e",
+    "D:\\AIdirector\\contracts\\director-data-v1\\capabilities.json": "e3b93ba1bcc2db3e1557f9f4dd818e157c0294c4ef1a7e4dcc89fe4075ab082b",
+    "D:\\AIdirector\\contracts\\director-data-v1\\duplicate-header.csv": "ae9f1643f623801dd49b45d232af283e61edd8f628aa9305d9e5158c1cfdf2ec",
+    "D:\\AIdirector\\contracts\\director-data-v1\\fixtures.json": "878c04d031a7f1d83c17885ecc457a82a8a1696b522aa1f8ddbf91d81db136a4",
+    "D:\\AIdirector\\contracts\\director-data-v1\\manifest.json": "bd3cde21fb8b1f7870812cfd16bb0dab529b268bd83a06fe16168b9838cccc3e",
+    "D:\\AIdirector\\contracts\\director-data-v1\\missing-label.csv": "fad786949a9890672b0b00d5cfc792538c1ec3b58a6196a8b3af9173a2b972f5",
+    "D:\\AIdirector\\contracts\\director-data-v1\\non-finite.csv": "5a340fe3067cc0ded2f2027fa5e626e44102446e5deb9286ee61f21f73378318",
+    "D:\\AIdirector\\contracts\\director-data-v1\\openapi.json": "e37b8caa5ef126f6d65932453f5b361eb7d5f6c2bd41ff5de891c6a8a2de97b4",
+    "D:\\AIdirector\\contracts\\director-data-v1\\private-columns.csv": "5ad0af8dc319d9fc8f4b6708142f9a368f446e3225050b9a935744bd4d4aab40",
+    "D:\\AIdirector\\contracts\\director-data-v1\\private-columns.normalized.csv": "f43ff76be60dc7c1dc806a2a40446a51d80214121cd45d2464817fc7df43f5c6",
+    "D:\\AIdirector\\contracts\\director-data-v1\\ragged-row.csv": "e32631faa8e3f17d1fe07207426bec1d66fc3f897817e2b960c0ba9af26a7c40",
+    "D:\\AIdirector\\contracts\\director-data-v1\\receipt.schema.json": "5b1763e7c5a74e9bb0e1771b85e750599b6ea9f7f72ca9ebddf81bc1cdcb1797",
+    "D:\\AIdirector\\contracts\\director-data-v1\\valid-minimal.csv": "c2c8eb79cc66e9cdf98ec3e0be938a387c821b9f35404f3368946baebd5aecb7",
+    "D:\\AIdirector\\contracts\\director-data-v1\\valid-minimal.normalized.csv": "f544116d6dafb135cd533e977b0a1fd3a4e70fab70f4094f04ef8d8785fb425d",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Infrastructure\\Data\\DirectorDataSchema.cs": "8964558fbcbb353a0028311e5f7eaefbf1a03d3fc6c82170a3162161ef104c0c",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Infrastructure\\Services\\DirectorDataParser.cs": "3414c32404eb54461d33c1912eec277626389856a8d64d9bd3ffbf2bca448602",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Infrastructure\\Services\\DirectorDataProtocol.cs": "488ac7eba9344772deaf7296105c77523ce0b0b90e58e10107d2be31901a69dd",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Infrastructure\\Services\\DirectorDataService.cs": "3ffd11eda73fb6ace8631f9f8b7f8a675bb29b36b12c0363b8484f9b201f9629",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Infrastructure\\Services\\DirectorStorageRecovery.cs": "c0915d28c142ad0f99a20b86caae65342fa3cd80574bbac8ac894eb86e1abb35",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Infrastructure\\Services\\LocalTrainingObjectStore.cs": "965775a518ed86301f56afd004ca9a80ac8b1cbcdab424cea64e9bbe875b2879",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Domain\\Entities\\DirectorDataBatch.cs": "953bc4332522e7c2fd7e59244332713cbe9d051f2c81965f107f1edeed19637b",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Application\\DTOs\\DirectorDataDtos.cs": "0f9d037d2061fbad7d16565bc10afb88fa5a2bf3788e18edd21ed16c82929169",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Application\\Interfaces\\IDirectorDataService.cs": "037c2d45c01d6d71de18de311eab461604117434f344c8fd50391d0e11b7e4e3",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Application\\Interfaces\\IDirectorStorageRecovery.cs": "5f5460189be6e0fa1d94320c06d9d50de6866706a6d0fa02d6c02699f4721abf",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Application\\Interfaces\\ITrainingObjectStore.cs": "ff4c61e06fee7babd9aa88d8e3c5040f96efae8e0ae707f6d7ddca96e191b3b5",
+    "D:\\Yuzibei\\source\\yuzi-api\\src\\Yuzibei.Api\\Controllers\\DirectorDataController.cs": "f660101a9919055e7e75705f6883c778b3b98cfc08801a560de153224ed266f5",
+    "D:\\Yuzibei\\source\\yuzi-api\\tools\\DirectorDataCheck\\DirectorDataCheck.csproj": "42582570c97bd22feca6070a009994f44fa53b140b375cc20cdae366c8d96b3a",
+    "D:\\Yuzibei\\source\\yuzi-api\\tests\\Yuzibei.Tests\\DirectorDataTests.cs": "385de1a211db992b46ea6f77b61f294c442add8ee27f088d9ab2aeac0ade1409"
+  },
+  "protected_website_files_unchanged": {
+    "D:\\Yuzibei\\source\\yuzi-web\\src\\views\\UniversityVerificationView.vue": true,
+    "D:\\Yuzibei\\source\\doc\\后台管理不可用-静态资源404-2026-11-02.md": true
+  },
+  "visual": [
+    "source director professional page + data status",
+    "source trainer actions + Chinese empty queue status",
+    "packaged director professional page"
+  ],
+  "production_enabled": false,
+  "not_executed": [
+    "real website/device authentication",
+    "production upload",
+    "full-candidate/sample-level dedup",
+    "UP-M1/UP-G1 full browser integration",
+    "deploy",
+    "git commit/push",
+    "remote deletion"
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "date": "2026-11-07 Asia/Shanghai",
+  "status": "task6-local-accepted-not-deployed",
+  "tests": {
+    "python_full": 221,
+    "account_specific_included": 16,
+    "dotnet_full": 431,
+    "real_http_primary": 34,
+    "real_http_edges": 25,
+    "real_http_poll_limit": 1,
+    "transactional_migration": 4,
+    "browser": 16,
+    "browser_samples": 8,
+    "web_typecheck": "passed",
+    "admin_typecheck": "passed",
+    "web_build": "passed",
+    "admin_build": "passed",
+    "lease_jsonschema_signature_and_shared_contracts": "passed"
+  },
+  "packaged": {
+    "exe": "D:\\AIdirector\\dist\\task6\\Yuzi_CS2_AIDirector.exe",
+    "sha256": "67bb4855f64f6dbaa39a9c86945126d8c12240947f8a29cfdbf57846de8018ac",
+    "bytes": 193166989,
+    "online_actual_csharp_lease": "passed",
+    "offline_service_stopped_restart": "passed",
+    "logout_tombstone": "passed",
+    "training_and_queue": {
+      "packaged_cli_training": "passed",
+      "managed_records": 252,
+      "batch_states": {
+        "confirmed": 1
+      },
+      "local_candidate_does_not_replace_verified_model": true
+    },
+    "gui_observed": [
+      "account strip and data scope text visible",
+      "main UI opened built-in trainer from same executable",
+      "trainer account strip visible",
+      "logged-out Start blocked before engine/GSI actions",
+      "test windows closed"
+    ],
+    "test_trust_sidecar_removed": true
+  },
+  "scope": {
+    "policy_offline_hours": 168,
+    "production_identity_enabled": false,
+    "production_data_enabled": false,
+    "pushed": false,
+    "deployed": false,
+    "old_remote_deleted": false,
+    "task7_model_registry_download": "pending; default empty approved hashes and empty trust deny formal execution",
+    "website_password_login": "not exercised; isolated harness synthetic website JWT only",
+    "candidate_v2_and_parts": "design-only"
+  },
+  "evidence": {
+    "site_local_folder": "D:\\Yuzibei\\source\\local-data\\task6-20261107",
+    "python_log": "D:\\AIdirector\\build\\task6-python-final.log",
+    "http_primary": "D:\\AIdirector\\build\\task6-http-checks-final.log",
+    "http_edges": "D:\\AIdirector\\build\\task6-http-edges-final.log",
+    "package_online": "D:\\AIdirector\\build\\task6-package-online-final.log",
+    "package_offline": "D:\\AIdirector\\build\\task6-package-offline-final.log"
+  },
+  "source_hashes": {
+    "client": {
+      "account_client.py": "5201ac78eb8ec29d4977ea04d5a46eb0f63601241ba4b3515de293509a8545ea",
+      "account_ui.py": "bac8716713feb2d6846deddc467918eabe3caccb6bf8d283de65c5d94f8c6e7e",
+      "device_identity.py": "768e5855ccb966c674a46c35ed6ea2123f42eb74a8e2d88a16f5da95e4845fa7",
+      "offline_runtime.py": "fd7789c0ddecbc6cc6d6c13c5edc5f6c6f0458b1813ac230eaf2dc146da3df79",
+      "cs2_ai_director.py": "f6d850ac418a27f4c6e30c8dbdc9ccaa93183705616710fa2335e5a66b32332b",
+      "trainer_gui.py": "5d7c5889375cdf93466b46551a00a61e725b2c81ef431752a7d2f4c20a1f2763",
+      "training_data_runtime.py": "5d982049b46fa5e2d2c519daed3932650673e7e4cb34f59d5380a61746b81b34",
+      "test_account_client.py": "a30785446fa885365543de076dd5f7fbf412e5f0057b1448bbeab6d0e3076ea2",
+      "Yuzi_CS2_AIDirector.spec": "32e10cbafcd3427d74227e398e2d91c83f2d2a6d0b9869fc975c19e2df113e74",
+      "identity-server.example.json": "859b4452495d93e84ced972de3220087db623c6e999d25f2d571c279399456df"
+    },
+    "server_web_admin": {
+      "deploy/migrations/017_director_identity.sql": "d14648983710c4b4427cdf6bc5fe7a6ab68b5003c712ac7a4898ed252f1b8f59",
+      "yuzi-api/src/Yuzibei.Api/Program.cs": "05d8d9e3e34822d02fca26e2a243a5181bb2c1b5bb7035be1332cf73caa91e58",
+      "yuzi-api/src/Yuzibei.Api/Controllers/DirectorIdentityController.cs": "61325bef5370054b8913b11e2104a0ce22bca33610a15bf52d4ead49a554ba29",
+      "yuzi-api/src/Yuzibei.Api/Authorization/DirectorDeviceAuthenticationHandler.cs": "f072b2e8ed0d8d31f15c7fce7323a39f9407bca77ed57da384c4ae277b40c4cc",
+      "yuzi-api/src/Yuzibei.Infrastructure/Services/DirectorIdentityService.cs": "fadd33a1cbd79be1bf837c6bf953f26558e5e5993aec61b4a05b6b52520b456d",
+      "yuzi-api/src/Yuzibei.Infrastructure/Services/DirectorIdentityCrypto.cs": "eace73085335545f9beb7f6454e72f0c0f605a5a87934e9006f3937da00ed809",
+      "yuzi-api/src/Yuzibei.Infrastructure/Services/DirectorDataProtocol.cs": "d7b7b68ea8e573032dcd09443215f696c2753e735d2b3696a9a02ef5a8ec40af",
+      "yuzi-api/src/Yuzibei.Infrastructure/Data/DirectorIdentitySchema.cs": "5f18318161740ca45a88872aa95464a912cca04a887fd29330326836b3a3294f",
+      "yuzi-api/src/Yuzibei.Infrastructure/Data/DbInitializer.cs": "939c042dcf2faba2e4dbebb4a700935a026c84b6f83e59bae53eae5899d08787",
+      "yuzi-api/src/Yuzibei.Infrastructure/DependencyInjection.cs": "a5c5c4d1a38b1cc7084811d6f9cf9b2747c499081d690a20ab2f4217902bbf9f",
+      "yuzi-web/src/views/DirectorActivateView.vue": "2c865ce0510a80027c05610f5c7251e964493635d50cb3169ab68415045c5001",
+      "yuzi-admin/src/modules/director-license/views/index.vue": "324f84f58a509eea0c797a499bd7cc630b36a35b54b1b8b0c1c8508c50f1391e"
+    }
+  },
+  "cleanup": {
+    "test_api_stopped": true,
+    "test_vite_ports_5226_5236_stopped": true,
+    "isolated_postgres_55446_stopped": true,
+    "test_gui_closed": true,
+    "temporary_test_trust_sidecar_removed": true
+  },
+  "documentation_hashes": {
+    "D:\\AIdirector\\docs\\TASK6_2026-11-07.md": "270ae2ce3731bff1f89641a7049806b1e185c71f6eef0fd51396a1021169cb3f",
+    "D:\\Yuzibei\\source\\AGENTS.md": "ec204a707cf4bfa76d0889e7af5bd102997b49cf8aa2a0af03bfd8e6a9632158",
+    "D:\\Yuzibei\\source\\doc\\plan\\AI导播当前任务步骤清单-2026-11-07.md": "6d80e9035b998ba339266a44e617077c1e8e824f81795ef4362ab7772252abb3",
+    "D:\\Yuzibei\\source\\doc\\plan\\AI导播服务器接口预留与上传开发计划-2026-11-06.md": "c57a88d06d07f58a50b5141a2de5eecd077969a7da109743a35457bd99d48fd6"
+  }
+}

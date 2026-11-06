@@ -22,10 +22,8 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-DECISION_FEATURES = [
-    "aim_self", "aim_enemy", "win", "enemy_low_hp",
-    "self_low_hp", "proximity", "enemy_damaged", "hp_advantage",
-]
+from director_core.model_format import DECISION_FEATURES
+
 
 CSV_COLUMNS = [
     "timestamp", "iso_time", "map", "round", "action", "target_slot",
@@ -86,6 +84,8 @@ class DecisionLogger:
         self.positive = 0
         self._last_log_at = 0.0
         self._last_reason = ""
+        self.mature_sink = None
+        self.capture_error = ""
         self._ensure_header()
 
     @property
@@ -249,6 +249,13 @@ class DecisionLogger:
         row["label"] = label
         row["label_damage"] = dmg
         row["label_kill"] = kills
+        if self.mature_sink is not None:
+            if self.mature_sink(row):
+                self.rows += 1
+                if label: self.positive += 1
+            else:
+                self.capture_error = "记录未被本地缓冲接收，请检查训练数据状态"
+            return
         try:
             with self._lock, self.path.open("a", newline="", encoding="utf-8-sig") as f:
                 csv.DictWriter(f, fieldnames=CSV_COLUMNS).writerow(row)
@@ -265,6 +272,7 @@ class DecisionLogger:
             "positive": self.positive,
             "pending": len(self.pending),
             "csv": str(self.path),
+            "capture_error": self.capture_error,
         }
 
 
@@ -282,6 +290,8 @@ def export_forest(model: Any, path: Path) -> None:
         })
     data = {
         "n_features": int(model.n_features_in_),
+        "features": DECISION_FEATURES,
+        "feature_version": "pov-v1",
         "classes": [int(c) for c in model.classes_],
         "trees": trees,
     }

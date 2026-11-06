@@ -1,0 +1,1876 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Director delivery and training",
+    "version": "1.0.0",
+    "description": "See README for multipart fields, headers, RBAC, scopes, signatures and operational limits."
+  },
+  "paths": {
+    "/api/director/product": {
+      "get": {
+        "summary": "Public product / enabled client release",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/director/client-releases": {
+      "get": {
+        "summary": "Public product / enabled client release",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/director/client-releases/{id}/file": {
+      "get": {
+        "summary": "Public product / enabled client release",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/director/models/manifest": {
+      "get": {
+        "summary": "Signed account-bound manifest",
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/director/models/{id}/ticket": {
+      "post": {
+        "summary": "Mint five-minute account/device/model ticket",
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/director/models/{id}/file": {
+      "get": {
+        "summary": "Authenticated Range download; X-Director-Download-Ticket required",
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/director/data/uploads": {
+      "post": {
+        "summary": "Freeze stable scoped upload",
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadBegin"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/data/uploads/{batch}": {
+      "get": {
+        "summary": "Scoped state / abort",
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "batch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Scoped state / abort",
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "batch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/director/data/uploads/{batch}/parts/{part}": {
+      "put": {
+        "summary": "Binary part <=262144 bytes; X-Part-Sha256 required",
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "batch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "part",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/director/data/uploads/{batch}/complete": {
+      "post": {
+        "summary": "Verify parts and persist original receipt",
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "batch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-models": {
+      "get": {
+        "summary": "Read models / multipart file + metadata ModelRegister; review permission",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      },
+      "post": {
+        "summary": "Read models / multipart file + metadata ModelRegister; review permission",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/admin/director-models/{id}/review": {
+      "post": {
+        "summary": "Review with expectedVersion; review permission",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-models/{id}/publish": {
+      "post": {
+        "summary": "publish with separate publish permission",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseChange"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-models/{id}/revoke": {
+      "post": {
+        "summary": "revoke with separate publish permission",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseChange"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-models/clients": {
+      "get": {
+        "summary": "Publish permission; see README for query and response",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/admin/director-models/rollouts": {
+      "get": {
+        "summary": "Publish permission; see README for query and response",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/admin/director-models/applications": {
+      "get": {
+        "summary": "Publish permission; see README for query and response",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/admin/director-models/rollout-account": {
+      "get": {
+        "summary": "Publish permission; see README for query and response",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/admin/director-models/rollouts/{account}": {
+      "post": {
+        "summary": "Account canary CAS / idempotence; stable pointer unchanged",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-training/sources": {
+      "get": {
+        "summary": "Training permission",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/admin/director-training/snapshots": {
+      "get": {
+        "summary": "Training permission",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      },
+      "post": {
+        "summary": "Immutable snapshot; >=8 independent match groups",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnapshotCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/director-training/jobs": {
+      "get": {
+        "summary": "Training permission",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      },
+      "post": {
+        "summary": "Queue bounded fixed training template",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/director-training/demos": {
+      "post": {
+        "summary": "Multipart file; streamed PBDEMS2 Demo <=512MiB",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/admin/director-training/sources/{kind}/{id}/review": {
+      "post": {
+        "summary": "CAS source quality / canonical match hash",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QualityReview"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-training/jobs/{id}/cancel": {
+      "post": {
+        "summary": "Training cancel",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-training/jobs/{id}/retry": {
+      "post": {
+        "summary": "Training retry",
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/internal/director-training/claim": {
+      "post": {
+        "summary": "Internal fenced worker; complete is multipart",
+        "security": [
+          {
+            "worker": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        }
+      }
+    },
+    "/api/internal/director-training/jobs/{id}/heartbeat": {
+      "post": {
+        "summary": "Internal fenced worker; complete is multipart",
+        "security": [
+          {
+            "worker": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/internal/director-training/jobs/{id}/complete": {
+      "post": {
+        "summary": "Internal fenced worker; complete is multipart",
+        "security": [
+          {
+            "worker": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/internal/director-training/jobs/{id}/inputs/{kind}/{source}": {
+      "get": {
+        "summary": "Frozen input; fence query + X-Director-Job-Lease header",
+        "security": [
+          {
+            "worker": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success or authenticated binary stream"
+          },
+          "401": {
+            "description": "Missing/invalid identity"
+          },
+          "403": {
+            "description": "Denied"
+          },
+          "409": {
+            "description": "CAS, identity or idempotency conflict"
+          },
+          "413": {
+            "description": "Size limit"
+          },
+          "422": {
+            "description": "Invalid data"
+          },
+          "429": {
+            "description": "Quota/rate limit"
+          },
+          "503": {
+            "description": "Disabled or unavailable private object"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "source",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "device": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "website": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "worker": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Director-Worker-Key"
+      }
+    },
+    "schemas": {
+      "ModelRegister": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "artifactSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "evaluation": {
+            "type": "object",
+            "properties": {
+              "suiteVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "splitHash": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "testRows": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "positiveRows": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "balancedAccuracy": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "notes": {
+                "type": "string",
+                "maxLength": 500
+              }
+            },
+            "required": [
+              "suiteVersion",
+              "splitHash",
+              "testRows",
+              "positiveRows",
+              "balancedAccuracy",
+              "notes"
+            ],
+            "additionalProperties": false
+          },
+          "vectors": {
+            "type": "array",
+            "minItems": 8,
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "properties": {
+                "features": {
+                  "type": "array",
+                  "minItems": 8,
+                  "maxItems": 8,
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "probability": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "features",
+                "probability"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "name",
+          "artifactSha256",
+          "evaluation",
+          "vectors"
+        ],
+        "additionalProperties": false
+      },
+      "UploadBegin": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "enum": [
+              "online",
+              "offline"
+            ]
+          },
+          "uploadSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "uploadBytes": {
+            "type": "integer",
+            "minimum": 18,
+            "maximum": 8388608
+          },
+          "partCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 32
+          },
+          "samples": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5000,
+            "items": {
+              "type": "object",
+              "properties": {
+                "recordId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "sourceId": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "sequence": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "rowSha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "recordId",
+                "sourceId",
+                "sequence",
+                "rowSha256"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "batchId",
+          "source",
+          "uploadSha256",
+          "uploadBytes",
+          "partCount",
+          "samples"
+        ],
+        "additionalProperties": false
+      },
+      "UploadReceipt": {
+        "type": "object",
+        "properties": {
+          "uploadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clientBatchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requestHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "uploadHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "dataBatchId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "acceptedRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "duplicateRows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "source": {
+            "enum": [
+              "online",
+              "offline"
+            ]
+          },
+          "quality": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "uploadId",
+          "clientBatchId",
+          "requestHash",
+          "uploadHash",
+          "dataBatchId",
+          "rowCount",
+          "acceptedRows",
+          "duplicateRows",
+          "source",
+          "quality",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "ReleaseChange": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedSequence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          }
+        },
+        "required": [
+          "requestId",
+          "expectedSequence",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "QualityReview": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "quarantined",
+              "deleted"
+            ]
+          },
+          "matchHash": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "state",
+          "matchHash",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "SnapshotCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "batchIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "demoIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "batchIds",
+          "demoIds"
+        ],
+        "additionalProperties": false
+      },
+      "JobCreate": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "snapshotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "baselineModelId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "trees": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 300
+              },
+              "maxDepth": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 16
+              },
+              "seed": {
+                "const": 42
+              },
+              "maxSeconds": {
+                "type": "integer",
+                "minimum": 30,
+                "maximum": 7200
+              },
+              "maxMemoryMb": {
+                "type": "integer",
+                "minimum": 512,
+                "maximum": 4096
+              }
+            },
+            "required": [
+              "trees",
+              "maxDepth",
+              "seed",
+              "maxSeconds",
+              "maxMemoryMb"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "requestId",
+          "snapshotId",
+          "baselineModelId",
+          "parameters"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

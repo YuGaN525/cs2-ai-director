@@ -1,0 +1,4 @@
+contracts/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/fixtures/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+models/bootstrap/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+Dockerfile.* text eol=lf

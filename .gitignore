@@ -17,3 +17,12 @@ dist/
 lookahead_runs/
 lookahead_eval.json
 lookahead_eval_deaths.csv
+
+!Yuzi_CS2_AIDirector.spec
+
+*.egg-info/
+*.login
+*.key
+identity.lock
+*.tokens
+identity-server.json

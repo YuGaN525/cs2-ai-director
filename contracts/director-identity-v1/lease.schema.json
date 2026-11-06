@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:yuzi:director:lease:v1",
+  "type": "object",
+  "required": [
+    "payload",
+    "signature"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "signature": {
+      "type": "string",
+      "contentEncoding": "base64"
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "schema",
+        "key_id",
+        "product",
+        "account_id",
+        "device_key_thumbprint",
+        "server_origin",
+        "model_sha256",
+        "capabilities",
+        "verified_at",
+        "offline_expires_at",
+        "offline_max_seconds",
+        "policy_version",
+        "entitlement_version"
+      ],
+      "properties": {
+        "schema": {
+          "const": 1
+        },
+        "key_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "product": {
+          "const": "cs2-ai-director"
+        },
+        "account_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "device_key_thumbprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "server_origin": {
+          "type": "string",
+          "format": "uri"
+        },
+        "model_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "direct",
+              "upload"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "verified_at": {
+          "type": "number"
+        },
+        "offline_expires_at": {
+          "type": "number"
+        },
+        "offline_max_seconds": {
+          "const": 604800
+        },
+        "policy_version": {
+          "const": 1
+        },
+        "entitlement_version": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

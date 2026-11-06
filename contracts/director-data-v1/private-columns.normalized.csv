@@ -1,0 +1,2 @@
+timestamp,map,round,action,target_slot,current_slot,rule_score,candidate_count,rule_gap,is_ambiguous,group,group_size,distance,target_hp,enemy_hp,aim_self,aim_enemy,win,enemy_low_hp,self_low_hp,proximity,enemy_damaged,hp_advantage,label,label_damage,label_kill
+,,,,,,,,,,g_9182326b8a175f8717886b678737377887d910d49d8bf953d8a870e00f0b3a14,,,,,0.25,0.25,0.25,0.25,0.25,0.25,0.25,0.25,0,,

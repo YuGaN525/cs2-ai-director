@@ -1,0 +1,26 @@
+{
+  "trusted_public_keys": {
+    "test-local": "yibvnTPUDoT6VqLDhLS4KcN+pWERckC2YzYCtVp7OHA="
+  },
+  "envelope": {
+    "payload": {
+      "account_id": "830ec111-284b-48d3-9cd7-8588d19c9b15",
+      "capabilities": [
+        "direct",
+        "upload"
+      ],
+      "device_key_thumbprint": "2fc63d3bdf2c148e1651c4a751dddebfeb26c8716fcf1de5eaad6913cfc74099",
+      "entitlement_version": 8,
+      "key_id": "test-local",
+      "model_sha256": "839cb88439efb6e06c28171f2dc8d0f02ff96c7985a7e6bebf358a31af27c140",
+      "offline_expires_at": 1794597347.117,
+      "offline_max_seconds": 604800,
+      "policy_version": 1,
+      "product": "cs2-ai-director",
+      "schema": 1,
+      "server_origin": "http://127.0.0.1:5136",
+      "verified_at": 1793992547.117
+    },
+    "signature": "XThoPkfpzBwBitXSx/uOAUoFhoW9ArS6AUbw4rkJ8bx0Zpm43CKvneqcLlr5dQdJg2ECsTssgXRfXAPj1nYPAg=="
+  }
+}

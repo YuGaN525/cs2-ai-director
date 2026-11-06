@@ -1,0 +1,53 @@
+{
+  "dataset_rows": 21983,
+  "independent_series": 12,
+  "model_sha256": "7e473d6921200deb1f39acdc4f146fa17c2bd63cb89530f8f03ea73926781c87",
+  "split_hash": "b6363afe480fc4851d2858eedbb66225a874f6dff7958a7b8f5e76c2c86e093a",
+  "dataset_hash": "56d17e64c590abff68708896e18f856d67b1a8644ee346bb66cfed22edbc8aff",
+  "comparison": {
+    "RandomForest": {
+      "cv_auc": 0.81093830666377,
+      "test_auc": 0.8043874494564497,
+      "top1": 0.5178571428571429,
+      "top1_groups": 392,
+      "nodes": 22252,
+      "params": {
+        "n_estimators": "120",
+        "min_samples_leaf": "10",
+        "max_features": "sqrt",
+        "max_depth": "8",
+        "class_weight": "balanced"
+      }
+    },
+    "ExtraTrees": {
+      "cv_auc": 0.8145428091787105,
+      "test_auc": 0.800442463210924,
+      "top1": 0.4923469387755102,
+      "top1_groups": 392,
+      "nodes": 17588,
+      "params": {
+        "n_estimators": "120",
+        "min_samples_leaf": "10",
+        "max_features": "sqrt",
+        "max_depth": "8",
+        "class_weight": "balanced"
+      }
+    }
+  },
+  "final_test": {
+    "auc": 0.801618200140361,
+    "top1": 0.47802197802197804,
+    "groups": 182,
+    "samples": 3949,
+    "selection_used": false
+  },
+  "candidate_status": "local-only; not auto-published",
+  "programme_coverage": "not measured without same-match GSI/programme timeline; AUC is not camera coverage",
+  "gsi_alignment": "not measured",
+  "default_scheduler": "legacy",
+  "source_limitations": [
+    "missing GSI fields explicitly marked",
+    "64tick time assumption",
+    "filename series conservatively used for isolation; verify event IDs before production dataset publication"
+  ]
+}

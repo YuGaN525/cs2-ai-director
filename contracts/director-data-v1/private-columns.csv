@@ -1,0 +1,2 @@
+aim_self,aim_enemy,win,enemy_low_hp,self_low_hp,proximity,enemy_damaged,hp_advantage,label,target_name,target_steamid,group
+0.25,0.25,0.25,0.25,0.25,0.25,0.25,0.25,0,PRIVATE_NAME,76561190000000001,private/demo.dem#1

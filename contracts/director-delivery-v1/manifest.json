@@ -1,0 +1,11 @@
+{
+  "JobCreate.schema.json": "aafef4979466fd39f2b55ad8d22d3d9e73882c6e303debd749756ea063a04844",
+  "ModelRegister.schema.json": "d5ddf27096088936f420da33b1c46f99a2cecc7a061c3d1d036cbce1b40157c8",
+  "openapi.json": "a0aa26dd137acc0cf1b5cdc36c9835d63997ed812ffe0b92bc57769c8691ab7f",
+  "QualityReview.schema.json": "7699a63c56a6679a43aeba2507213cc2d9f389bb13664c94cc4fdda8cec95dbb",
+  "README.md": "4208410cb627d9f378252a4b916c4410adb6b612d31b16a0824964b54b7eaa26",
+  "ReleaseChange.schema.json": "967d1ecea5ba5db048e3efa59f5d58e726451e8f4490d54cf96900d8c3ee1e62",
+  "SnapshotCreate.schema.json": "f06e78ae39a7e0f51b9d74f5ce6a8ad6c73f2857ca9b54a2665584b44e70f04f",
+  "UploadBegin.schema.json": "cd47d5a5f2ad35cf6b63cf28454a114452fe79966fbac315e09e6ba0cb510415",
+  "UploadReceipt.schema.json": "64f56001779bf0bd923425126ea19bde0965f3d97b972b64a61de30b0f57a8e4"
+}

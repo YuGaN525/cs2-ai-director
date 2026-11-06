@@ -1,0 +1,15 @@
+{
+  "candidate-preview.schema.json": "bb73a34fe312e59d6fc91bdb769820722784fc7a174f3ac6048c959aa3bfc42e",
+  "capabilities.json": "40463b693cf5f8c5457df76d7e423870c2b500f58d9d218cf8df227fdc0d3a83",
+  "duplicate-header.csv": "ae9f1643f623801dd49b45d232af283e61edd8f628aa9305d9e5158c1cfdf2ec",
+  "fixtures.json": "878c04d031a7f1d83c17885ecc457a82a8a1696b522aa1f8ddbf91d81db136a4",
+  "missing-label.csv": "fad786949a9890672b0b00d5cfc792538c1ec3b58a6196a8b3af9173a2b972f5",
+  "non-finite.csv": "5a340fe3067cc0ded2f2027fa5e626e44102446e5deb9286ee61f21f73378318",
+  "openapi.json": "67a9f3ccea8d252bd5ae8f8d96dc78c27f2182ea55ddfcaa95140f1023ea2a78",
+  "private-columns.csv": "5ad0af8dc319d9fc8f4b6708142f9a368f446e3225050b9a935744bd4d4aab40",
+  "private-columns.normalized.csv": "f43ff76be60dc7c1dc806a2a40446a51d80214121cd45d2464817fc7df43f5c6",
+  "ragged-row.csv": "e32631faa8e3f17d1fe07207426bec1d66fc3f897817e2b960c0ba9af26a7c40",
+  "receipt.schema.json": "5b1763e7c5a74e9bb0e1771b85e750599b6ea9f7f72ca9ebddf81bc1cdcb1797",
+  "valid-minimal.csv": "c2c8eb79cc66e9cdf98ec3e0be938a387c821b9f35404f3368946baebd5aecb7",
+  "valid-minimal.normalized.csv": "f544116d6dafb135cd533e977b0a1fd3a4e70fab70f4094f04ef8d8785fb425d"
+}

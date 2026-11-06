@@ -1,5 +1,77 @@
 # Yuzi_CS2_AIDirector
 
+## 2026-11-07 任务7～12本地交付与发布准备（最新）
+
+导播/内置训练器统一1.11.0。任务7正式模型签名下载与官网发行、任务8范围分片上传/手工导入、任务9实际exe断网重启/自动补传、任务10质检/冻结快照/独立worker已本地验收。任务11审批/账号灰度/回滚与调度候选已实现，真实镜头收益G4尚未通过，保持原调度默认。任务12按用户“先完成发布准备”，不部署生产或开启灰度；GitHub上传/旧远端迁移状态见独立迁移JSON。
+
+- 验收入口：主仓库 docs/TASK7-12_2026-11-07.md、TASK7-12_VALIDATION_2026-11-07.json；网站 doc/AI导播任务7-12本地验收与发布准备-2026-11-07.md。本节覆盖下方任务7仍待开发等历史状态。
+- 248项Python、452项.NET、58项真实HTTP/worker/故障、40项浏览器/20张两尺寸两主题页面，两端类型/构建通过。实际QA exe首次下载正式模型、断网重启记录252行、联网自动补传confirmed、退出关执行通过；168小时策略不变。
+- 018/019迁移、分权审核/发布、分离Ed25519密钥、运行中模型激活锁、撤销/更高序号回滚；director-upload-v1范围样本去重与不可变回执。director-delivery-v1契约含7份schema/OpenAPI，两仓逐字节一致。
+- 用户D:\demo原件只读：12组比赛21983行固定split RF/ExtraTrees评估，最终AUC0.8016；另8组真实Demo经API流式入库/冻结/独立worker产候选。未获得同场GSI/节目时间线，AUC不能冒充镜头收益，候选不自动发布。
+- 本地备份恢复31表/36对象及016～019重复迁移通过；生产克隆恢复/正式公钥注入/Linux容器实机仍待正式发布时验收。生产四开关默认false；现场原Compose整栈与其他业务开关保留。
+
+## 2026-11-07 任务6本地交付（最新状态）
+
+任务6产品资格、CDK/后台授权、网站设备登录、安全凭据和168小时服务端签发/续签已完成本地实现与验收。详见 `D:\AIdirector\docs\TASK6_2026-11-07.md`、网站 `doc/AI导播任务6本地验收-2026-11-07.md` 及同名验证JSON；接口为 `contracts/director-identity-v1`。本节覆盖下方早期“真实登录未接入/推荐任务6”的历史状态。
+
+- 017增量迁移、独立产品资格域、CDK一次原码/原子兑换、手工单grant撤销、产品暂停、CAS/幂等/审计；新模块沿用实时可见+可修改RBAC，普通ADMIN不自动获权。
+- 网站确认设备→客户端私钥证明轮询→短设备bearer/非滑动刷新轮换；重放撤family，改密/封号/注销/撤设备在线失效。DPAPI保护设备密钥、令牌及离线登录文件，无网站密码/管理员密钥进入exe。
+- 服务端Ed25519签发账号/设备/站点/批准模型绑定凭据，最长168小时且不超过资格截止；联网成功校验才续签，重启/上传/仅联网不延长。临时断网保留有效凭据，明确撤销关闭执行；跨进程退出不会被迟到续签恢复。
+- 主GUI正式自动动作接入统一账号门；导播/内置训练器/训练CLI使用同一账号与受管上传队列身份，真实设备bearer上传并确认已验收。未绑定旧记录不自动改归新账号；切镜路径不等待网络/凭据文件锁。
+- Python221项（含16项账号专项）、.NET431项、真实HTTP/PG59项、迁移4项、浏览器16项/8张两尺寸两主题页面、两端类型/构建、exe在线/离线重启/退出及主程序打开内置训练器通过。隔离localhost合成网站JWT不代表生产密码登录或上线验收。
+- 下一步任务7：正式模型注册/签名清单/首次联网下载、安全更新与官网入口。当前ApprovedModelHashes仅为服务端批准摘要占位，默认空；客户端可信公钥与独立模型缓存缺失时拒绝正式执行。本地候选不会自动成为正式模型。
+- DirectorIdentity:Enabled、DirectorData:Enabled仍默认false；未启用生产开关，未提交/推送/部署/删除远端。旧训练器仓库按后续上传与迁移核验指令处理。以下记录保留为历史。
+
+## 持久训练记录与兼容上传（2026-11-07）
+
+主程序及内置训练器已共用受管SQLite记录/上传队列，导播成熟数据后台落盘；训练工作台和CLI对本次明确选择的数据入队。点击“训练数据状态”查看已保存、缓冲和补传状态。未登录时数据保存在本设备未绑定区，真实网站登录待后续任务6接入。
+
+```powershell
+python cs2_ai_director.py --data-queue --report queue-status.json --export local-records.csv
+python -m unittest test_uploads
+```
+
+--data-queue 默认只诊断/导出本设备未绑定记录，保留原队列数据。正式账号队列按账号/站点/设备独立处理；不扫描用户旧目录。已持久化数据可跨进程恢复，RAM缓冲显示“写入中”，不冒充已保存。完整说明见 [任务4/5验收](docs/TASK45_2026-11-07.md)，协议及共享fixture见 contracts/director-data-v1。服务器仍未部署，当前不是正式网站账号自动上传已上线。
+
+
+## 任务2、3本地能力（2026-11-07）
+
+已实现冻结训练切分/防组泄漏、训练/验证/最终测试隔离、纯规则核心wheel与确定性回放，以及DPAPI设备文件、签名168小时凭据校验和可注入授权运行入口。说明见 [本地验收](docs/TASK23_2026-11-07.md)。
+
+```powershell
+python -m unittest test_cs2_ai_director test_ai_trainer test_trainer_integration test_task23
+python -m director_core.replay docs/fixtures/rule-replay-v1.json --out build/replay.json
+python cs2_ai_director.py --offline-check --config local-config.json --report status.json
+python cs2_ai_director.py --trainer --cli --csv decisions.csv --split-plan metrics.split.json
+```
+
+离线诊断配置字段：session_root、server_origin、account_id、model_path、trusted_public_keys（key_id→base64公钥）。它用于本地适配测试，正式信任根随后续账号/发布流程接入。网站账号登录/签发/续签尚未实现，普通GUI仍使用现有本地兼容模式；自动上传也待任务4和服务器接口。已有模型JSON若缺特征版本/顺序声明，应经可信迁移后用于新授权缓存，不能只按特征数量放行。旧CSV至少需要8个可隔离组；缺可靠来源/时间时会诊断或拒绝切分。旧版README中随机拆行/任意AI切分的描述由本节替代。
+
+
+> 2026-11-07 规划补充（尚未实现）：默认联网自动上传训练数据；已有模型、已登录并完成本设备绑定且创建有效登录文件后可离线使用，最长7×24小时（168小时），按服务端成功校验并续签时间计时。数据先在本地持久记录，恢复联网自动检测补传。详见 DEVELOPMENT_PLAN.md；本地设备文件/离线验签已实现，真实网站登录和自动上传仍待接入。
+
+## 内置训练工作台（2026-11-06）
+
+主界面“决策模型 → 打开训练工作台”直接使用内置训练器，无需另装训练器 exe。
+完整构建使用 `build_exe.ps1`，同一个包包含 sklearn、pandas 和 demoparser2，体积会增大。
+源码安装：`python -m pip install -r requirements.txt -r requirements-train.txt`。
+
+```powershell
+python cs2_ai_director.py --trainer
+python cs2_ai_director.py --trainer --cli --csv decisions.csv
+python cs2_ai_director.py --trainer --cli --demos "D:\demos"
+python cs2_ai_director.py --trainer --cli --ai --no-ai --csv decisions.csv
+```
+
+exe 使用相同 `--trainer` 参数；主界面正常启动不导入训练依赖。
+工作台在独立低优先级进程运行，关闭导播不终止正在训练的工作台；工作台运行训练/校准时需等待完成才能关闭。
+默认输出仍为 `%APPDATA%\CS2AIDirector`，只有选择输入并开始训练才读取数据，不自动迁移或上传旧数据。
+AI 顾问仅在用户启用时按既有逻辑发送聚合画像；离线测试用 `--no-ai`。
+旧导播静态 Demo CLI 保留。合并来源、验证和限制见 [合并记录](docs/TRAINER_MERGE_2026-11-06.md)。
+唯一维护仓库为 cs2-ai-director；旧训练器仓库待远端迁移核验后退役。
+以下为原功能说明，旧“独立训练器”部署说明由本节替代。
+
+
 **Yuzi Cup 专用 CS2 AI 专业导播** —— 只读取 CS2 GSI 数据的自动观战导播：
 
 - 规则引擎（可选 DeepSeek 仲裁）自动切到“未来 1–3 秒最可能拿到击杀”的选手第一视角；

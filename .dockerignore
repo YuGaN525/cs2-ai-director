@@ -1,0 +1,13 @@
+.git
+build
+dist
+**/__pycache__
+**/*.key
+**/*.tokens
+**/*.login
+identity-server.json
+config.json
+*.log
+*.csv
+*.pkl
+lookahead_runs

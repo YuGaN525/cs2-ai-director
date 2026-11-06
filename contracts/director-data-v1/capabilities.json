@@ -1,0 +1,30 @@
+{
+  "apiVersion": "director-data-compat-v1",
+  "acceptingUploads": false,
+  "schemas": [
+    "decision-v1"
+  ],
+  "uploadModes": [
+    "legacy-complete-batch"
+  ],
+  "maxUploadBytes": 8388608,
+  "maxExpandedBytes": 33554432,
+  "maxRows": 50000,
+  "receiptUploadHash": "sha256-file-bytes",
+  "contentHash": "sha256-owner-normalized-csv",
+  "deduplication": "owner-source-whole-content",
+  "requestIdentity": false,
+  "sampleExactlyOnce": false,
+  "parts": false,
+  "candidateV2": "design-only",
+  "authentication": "website-access-token",
+  "deviceAuthentication": "director-device-v1;current-entitlement-required",
+  "scopedUploads": {
+    "version": "director-upload-v1",
+    "parts": true,
+    "partBytes": 262144,
+    "maxSamples": 5000,
+    "identityScope": "owner-device-record/source-sequence",
+    "wholeContentGlobalExactlyOnce": false
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "samples": 21983,
+  "positive": 1711,
+  "negative": 20272,
+  "auc": 0.800442463210924,
+  "top1": 0.4923469387755102,
+  "top1_groups": 392,
+  "split": "group",
+  "split_seed": 42,
+  "split_hash": "b6363afe480fc4851d2858eedbb66225a874f6dff7958a7b8f5e76c2c86e093a",
+  "dataset_hash": "56d17e64c590abff68708896e18f856d67b1a8644ee346bb66cfed22edbc8aff",
+  "partitions": {
+    "train": 9851,
+    "validation": 8183,
+    "final_test": 3949
+  },
+  "diagnostics": {
+    "missing_timestamps": 0,
+    "unknown_groups": 0,
+    "missing_maps": 0
+  },
+  "search_space": {
+    "n_estimators": [
+      "120"
+    ],
+    "max_depth": [
+      "6",
+      "8",
+      "None"
+    ],
+    "min_samples_leaf": [
+      "3",
+      "5",
+      "10"
+    ],
+    "max_features": [
+      "sqrt",
+      "0.5"
+    ],
+    "class_weight": [
+      "balanced"
+    ]
+  },
+  "n_iter": 8,
+  "weight_boost": {
+    "ambiguous": 2.0,
+    "switch": 0.25,
+    "gap": 0.75
+  },
+  "ambiguous": 0,
+  "switches": 0,
+  "algorithm": "ExtraTrees",
+  "comparison": {
+    "RandomForest": {
+      "cv_auc": 0.81093830666377,
+      "test_auc": 0.8043874494564497,
+      "top1": 0.5178571428571429,
+      "top1_groups": 392,
+      "nodes": 22252,
+      "params": {
+        "n_estimators": "120",
+        "min_samples_leaf": "10",
+        "max_features": "sqrt",
+        "max_depth": "8",
+        "class_weight": "balanced"
+      }
+    },
+    "ExtraTrees": {
+      "cv_auc": 0.8145428091787105,
+      "test_auc": 0.800442463210924,
+      "top1": 0.4923469387755102,
+      "top1_groups": 392,
+      "nodes": 17588,
+      "params": {
+        "n_estimators": "120",
+        "min_samples_leaf": "10",
+        "max_features": "sqrt",
+        "max_depth": "8",
+        "class_weight": "balanced"
+      }
+    }
+  },
+  "features": [
+    "aim_self",
+    "aim_enemy",
+    "win",
+    "enemy_low_hp",
+    "self_low_hp",
+    "proximity",
+    "enemy_damaged",
+    "hp_advantage"
+  ],
+  "importance": {
+    "aim_self": 0.3216136649995763,
+    "proximity": 0.24170586407518527,
+    "aim_enemy": 0.20182902492676466,
+    "enemy_damaged": 0.11336160251347406,
+    "enemy_low_hp": 0.06355830110602205,
+    "win": 0.022240090405974678,
+    "hp_advantage": 0.0198396059282065,
+    "self_low_hp": 0.015851846044796548
+  },
+  "confusion": [
+    [
+      5582,
+      1961
+    ],
+    [
+      187,
+      453
+    ]
+  ],
+  "report": "              precision    recall  f1-score   support\n\n           0      0.968     0.740     0.839      7543\n           1      0.188     0.708     0.297       640\n\n    accuracy                          0.738      8183\n   macro avg      0.578     0.724     0.568      8183\nweighted avg      0.907     0.738     0.796      8183\n",
+  "csv": "build\\task11-real\\live-dataset.csv",
+  "model": "build\\task11-real\\real-candidate.pkl",
+  "model_json": "build\\task11-real\\real-candidate.json.gz",
+  "model_nodes": 17588,
+  "model_json_bytes": 376089,
+  "final_test": {
+    "auc": 0.801618200140361,
+    "top1": 0.47802197802197804,
+    "groups": 182,
+    "samples": 3949,
+    "selection_used": false
+  }
+}

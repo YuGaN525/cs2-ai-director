@@ -1,0 +1,8 @@
+{
+  "platform": "Windows local CPU; pure Python forest inference only, excludes GSI/OBS/input",
+  "samples": 2000,
+  "median_ms": 0.11860002996399999,
+  "p95_ms": 0.15169999096542597,
+  "max_ms": 0.6025999900884926,
+  "model_sha256": "7e473d6921200deb1f39acdc4f146fa17c2bd63cb89530f8f03ea73926781c87"
+}

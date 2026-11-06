@@ -1,0 +1,7 @@
+{
+  "server_origin": "http://api:8080",
+  "worker_key_file": "/run/director-worker/worker.key",
+  "work_root": "/work",
+  "worker_id": "director-worker-1",
+  "allow_internal_api_http": true
+}

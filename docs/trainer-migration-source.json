@@ -1,0 +1,13 @@
+{
+  "source_repository": "https://github.com/YuGaN525/cs2-ai-decision-trainer",
+  "source_commit": "5dde4dd",
+  "files": {
+    "trainer_gui.py": "57a438bc685058e026dab16635fe48c5df7606acf1f67a47bbd0e9ff99cec490",
+    "ai_trainer.py": "549c1bc07bd19dc494ea030b35d211d9d5a3a5fc399c1ef9ce97af884821180a",
+    "train_decision_model.py": "e84e21c2785df53fb106b0a55a9ed9372657416ad405361bdc055cb2f0c9d809",
+    "demo_dataset.py": "ed9648a4200a7a066c52abc58694aff690d6974a3b4ee46ac4774644a4db60c9",
+    "test_ai_trainer.py": "1853dddb393cceeb630cbca034aff06cfb00ead95162a3bd2f2afa84eaecd17c",
+    "train_from_demos.py": "5d7d181389734e9352f5105d5be50ae510395c043c1e8312cd8988b5f3a5dba9"
+  },
+  "note": "Source hashes before integration edits; shared director modules remain authoritative in main repository."
+}

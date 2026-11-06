@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "snapshotId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "baselineModelId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "trees": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 300
+        },
+        "maxDepth": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 16
+        },
+        "seed": {
+          "const": 42
+        },
+        "maxSeconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 7200
+        },
+        "maxMemoryMb": {
+          "type": "integer",
+          "minimum": 512,
+          "maximum": 4096
+        }
+      },
+      "required": [
+        "trees",
+        "maxDepth",
+        "seed",
+        "maxSeconds",
+        "maxMemoryMb"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "requestId",
+    "snapshotId",
+    "baselineModelId",
+    "parameters"
+  ],
+  "additionalProperties": false
+}

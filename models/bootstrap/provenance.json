@@ -1,0 +1,10 @@
+{
+  "model_sha256": "79e6eb46deb1466f3f30ea671121ee45ea296bfdf8ee7facf5b235eecb96fcee",
+  "feature_manifest_sha256": "4b064b1242df765c9c35a1f31dfa18e9bc3a9de474f945295a3ee78202b04158",
+  "dataset_file_sha256": "f9c279bee9e373c331de5fd584c03982e69cfd567a1cfb36c457916e37257082",
+  "split_hash": "8bc028e0601458a7e09b1876846a52ba646f69dd015ceb3dff43709100f4baf4",
+  "trees": 120,
+  "test_rows": 56,
+  "balanced_accuracy": 1.0,
+  "effect_claim": "format/vector/QA baseline; real-match benefit unverified"
+}

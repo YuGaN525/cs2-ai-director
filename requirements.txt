@@ -3,3 +3,6 @@ keyboard>=0.13.5
 pygetwindow>=0.0.9
 openai>=1.0.0
 obsws-python>=1.8.0
+
+# Signed device leases (local verification; issuer stays server-side)
+cryptography>=42

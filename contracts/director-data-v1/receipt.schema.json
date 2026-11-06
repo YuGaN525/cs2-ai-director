@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "id",
+    "uploadHash",
+    "contentHash",
+    "rowCount",
+    "positiveCount",
+    "source",
+    "channel",
+    "quality",
+    "createdAt",
+    "duplicate"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "uploadHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "rowCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "positiveCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source": {
+      "enum": [
+        "online",
+        "offline"
+      ]
+    },
+    "channel": {
+      "enum": [
+        "automatic",
+        "manual"
+      ]
+    },
+    "quality": {
+      "enum": [
+        "legacy-selected-only",
+        "legacy-offline"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duplicate": {
+      "type": "boolean"
+    }
+  }
+}

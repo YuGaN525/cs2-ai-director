@@ -22,15 +22,17 @@
 from __future__ import annotations
 
 import argparse
+import bisect
 import glob
 import json
 import math
+import os
 import random
 import sys
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
-import cs2_ai_director as d
+import director_core as d
 
 
 # demo 里的武器显示名 -> GSI 的 type
@@ -136,9 +138,21 @@ def build_snapshot(rows: list[dict[str, Any]], map_name: str) -> Optional[d.Snap
     )
 
 
-def collect_demo_rows(demo_path: Path, cfg: dict[str, Any],
-                      tick_offset: int) -> tuple[list[list[float]], list[int], int, list[int]]:
-    """返回 (特征行, 标签, 有效击杀事件数, 每个事件的候选行数)。"""
+def collect_training_demo_rows(demo_path: Path, cfg: dict[str, Any],
+                      tick_offset: int,
+                      label_mode: str = "killer"
+                      ) -> tuple[list[list[float]], list[int], int,
+                                 list[int], list[dict[str, Any]]]:
+    """返回 (特征行, 标签, 有效击杀事件数, 每个事件的候选行数, 元数据)。
+
+    label_mode:
+      - "killer"：旧 demo 静态模型，只有击杀者=1；
+      - "damage"：决策仲裁模型，窗口内造成过伤害的候选=1，
+        与 decisions.csv 的 label（伤害或击杀）对齐；
+        同时按 hurt 事件还原 damage_recent，避免 enemy_damaged 恒为 0。
+
+    元数据每个事件一项：rule_gap / is_ambiguous，用于和在线 CSV 对齐。
+    """
     from demoparser2 import DemoParser
 
     parser = DemoParser(str(demo_path))
@@ -146,7 +160,7 @@ def collect_demo_rows(demo_path: Path, cfg: dict[str, Any],
     map_name = str(header.get("map_name") or "unknown")
     deaths = parser.parse_event("player_death")
     if deaths is None or len(deaths) == 0:
-        return [], [], 0, []
+        return [], [], 0, [], []
 
     events: list[tuple[int, str]] = []
     sample_ticks: set[int] = set()
@@ -164,13 +178,38 @@ def collect_demo_rows(demo_path: Path, cfg: dict[str, Any],
         events.append((tick, attacker))
         sample_ticks.add(tick)
     if not events:
-        return [], [], 0, []
+        return [], [], 0, [], []
+
+    hurt_attacker_ticks: dict[str, list[int]] = {}
+    hurt_victim_ticks: dict[str, list[int]] = {}
+    if label_mode == "damage":
+        try:
+            hurts = parser.parse_event("player_hurt")
+            for _, hrow in hurts.iterrows():
+                attacker = str(hrow.get("attacker_steamid") or "")
+                victim = str(hrow.get("user_steamid") or "")
+                try:
+                    htick = int(hrow.get("tick"))
+                except (TypeError, ValueError):
+                    continue
+                if attacker and attacker not in ("0", "nan"):
+                    hurt_attacker_ticks.setdefault(attacker, []).append(htick)
+                if victim and victim not in ("0", "nan"):
+                    hurt_victim_ticks.setdefault(victim, []).append(htick)
+            for values in hurt_attacker_ticks.values():
+                values.sort()
+            for values in hurt_victim_ticks.values():
+                values.sort()
+        except Exception:
+            # 旧版 demoparser2 或 demo 缺 player_hurt：退回击杀者标签
+            hurt_attacker_ticks = {}
+            hurt_victim_ticks = {}
 
     fields = ["X", "Y", "Z", "health", "armor", "team_num", "is_alive",
               "active_weapon_name", "yaw", "pitch", "tick", "steamid", "name"]
     ticks = parser.parse_ticks(fields, ticks=sorted(sample_ticks))
     if ticks is None or len(ticks) == 0:
-        return [], [], 0, []
+        return [], [], 0, [], []
     by_tick: dict[int, list[dict[str, Any]]] = {}
     for rec in ticks.to_dict("records"):
         by_tick.setdefault(int(rec["tick"]), []).append(rec)
@@ -178,12 +217,31 @@ def collect_demo_rows(demo_path: Path, cfg: dict[str, Any],
     rows: list[list[float]] = []
     labels: list[int] = []
     groups: list[int] = []
+    metas: list[dict[str, Any]] = []
     used = 0
+    recent_ticks = max(1, int(round(tick_offset * 1.6 / 2.5)))
+    try:
+        ambiguity_margin = max(0.0, float(
+            cfg.get("decision_model_margin", 0.08)))
+    except (TypeError, ValueError):
+        ambiguity_margin = 0.08
+
+    def _damage_recent(steamid: Any, at_tick: int) -> bool:
+        values = hurt_victim_ticks.get(str(steamid), [])
+        if not values:
+            return False
+        pos = bisect.bisect_left(values, at_tick - recent_ticks)
+        return pos < len(values) and values[pos] <= at_tick
+
     for tick, attacker in events:
         snap = build_snapshot(by_tick.get(tick, []), map_name)
         if snap is None:
             continue
-        cands = d.score_candidates(snap, cfg, None, 0.0)
+        if label_mode == "damage" and hurt_victim_ticks:
+            cands = d.score_candidates(
+                snap, cfg, lambda sid, t=tick: _damage_recent(sid, t), 0.0)
+        else:
+            cands = d.score_candidates(snap, cfg, None, 0.0)
         if not cands:
             continue
         hit = next((c for c in cands if c.steamid == attacker), None)
@@ -191,10 +249,34 @@ def collect_demo_rows(demo_path: Path, cfg: dict[str, Any],
             continue
         used += 1
         groups.append(len(cands))
+        scores = sorted((float(c.score) for c in cands), reverse=True)
+        gap = (scores[0] - scores[1]) if len(scores) >= 2 else 0.0
+        metas.append({
+            "map": map_name,
+            "source_tick": tick,
+            "rule_gap": gap,
+            "is_ambiguous": 1 if len(cands) >= 2 and gap <= ambiguity_margin else 0,
+        })
+        if label_mode == "damage" and hurt_attacker_ticks:
+            active: set[str] = set()
+            end_tick = tick + max(1, int(tick_offset))
+            for c in cands:
+                ticks_for_player = hurt_attacker_ticks.get(str(c.steamid), [])
+                pos = bisect.bisect_right(ticks_for_player, tick)
+                if pos < len(ticks_for_player) and ticks_for_player[pos] <= end_tick:
+                    active.add(str(c.steamid))
+            active.add(attacker)
+        else:
+            active = {attacker}
         for c in cands:
             rows.append(d._candidate_features(c))
-            labels.append(1 if c.steamid == attacker else 0)
-    return rows, labels, used, groups
+            labels.append(1 if str(c.steamid) in active else 0)
+    return rows, labels, used, groups, metas
+
+
+def collect_demo_rows(demo_path: Path, cfg: dict[str, Any], tick_offset: int):
+    """Legacy static-model API retains its four-value return contract."""
+    return collect_training_demo_rows(demo_path, cfg, tick_offset)[:4]
 
 
 def sigmoid(z: float) -> float:
@@ -271,7 +353,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="从 CS2 demo 训练导播排序模型")
     parser.add_argument("--demos", nargs="+", required=True,
                         help="demo 文件、目录或通配符，可多个")
-    parser.add_argument("--out", default=str(d.learner_path()),
+    parser.add_argument("--out", default=str((Path(os.environ.get("APPDATA") or Path.home()) / "CS2AIDirector" / "learner.json")),
                         help="输出 learner.json 路径")
     parser.add_argument("--tick-offset", type=int, default=160,
                         help="从击杀回看多少 tick（64tick 下 160≈2.5s）")
@@ -301,7 +383,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     for i, demo in enumerate(demos, 1):
         print(f"[{i}/{len(demos)}] {demo}")
         try:
-            rows, labels, events, groups = collect_demo_rows(demo, cfg, args.tick_offset)
+            rows, labels, events, groups = collect_demo_rows(
+                demo, cfg, args.tick_offset)
         except Exception as e:
             print(f"  跳过（{type(e).__name__}: {e}）")
             continue
@@ -333,7 +416,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     data = {
         "version": 1,
-        "features": list(d.LEARN_FEATURE_NAMES),
+        "features": list(d.DECISION_FEATURES),
         "weights": [round(x, 6) for x in weights],
         "bias": round(bias, 6),
         "samples": len(all_rows),
@@ -347,7 +430,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     out.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"已写入 {out}")
     print("权重：" + ", ".join(
-        f"{name}={w:+.3f}" for name, w in zip(d.LEARN_FEATURE_NAMES, weights)
+        f"{name}={w:+.3f}" for name, w in zip(d.DECISION_FEATURES, weights)
     ))
     return 0
 

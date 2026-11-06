@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "expectedVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "state": {
+      "enum": [
+        "ready",
+        "quarantined",
+        "deleted"
+      ]
+    },
+    "matchHash": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    }
+  },
+  "required": [
+    "expectedVersion",
+    "state",
+    "matchHash",
+    "note"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Design only: NOT supported by current upload endpoints",
+  "type": "object",
+  "required": [
+    "telemetry_schema",
+    "feature_version",
+    "feature_names",
+    "session_id",
+    "source_id",
+    "sample_seq",
+    "features",
+    "label_state"
+  ],
+  "properties": {
+    "telemetry_schema": {
+      "const": 2
+    },
+    "feature_version": {
+      "const": "pov-v1"
+    },
+    "feature_names": {
+      "const": [
+        "aim_self",
+        "aim_enemy",
+        "win",
+        "enemy_low_hp",
+        "self_low_hp",
+        "proximity",
+        "enemy_damaged",
+        "hp_advantage"
+      ]
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "source_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "sample_seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "features": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "number"
+      }
+    },
+    "label_state": {
+      "enum": [
+        "pending",
+        "mature",
+        "censored"
+      ]
+    }
+  }
+}

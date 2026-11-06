@@ -1,0 +1,577 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Director data compatibility boundary",
+    "version": "director-data-compat-v1"
+  },
+  "paths": {
+    "/api/director/capabilities": {
+      "get": {
+        "operationId": "get__api_director_capabilities",
+        "x-implementation-status": "implemented-local",
+        "description": "Local implementation; not deployed",
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request"
+          },
+          "401": {
+            "description": "login required"
+          },
+          "403": {
+            "description": "permission denied"
+          },
+          "413": {
+            "description": "file too large"
+          },
+          "422": {
+            "description": "invalid CSV"
+          },
+          "429": {
+            "description": "quota"
+          },
+          "503": {
+            "description": "disabled or object unavailable"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/director/data/batches": {
+      "post": {
+        "operationId": "post__api_director_data_batches",
+        "x-implementation-status": "implemented-local",
+        "description": "Website bearer or d1_ device bearer with current product entitlement; local implementation, not deployed.",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid request"
+          },
+          "401": {
+            "description": "login required"
+          },
+          "403": {
+            "description": "permission denied"
+          },
+          "413": {
+            "description": "file too large"
+          },
+          "422": {
+            "description": "invalid CSV"
+          },
+          "429": {
+            "description": "quota"
+          },
+          "503": {
+            "description": "disabled or object unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "source"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "source": {
+                    "enum": [
+                      "online",
+                      "offline"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "get__api_director_data_batches",
+        "x-implementation-status": "implemented-local",
+        "description": "Local implementation; not deployed",
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request"
+          },
+          "401": {
+            "description": "login required"
+          },
+          "403": {
+            "description": "permission denied"
+          },
+          "413": {
+            "description": "file too large"
+          },
+          "422": {
+            "description": "invalid CSV"
+          },
+          "429": {
+            "description": "quota"
+          },
+          "503": {
+            "description": "disabled or object unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-data/imports": {
+      "post": {
+        "operationId": "post__api_admin_director-data_imports",
+        "x-implementation-status": "implemented-local",
+        "description": "Local implementation; not deployed",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid request"
+          },
+          "401": {
+            "description": "login required"
+          },
+          "403": {
+            "description": "permission denied"
+          },
+          "413": {
+            "description": "file too large"
+          },
+          "422": {
+            "description": "invalid CSV"
+          },
+          "429": {
+            "description": "quota"
+          },
+          "503": {
+            "description": "disabled or object unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "source"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "source": {
+                    "enum": [
+                      "online",
+                      "offline"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/director-data/batches": {
+      "get": {
+        "operationId": "get__api_admin_director-data_batches",
+        "x-implementation-status": "implemented-local",
+        "description": "Local implementation; not deployed",
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request"
+          },
+          "401": {
+            "description": "login required"
+          },
+          "403": {
+            "description": "permission denied"
+          },
+          "413": {
+            "description": "file too large"
+          },
+          "422": {
+            "description": "invalid CSV"
+          },
+          "429": {
+            "description": "quota"
+          },
+          "503": {
+            "description": "disabled or object unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-data/batches/{id}/file": {
+      "get": {
+        "operationId": "get__api_admin_director-data_batches_id_file",
+        "x-implementation-status": "implemented-local",
+        "description": "Local implementation; not deployed",
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/gzip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid request"
+          },
+          "401": {
+            "description": "login required"
+          },
+          "403": {
+            "description": "permission denied"
+          },
+          "413": {
+            "description": "file too large"
+          },
+          "422": {
+            "description": "invalid CSV"
+          },
+          "429": {
+            "description": "quota"
+          },
+          "503": {
+            "description": "disabled or object unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-data/storage/reconcile": {
+      "post": {
+        "operationId": "post__api_admin_director-data_storage_reconcile",
+        "x-implementation-status": "implemented-local",
+        "description": "Local implementation; not deployed",
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request"
+          },
+          "401": {
+            "description": "login required"
+          },
+          "403": {
+            "description": "permission denied"
+          },
+          "413": {
+            "description": "file too large"
+          },
+          "422": {
+            "description": "invalid CSV"
+          },
+          "429": {
+            "description": "quota"
+          },
+          "503": {
+            "description": "disabled or object unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "dryRun"
+                ],
+                "properties": {
+                  "dryRun": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/uploads": {
+      "post": {
+        "operationId": "post__api_director_uploads",
+        "x-implementation-status": "design-only",
+        "description": "Design only; route is not implemented",
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request"
+          },
+          "401": {
+            "description": "login required"
+          },
+          "403": {
+            "description": "permission denied"
+          },
+          "413": {
+            "description": "file too large"
+          },
+          "422": {
+            "description": "invalid CSV"
+          },
+          "429": {
+            "description": "quota"
+          },
+          "503": {
+            "description": "disabled or object unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/director/uploads/{id}/complete": {
+      "post": {
+        "operationId": "post__api_director_uploads_id_complete",
+        "x-implementation-status": "design-only",
+        "description": "Design only; route is not implemented",
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request"
+          },
+          "401": {
+            "description": "login required"
+          },
+          "403": {
+            "description": "permission denied"
+          },
+          "413": {
+            "description": "file too large"
+          },
+          "422": {
+            "description": "invalid CSV"
+          },
+          "429": {
+            "description": "quota"
+          },
+          "503": {
+            "description": "disabled or object unavailable"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "UploadReceipt": {
+        "type": "object",
+        "required": [
+          "id",
+          "uploadHash",
+          "contentHash",
+          "rowCount",
+          "positiveCount",
+          "source",
+          "channel",
+          "quality",
+          "createdAt",
+          "duplicate"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "positiveCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "source": {
+            "enum": [
+              "online",
+              "offline"
+            ]
+          },
+          "channel": {
+            "enum": [
+              "automatic",
+              "manual"
+            ]
+          },
+          "quality": {
+            "enum": [
+              "legacy-selected-only",
+              "legacy-offline"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "duplicate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReceiptEnvelope": {
+        "type": "object",
+        "required": [
+          "success",
+          "code",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "code": {
+            "const": "OK"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/UploadReceipt"
+          }
+        }
+      }
+    }
+  }
+}

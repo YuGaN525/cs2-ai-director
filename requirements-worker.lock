@@ -1,0 +1,7 @@
+# Matches the tested local direct dependencies; Linux container build remains a release gate.
+scikit-learn==1.9.1
+numpy==2.5.4
+pandas==3.0.6
+joblib==1.6.0
+demoparser2==0.42.0
+cryptography==50.0.2

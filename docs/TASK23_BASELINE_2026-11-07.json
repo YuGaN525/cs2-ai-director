@@ -1,0 +1,42 @@
+{
+  "head": "ad3d32648370fc578f4495a032e541c94a81f30f",
+  "python": "3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "files": {
+    "ai_trainer.py": "549c1bc07bd19dc494ea030b35d211d9d5a3a5fc399c1ef9ce97af884821180a",
+    "backup_bundle.py": "9548504d213897306dd50e9a68f5820dc634314cc2a49e2951ee86e714fc2bde",
+    "build_plan_docx.py": "c2d04cfc6ec777cf76ea26d9d4273a5a14288dbbf8d1e126f025ae1cfa84f785",
+    "cs2_ai_director.py": "45f5d388572765c18514e52b60dc706048175b69884eed5b03abab3381c6aefe",
+    "decision_calibration.py": "3e1c7ad904de770ebc771b4c9c1eb3289f3e63f0db87c1900d4078239affc795",
+    "decision_model.py": "f9b73b14411c20a9b4a3d9784d687bc1a72d294abe1ec6d5ef6fe581501f7334",
+    "demo_dataset.py": "87051056559ec5709c6d72f18fdc9a181fd6a19f15a490dce83e6e9b4556a207",
+    "director_narrative.py": "26e95a709d49df4b065d9a86b7c3933bf82facc7c27765108148d611579e61c0",
+    "director_pro.py": "b2cff4e7b49ce8675820fc6cb7882572e1e4ec89f28302ba0bee50b2974fa134",
+    "director_story.py": "4be403feb802ef0e970167ccd218d867892343264d5ea86461931677235e0d32",
+    "test_ai_trainer.py": "1853dddb393cceeb630cbca034aff06cfb00ead95162a3bd2f2afa84eaecd17c",
+    "test_cs2_ai_director.py": "83337b410d129cb08b8e54f4ee271c38c2be6baed8a8496f72d12ce5ebd6dba0",
+    "test_trainer_integration.py": "9d98b185db920962b7af3d8707863ed5980ff69c72810232cba08c00e1905328",
+    "trainer_gui.py": "e622a8d8fefadf6d03053fb58067d297d8b8587b9a32808e465041bde83d5f58",
+    "trainer_launcher.py": "7a752c54c1ab2803e9bdafe4b73b64e0d4c228eec1d532a3d9d2994c4eaf5d0a",
+    "train_decision_model.py": "e84e21c2785df53fb106b0a55a9ed9372657416ad405361bdc055cb2f0c9d809",
+    "train_from_demos.py": "8b7d57106f87a0bbdbfcd7b3e74fb5d13535fc4320e4948bafc277b977d666de"
+  },
+  "protected": {
+    "D:\\Yuzibei\\source\\yuzi-web\\src\\views\\UniversityVerificationView.vue": "463b289a4258fda549339c3ff1d438f2bc7cdc332bdca4570c28468d01da004f",
+    "D:\\Yuzibei\\source\\doc\\后台管理不可用-静态资源404-2026-11-02.md": "79249ba509c35ff6afd2ff829f47dbae1b177746bb1e819c861aba8bdf08cfa8"
+  },
+  "dependencies": {
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.4",
+    "pandas": "3.0.6",
+    "joblib": "1.6.0",
+    "demoparser2": "0.42.0",
+    "cryptography": "50.0.2",
+    "pyinstaller": "6.22.3",
+    "pydirectinput": "1.0.4",
+    "keyboard": "0.13.5",
+    "pygetwindow": "0.0.9",
+    "openai": "3.35.1",
+    "obsws-python": "1.8.0"
+  }
+}

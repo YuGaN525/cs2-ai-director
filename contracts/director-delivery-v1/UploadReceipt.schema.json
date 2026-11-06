@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "uploadId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "clientBatchId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "requestHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "uploadHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "dataBatchId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "rowCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "acceptedRows": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "duplicateRows": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "source": {
+      "enum": [
+        "online",
+        "offline"
+      ]
+    },
+    "quality": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "uploadId",
+    "clientBatchId",
+    "requestHash",
+    "uploadHash",
+    "dataBatchId",
+    "rowCount",
+    "acceptedRows",
+    "duplicateRows",
+    "source",
+    "quality",
+    "createdAt"
+  ],
+  "additionalProperties": false
+}

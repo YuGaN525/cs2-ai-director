@@ -1,0 +1,13 @@
+# Tested on Windows / Python 3.14.0; direct dependency snapshot
+scikit-learn==1.9.1
+numpy==2.5.4
+pandas==3.0.6
+joblib==1.6.0
+demoparser2==0.42.0
+cryptography==50.0.2
+pyinstaller==6.22.3
+pydirectinput==1.0.4
+keyboard==0.13.5
+pygetwindow==0.0.9
+openai==3.35.1
+obsws-python==1.8.0

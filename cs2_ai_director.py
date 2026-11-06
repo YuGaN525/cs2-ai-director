@@ -53,7 +53,7 @@ from typing import Any, Callable, Optional
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
 APP_SUBTITLE = "CS2 AI 专业导播"
-VERSION = "1.10.18"
+from client_version import VERSION
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -122,145 +122,7 @@ except Exception:  # pragma: no cover
 
 # 所有可配置项都集中在这里。业务逻辑只通过 cfg[...] 读取，不写死常量。
 # GUI 会修改其中一部分并持久化到 %APPDATA%\CS2AIDirector\config.json。
-DEFAULT_CONFIG: dict[str, Any] = {
-    # ---- 路径与网络 ----
-    "cs2_exe": "",
-    "gsi_port": 3000,
-    "window_title": "Counter-Strike 2",
-    # ---- HLAE 快捷键（必须由用户在 GUI 录入，留空则禁止启动，避免误按）----
-    # 出生点分 CT/T：按上一回合胜方选择。
-    "hlae_spawn_ct_key": "",
-    "hlae_spawn_t_key": "",
-    "spawn_cam_default_side": "CT",  # 第一回合/无上回合记录时用哪边
-    # 包点分 A/B：按炸弹安放位置自动选择对应快捷键
-    "hlae_bomb_a_key": "",
-    "hlae_bomb_b_key": "",
-    # 兼容旧配置：旧版 hlae_round_key / hlae_bomb_key 会自动迁移（见 load_config）
-    "hlae_round_key": "",
-    "hlae_bomb_key": "",
-    # 触发方式：single=按一次；double=连按两次（《星火杯导播快捷键指南》的
-    # alt+按键 交互中，HLAE 宏的 comboClick 为 2）。
-    "hlae_spawn_ct_mode": "double",
-    "hlae_spawn_t_mode": "double",
-    "hlae_round_mode": "double",  # 旧版兼容
-    "hlae_bomb_a_mode": "double",
-    "hlae_bomb_b_mode": "double",
-    "hlae_bomb_mode": "double",  # 旧版兼容
-    # 时序：按住 Alt → 80ms → N 30ms → 80ms 后第二次 N 30ms
-    # → 保持 Alt 约 300ms → 松开。MulNX 需要 >200ms 才会消费连击缓冲。
-    "hotkey_double_interval": 0.08,  # 两次主键按下的间隔（从第一次按下算）
-    "hotkey_press_hold": 0.03,       # 主键按住时长
-    "hotkey_modifier_lead": 0.08,    # Alt 按下后先等多久
-    "hotkey_modifier_release_delay": 0.05,  # 兼容项：最后一次主键后等多久松开 Alt
-    # MulNX 的输入系统是 GetAsyncKeyState 轮询 + 200ms 连击缓冲：
-    # 它要等主键按下 200ms 后才把 ComboClick 放进 BufferComboClick，
-    # 并在那一刻检查 Alt 必须仍按住。因此 Alt 必须在最后一次主键后
-    # 至少保持 200ms；默认 0.30s 留出轮询/帧回调余量。
-    "hotkey_modifier_hold_after": 0.30,
-    # ---- DeepSeek 仲裁（可选）----
-    "ai_enabled": True,
-    "deepseek_api_key": "",
-    "deepseek_base_url": "https://api.deepseek.com",
-    "deepseek_model": "deepseek-chat",
-    "ai_timeout": 2.5,          # 单次请求超时（秒），超时立即降级到规则引擎
-    "ai_min_interval": 3.0,     # 两次 API 调用最小间隔，控制成本
-    "ai_max_per_minute": 12,
-    "ai_result_ttl": 2.5,       # AI 建议的有效期（秒）
-    "ai_ambiguity_margin": 0.08,  # 规则前两名分差小于该值才请求 AI
-    # ---- 离线 demo 模型（静态权重，不在线更新）----
-    "demo_model_enabled": True,
-    "demo_model_min_samples": 20,
-    "demo_model_blend": 0.25,
-    # ---- 专业导播：OBS / 事件动作 ----
-    "obs_host": "127.0.0.1",
-    "obs_port": 4455,
-    "obs_password": "",
-    "event_actions_enabled": True,
-    "event_rules": [],
-    "pause_hotkey": "ctrl+alt+p",
-    "narrative_enabled": True,
-    "obs_narrative_enabled": False,
-    "obs_narrative_source": "",
-    # ---- 决策日志 + 轻量模型 ----
-    "decision_log_enabled": True,
-    "decision_log_interval": 1.0,
-    "decision_label_window": 3.0,
-    "decision_model_enabled": True,
-    "decision_model_margin": 0.08,
-    "decision_model_min_factor": 0.9,
-    "decision_model_prob_margin": 0.05,  # 模型推荐目标需领先当前目标的概率
-    "decision_model_min_prob": 0.55,     # 模型推荐目标的最低概率
-    "decision_calibration_enabled": True,
-    "decision_calibration_min_samples": 500,
-    "decision_calibration_after_match_only": True,
-    "decision_model_calibrated_min_prob": 0.16,
-    "decision_model_calibrated_prob_margin": 0.02,
-    # ---- 专业导播 Phase 1：镜头时间线 / 专业指标 / 回合故事 ----
-    "shot_timeline_enabled": True,
-    "shot_timeline_dir": "",       # 空 = %APPDATA%\CS2AIDirector
-    "metric_kill_lookback": 2.5,   # 击杀前多少秒内镜头在击杀者
-    "metric_prefight_lookback": 2.5,  # 首次伤害前多少秒内镜头在当事人
-    "metric_engagement_gap": 3.0,  # 多久没有伤害算“新的一段交火”
-    "metric_min_live_seconds": 5.0,  # live 时间少于此值不计算 cut_rate
-    "story_opening_seconds": 12.0,  # 开局阶段时长
-    "story_engage_recent_seconds": 3.0,  # 最近伤害多久内算“交火中”
-    "economy_full_avg": 3500.0,    # 金钱兜底：全起平均余额
-    "economy_force_avg": 2000.0,   # 金钱兜底：强起平均余额
-    "economy_equip_full": 1.5,     # 装备判定：全起平均档位
-    "economy_equip_force": 0.8,    # 装备判定：强起平均档位
-    "match_point_score": 12,       # CS2 MR12：先到 12 分拿到赛点
-    # ---- 视角切换 ----
-    "manual_pause_seconds": 10.0,
-    "loop_hz": 20,
-    "engage_range": 1500.0,     # 基础交火距离（CS 单位，约 28m）
-    "aim_fov_deg": 70.0,        # 认为“正在瞄准”的最大偏角
-    "max_vertical_diff": 300.0,  # 跨楼层超过该高度差视为不可能交火（Nuke 放宽）
-    "hard_min_switch_interval": 0.2,  # 任意两次切换的硬间隔（秒）
-    "switch_min_score": 0.30,   # 低于该分数宁可不切
-    "switch_margin": 0.10,      # 新目标必须比当前目标高出的分数，防抖
-    "emergency_score": 0.72,    # 极高威胁时允许绕过 margin
-    "min_dwell_seconds": 1.0,   # 两次切换的最小间隔
-    "min_shot_duration": 2.0,   # 专业导播最短镜头停留（与 min_dwell 取较大值）
-    "max_cuts_per_10s": 3,      # 10 秒窗口内最多切换次数；<=0 关闭
-    "repeat_guard_seconds": 4.0,  # 同一 slot 的重复按键保护
-    "fight_lock_enabled": True,  # 当前 POV 正在交火时不切走
-    "fight_lock_aim": 0.60,      # 双方都瞄准到该阈值也视为交火
-    # ---- 开局控图：优先把镜头给手持/投掷道具的选手 ----
-    "utility_cam_enabled": True,
-    "utility_cam_pre_buffer": 0.35,   # 手持道具后确认并预切的缓冲（运行时夹在 0.25-0.5s）
-    "utility_cam_post_hold": 0.35,    # 投掷后继续保持镜头的缓冲（运行时夹在 0.25-0.5s）
-    "utility_cam_fight_lookback": 2.5,  # 多久内出现伤害/高威胁候选视为“场上偏热”
-    "utility_cam_min_interval": 3.0,  # 两次道具镜头的间隔
-    "utility_cam_max_per_round": 4,   # 每回合最多道具镜头次数；<=0 不限制
-    "utility_cam_types": [            # 默认不含诱饵弹
-        "weapon_smokegrenade", "weapon_flashbang", "weapon_molotov",
-        "weapon_incgrenade", "weapon_hegrenade",
-    ],
-    "gsi_stale_seconds": 3.0,   # 超过该时间没有 GSI 数据视为断流
-    "self_press_guard": 0.30,   # 模拟按键后多久内忽略同键，防自捕获
-    # ---- 运镜 ----
-    "bomb_cam_countdown": 8.0,  # 炸弹剩余多少秒触发包点运镜
-    # pov_first：有玩家存活时优先玩家 POV，跳过包点运镜；
-    # always：不论是否有人存活都触发（旧行为）。
-    "bomb_cam_policy": "pov_first",
-    "bomb_cam_grace": 1.5,      # 触发包点运镜后暂停自动切换的秒数（0=不暂停）
-    "trigger_retry_seconds": 1.0,
-    # 包点判定参考点（世界坐标，x/y）。由雷达包点区域反推，并用相机包
-    # 中带 A/B 标签的路径点交叉验证；用户可在 config.json 覆盖/补充地图。
-    "bomb_site_refs": {
-        "de_mirage":  {"A": [-461, -2194], "B": [-2080, 254]},
-        "de_inferno": {"A": [2055, 440],  "B": [389, 2792]},
-        "de_dust2":   {"A": [1132, 2499], "B": [-1545, 2688]},
-        "de_anubis":  {"A": [1350, 2200], "B": [-1079, 667]},
-        "de_ancient": {"A": [-1430, 846], "B": [774, 75]},
-        "de_cache":   {"A": [-286, 1806], "B": [-47, -1247]},
-        # Nuke 的 A/B 上下重叠，用 3D 距离（B 在负层）
-        "de_nuke":    {"A": [326, -319, -30], "B": [352, -572, -731]},
-    },
-    # ---- 其它 ----
-    "auto_focus": True,         # 按键前自动把 CS2 拉到前台
-    "dry_run": False,           # 演练模式：只算不按
-}
+from director_core.config import DEFAULT_CONFIG
 
 # 兼容别名：需求里要求“一个 CONFIG 结构”
 CONFIG = DEFAULT_CONFIG
@@ -507,265 +369,41 @@ def install_dependencies(log_cb: Optional[Callable[[str], None]] = None) -> bool
 # 5. GSI 数据模型与解析
 # --------------------------------------------------------------------------
 
-@dataclass
-class Player:
-    steamid: str
-    name: str
-    slot: Optional[int]
-    team: str
-    health: int
-    armor: int
-    helmet: bool
-    flashed: float          # 归一化到 0..1
-    burning: bool
-    defusing: bool
-    pos: Optional[tuple[float, float, float]]
-    forward: Optional[tuple[float, float, float]]
-    weapons: list[dict[str, Any]]
-    active_weapon: Optional[dict[str, Any]]
-    money: int
-    round_kills: int
-    round_totaldmg: int
-
-
-@dataclass
-class Bomb:
-    state: str
-    countdown: Optional[float]
-    position: Optional[tuple[float, float, float]]
-
-
-@dataclass
-class Snapshot:
-    seq: int
-    received_at: float          # time.monotonic()
-    provider_steamid: str
-    map_name: str
-    phase: str                  # freezetime / live / over / warmup ...
-    round_num: Optional[int]
-    players: dict[str, Player]
-    observer_slot: Optional[int]
-    bomb: Optional[Bomb]
-    score_ct: int
-    score_t: int
-    round_win_team: str          # "CT"/"T"/""，用于判断上一回合胜方
-    phase_ends_in: Optional[float]
-    is_spectating: bool
-
-
-def _f(v: Any, default: float = 0.0) -> float:
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return default
-
-
-def _i(v: Any, default: Optional[int] = None) -> Optional[int]:
-    try:
-        return int(float(v))
-    except (TypeError, ValueError):
-        return default
-
-
-def _b(v: Any) -> bool:
-    if isinstance(v, bool):
-        return v
-    if isinstance(v, (int, float)):
-        return v != 0
-    if isinstance(v, str):
-        return v.strip().lower() in ("1", "true", "yes", "on")
-    return False
-
-
-def slot_to_key(slot: Any) -> Optional[str]:
-    """GSI observer_slot → 观察者数字键。
-
-    实测 CS2：按数字键 N 会选中 GSI slot (N-1) mod 10
-    （键 1→slot 0，键 2→slot 1，键 9→slot 8，键 0→slot 9）。
-    所以反推 slot S 对应键 (S+1) mod 10；不能直接把 slot 当按键。
-    """
-    s = _i(slot)
-    if s is None or not (0 <= s <= 9):
-        return None
-    return str((s + 1) % 10)
-
-
-def key_to_slot(key: Any) -> Optional[int]:
-    """观察者数字键 → GSI observer_slot（slot_to_key 的逆映射）。"""
-    k = _i(key)
-    if k is None or not (0 <= k <= 9):
-        return None
-    return (k - 1) % 10
-
-
-def format_slot(slot: Any) -> str:
-    """日志/GUI 用：同时显示 GSI slot 和实际要按的数字键。"""
-    s = _i(slot)
-    if s is None:
-        return "-"
-    key = slot_to_key(s)
-    return f"slot={s}（键{key}）" if key is not None else f"slot={s}"
-
-
-def _vec(v: Any) -> Optional[tuple[float, float, float]]:
-    """GSI 的位置/朝向既可能是 "x, y, z" 字符串，也可能是数组。"""
-    if isinstance(v, str):
-        s = v.strip()
-        if not s:
-            return None
-        if s.startswith("["):
-            try:
-                v = json.loads(s)
-            except Exception:
-                return None
-        else:
-            parts = [p.strip() for p in s.split(",")]
-            if len(parts) < 2:
-                return None
-            v = parts
-    if isinstance(v, (list, tuple)) and len(v) >= 2:
-        return (
-            _f(v[0]),
-            _f(v[1]),
-            _f(v[2]) if len(v) > 2 else 0.0,
-        )
-    return None
-
-
-def _weapons(raw: Any) -> tuple[list[dict[str, Any]], Optional[dict[str, Any]]]:
-    """把 weapons 字典/数组统一成 list，并找出 state == active 的武器。"""
-    items: list[dict[str, Any]] = []
-    if isinstance(raw, dict):
-        for key, val in raw.items():
-            if isinstance(val, dict):
-                w = dict(val)
-                w.setdefault("_key", key)
-                items.append(w)
-    elif isinstance(raw, list):
-        for val in raw:
-            if isinstance(val, dict):
-                items.append(dict(val))
-    active = None
-    for w in items:
-        if str(w.get("state", "")).lower() == "active":
-            active = w
-            break
-    return items, active
-
-
-def parse_snapshot(payload: Any, received_at: float) -> Optional[Snapshot]:
-    """把一次 GSI POST 解析成 Snapshot；字段缺失时尽量降级，不抛异常。"""
-    if not isinstance(payload, dict):
-        return None
-    provider = payload.get("provider") or {}
-    mapinfo = payload.get("map") or {}
-    roundinfo = payload.get("round") or {}
-    countdowns = payload.get("phase_countdowns") or {}
-    allplayers = payload.get("allplayers") or {}
-    player_sec = payload.get("player") or {}
-
-    players: dict[str, Player] = {}
-    if isinstance(allplayers, dict):
-        for sid, pd in allplayers.items():
-            if not isinstance(pd, dict):
-                continue
-            state = pd.get("state") or {}
-            weapons, active = _weapons(pd.get("weapons"))
-            flashed_raw = _f(state.get("flashed"), 0.0)
-            # CS:GO/CS2 的 flashed 常见是 0-255，也有 0-1 的写法，统一归一化
-            flashed = flashed_raw / 255.0 if flashed_raw > 1.0 else max(0.0, flashed_raw)
-            slot = _i(pd.get("observer_slot"))
-            players[str(sid)] = Player(
-                steamid=str(sid),
-                name=str(pd.get("name") or ""),
-                slot=slot,
-                team=str(pd.get("team") or "").upper(),
-                health=_i(state.get("health"), 0) or 0,
-                armor=_i(state.get("armor"), 0) or 0,
-                helmet=_b(state.get("helmet")),
-                flashed=min(1.0, max(0.0, flashed)),
-                burning=_b(state.get("burning")),
-                defusing=_b(state.get("defusing")),
-                pos=_vec(pd.get("position")),
-                forward=_vec(pd.get("forward")),
-                weapons=weapons,
-                active_weapon=active,
-                money=_i(state.get("money"), 0) or 0,
-                round_kills=_i(state.get("round_kills"), 0) or 0,
-                round_totaldmg=_i(state.get("round_totaldmg"), 0) or 0,
-            )
-
-    bomb_raw = payload.get("bomb")
-    bomb = None
-    if isinstance(bomb_raw, dict) and bomb_raw.get("state"):
-        bomb = Bomb(
-            state=str(bomb_raw.get("state", "")).lower(),
-            countdown=(
-                _f(bomb_raw.get("countdown"))
-                if bomb_raw.get("countdown") is not None
-                else None
-            ),
-            position=_vec(bomb_raw.get("position")),
-        )
-
-    obs_slot = _i(player_sec.get("observer_slot"))
-    player_sid = str(player_sec.get("steamid") or "")
-    if obs_slot is None and player_sid in players:
-        obs_slot = players[player_sid].slot
-
-    provider_sid = str(provider.get("steamid") or "")
-    local = players.get(provider_sid)
-    # 关键安全判断：只有“确实在观战”时才允许发数字键。若本地玩家还活着，
-    # 数字键在游戏里是切武器，绝不能发。
-    local_alive = bool(local and local.health > 0)
-    is_spectating = obs_slot is not None and not local_alive
-
-    # map.phase 负责 gameover/intermission/warmup/paused；
-    # round/phase_countdowns 负责 freezetime/live/over。
-    # 之前优先取 countdowns.phase，比赛结束时它仍可能是 "over"，
-    # 会把 map.phase="gameover" 吞掉，导致 game_over 永远不触发。
-    map_phase = str(mapinfo.get("phase") or "").lower()
-    round_phase = str(roundinfo.get("phase") or "").lower()
-    countdown_phase = str(countdowns.get("phase") or "").lower()
-    if map_phase == "freeze_time":
-        map_phase = "freezetime"
-    if round_phase == "freeze_time":
-        round_phase = "freezetime"
-    if countdown_phase == "freeze_time":
-        countdown_phase = "freezetime"
-    if map_phase == "pause":
-        map_phase = "paused"
-    if map_phase in ("gameover", "intermission", "warmup", "paused"):
-        phase = map_phase
-    else:
-        phase = countdown_phase or round_phase or map_phase
-
-    team_ct = mapinfo.get("team_ct") or {}
-    team_t = mapinfo.get("team_t") or {}
-    win_team = str(roundinfo.get("win_team") or "").upper()
-    if win_team not in ("CT", "T"):
-        win_team = ""
-
-    return Snapshot(
-        seq=0,
-        received_at=received_at,
-        provider_steamid=provider_sid,
-        map_name=str(mapinfo.get("name") or "unknown"),
-        phase=phase,
-        round_num=_i(mapinfo.get("round")),
-        players=players,
-        observer_slot=obs_slot,
-        bomb=bomb,
-        score_ct=_i(team_ct.get("score"), 0) or 0,
-        score_t=_i(team_t.get("score"), 0) or 0,
-        round_win_team=win_team,
-        phase_ends_in=(
-            _f(countdowns.get("phase_ends_in"))
-            if countdowns.get("phase_ends_in") is not None
-            else None
-        ),
-        is_spectating=is_spectating,
-    )
+from director_core.legacy import (
+    Player,
+    Bomb,
+    Snapshot,
+    _f,
+    _i,
+    _b,
+    slot_to_key,
+    key_to_slot,
+    format_slot,
+    _vec,
+    _weapons,
+    parse_snapshot,
+    TYPE_POWER,
+    NAME_POWER,
+    TYPE_RANGE,
+    NAME_RANGE,
+    UTILITY_TYPES,
+    WeaponProfile,
+    weapon_profile,
+    aim_factor,
+    _dist,
+    _vertical_limit,
+    has_possible_engagement,
+    _win_probability,
+    readiness,
+    Candidate,
+    score_candidates,
+    _short_weapon,
+    detect_bomb_site,
+    format_candidate,
+    Decision,
+    choose_slot,
+    _candidate_features
+)
 
 
 class SnapshotStore:
@@ -937,386 +575,6 @@ class GSIServer:
 #
 #   这样“残血 + 对枪”会得到高分，“满血架远点”分数较低，符合验收标准的取向。
 # --------------------------------------------------------------------------
-
-TYPE_POWER = {
-    "SniperRifle": 12.0,
-    "Rifle": 10.0,
-    "Machine Gun": 9.0,
-    "Shotgun": 8.0,
-    "SMG": 7.0,
-    "Pistol": 4.5,
-    "Knife": 1.2,
-    "Grenade": 0.8,
-    "C4": 0.3,
-    "StackableItem": 0.3,
-    "Tablet": 0.2,
-}
-
-NAME_POWER = {
-    "weapon_awp": 14.0,
-    "weapon_ssg08": 9.5,
-    "weapon_scar20": 12.5,
-    "weapon_g3sg1": 12.5,
-    "weapon_deagle": 7.5,
-    "weapon_revolver": 7.0,
-    "weapon_ak47": 10.5,
-    "weapon_m4a1": 10.0,
-    "weapon_m4a1_silencer": 10.0,
-    "weapon_aug": 10.5,
-    "weapon_sg556": 10.5,
-    "weapon_taser": 6.0,
-}
-
-TYPE_RANGE = {
-    "SniperRifle": 2600.0,
-    "Rifle": 1500.0,
-    "Machine Gun": 1400.0,
-    "SMG": 900.0,
-    "Shotgun": 550.0,
-    "Pistol": 800.0,
-}
-
-NAME_RANGE = {
-    "weapon_awp": 2600.0,
-    "weapon_ssg08": 1900.0,
-    "weapon_scar20": 2400.0,
-    "weapon_g3sg1": 2400.0,
-    "weapon_deagle": 1100.0,
-    "weapon_revolver": 900.0,
-}
-
-UTILITY_TYPES = {"Knife", "Grenade", "C4", "StackableItem", "Tablet"}
-
-
-@dataclass
-class WeaponProfile:
-    power: float
-    envelope: float
-    ready: bool
-    name: str
-
-
-def weapon_profile(p: Player) -> WeaponProfile:
-    w = p.active_weapon
-    if w is None and p.weapons:
-        # 没有 active 标记时降级：选威力最大的武器
-        w = max(p.weapons, key=lambda x: TYPE_POWER.get(str(x.get("type", "")), 1.0))
-    if w is None:
-        return WeaponProfile(0.5, 300.0, False, "unknown")
-
-    name = str(w.get("name") or "")
-    typ = str(w.get("type") or "")
-    power = NAME_POWER.get(name, TYPE_POWER.get(typ, 5.0))
-    envelope = NAME_RANGE.get(name, TYPE_RANGE.get(typ, 900.0))
-    ready = True
-
-    if typ in UTILITY_TYPES or name.startswith(("weapon_knife", "weapon_c4", "weapon_taser")):
-        ready = False
-        envelope = min(envelope, 400.0)
-
-    ammo = _i(w.get("ammo_clip"))
-    if ammo is not None and ammo <= 0 and typ not in ("Knife", "Grenade", "C4", "StackableItem"):
-        ready = False
-        envelope = min(envelope, 400.0)
-
-    if p.defusing:
-        ready = False  # 拆包时无法开枪
-    return WeaponProfile(power=power, envelope=max(250.0, envelope), ready=ready, name=name)
-
-
-def aim_factor(src: Player, dst: Player, fov_deg: float) -> float:
-    """src 的 forward 与 src->dst 方向的夹角，0=完全没瞄，1=正对。"""
-    if not src.pos or not src.forward or not dst.pos:
-        return 0.0
-    fx, fy, fz = src.forward
-    dx = dst.pos[0] - src.pos[0]
-    dy = dst.pos[1] - src.pos[1]
-    dz = dst.pos[2] - src.pos[2]
-    fl = math.sqrt(fx * fx + fy * fy + fz * fz)
-    dl = math.sqrt(dx * dx + dy * dy + dz * dz)
-    if fl < 1e-6 or dl < 1e-6:
-        return 0.0
-    dot = (fx * dx + fy * dy + fz * dz) / (fl * dl)
-    dot = max(-1.0, min(1.0, dot))
-    cos_fov = math.cos(math.radians(fov_deg))
-    if dot <= cos_fov:
-        return 0.0
-    return max(0.0, min(1.0, (dot - cos_fov) / (1.0 - cos_fov)))
-
-
-def _dist(a: Optional[tuple[float, float, float]],
-          b: Optional[tuple[float, float, float]]) -> Optional[float]:
-    if not a or not b:
-        return None
-    return math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2)
-
-
-def _vertical_limit(cfg: dict[str, Any], map_name: str) -> float:
-    """不同楼层的最大高度差；Nuke 上下层结构复杂，放宽。"""
-    if str(map_name or "").split("/")[-1].lower() == "de_nuke":
-        return 900.0
-    try:
-        return max(80.0, float(cfg.get("max_vertical_diff", 300.0)))
-    except (TypeError, ValueError):
-        return 300.0
-
-
-def has_possible_engagement(snap: Snapshot, cfg: dict[str, Any]) -> bool:
-    """是否还存在“可能交火”的存活敌我对；用于区分 POV 与包点运镜。
-
-    距离用 3D，楼层差超过阈值视为不可能交火（例如 CT 在 2 楼、T 在 1 楼）。
-    """
-    alive = [p for p in snap.players.values()
-             if p.health > 0 and p.team in ("CT", "T") and p.pos]
-    if len(alive) < 2:
-        return False
-    vlimit = _vertical_limit(cfg, snap.map_name)
-    try:
-        max_range = max(2600.0, float(cfg.get("engage_range", 1500.0)) * 1.8)
-    except (TypeError, ValueError):
-        max_range = 2600.0
-    for i, a in enumerate(alive):
-        for b in alive[i + 1:]:
-            if a.team == b.team:
-                continue
-            d = _dist(a.pos, b.pos)
-            if d is None or d > max_range:
-                continue
-            if abs(a.pos[2] - b.pos[2]) > vlimit:
-                continue
-            return True
-    return False
-
-
-def _win_probability(a: Player, b: Player, aim_a: float, aim_b: float,
-                     pa: WeaponProfile, pb: WeaponProfile) -> float:
-    """1v1 胜率的 logistic 近似；只用于排序，不需要很精确。"""
-    adv = 0.030 * (a.health - b.health)          # 30 血 ≈ 0.9
-    adv += 0.006 * (a.armor - b.armor)
-    denom = max(6.0, (pa.power + pb.power) / 2.0)
-    adv += 0.80 * ((pa.power - pb.power) / denom)
-    adv += 1.20 * (aim_a - aim_b)
-    adv += -0.90 * max(0.0, a.flashed - 0.15) + 0.90 * max(0.0, b.flashed - 0.15)
-    if a.helmet and not b.helmet:
-        adv += 0.25
-    if pa.ready != pb.ready:
-        adv += 0.25 if pa.ready else -0.35
-    if b.defusing:
-        adv += 0.35
-    if a.defusing:
-        adv -= 1.20
-    if a.burning:
-        adv -= 0.25
-    return max(0.02, min(0.98, 1.0 / (1.0 + math.exp(-adv))))
-
-
-def readiness(p: Player, prof: WeaponProfile) -> float:
-    if not prof.ready:
-        if p.defusing:
-            return 0.30
-        return 0.55
-    return 1.0
-
-
-@dataclass
-class Candidate:
-    slot: int
-    steamid: str
-    name: str
-    team: str
-    score: float
-    win: float
-    enemy_slot: Optional[int]
-    enemy_name: str
-    distance: float
-    aim_self: float
-    aim_enemy: float
-    hp: int
-    armor: int
-    enemy_hp: int
-    weapon: str
-    enemy_weapon: str
-    enemy_damaged: bool
-
-
-def score_candidates(snap: Snapshot, cfg: dict[str, Any],
-                     damage_recent: Optional[Callable[[str], bool]] = None,
-                     now: Optional[float] = None) -> list[Candidate]:
-    """给每个可切换的选手打分，按分数降序返回。"""
-    fov = float(cfg["aim_fov_deg"])
-    alive_all = [p for p in snap.players.values()
-                 if p.health > 0 and p.team in ("CT", "T")]
-    attackers = [p for p in alive_all
-                 if p.slot is not None and p.steamid != snap.provider_steamid]
-    results: list[Candidate] = []
-
-    bomb = snap.bomb
-    bomb_planted = bool(bomb and bomb.state in ("planted", "defusing"))
-    # engage_range 作为“交战包络”的整体缩放（默认 1500 = 1.0 倍），
-    # 这样既能按武器区分射程，又保留一个全局可调的总开关。
-    range_scale = max(0.4, min(2.0, float(cfg.get("engage_range", 1500.0)) / 1500.0))
-    vlimit = _vertical_limit(cfg, snap.map_name)
-
-    for a in attackers:
-        if not a.pos:
-            continue
-        prof_a = weapon_profile(a)
-        ready_a = readiness(a, prof_a)
-        best: Optional[Candidate] = None
-
-        for b in alive_all:
-            if b.team == a.team or b.steamid == a.steamid:
-                continue
-            d = _dist(a.pos, b.pos)
-            if d is None:
-                continue
-            if abs(a.pos[2] - b.pos[2]) > vlimit:
-                continue  # 不同楼层/高度差过大，视为不可能交火
-            envelope = prof_a.envelope * range_scale
-            if d > envelope:
-                continue
-            prof_b = weapon_profile(b)
-
-            prox = (max(0.0, 1.0 - d / envelope)) ** 0.55
-            aim_a = aim_factor(a, b, fov)
-            aim_b = aim_factor(b, a, fov)
-            if d < 260.0:
-                # 贴脸时朝向数据抖动大，给一个下限
-                aim_a = max(aim_a, 0.55)
-                aim_b = max(aim_b, 0.55)
-            aim_pair = 0.6 * max(aim_a, aim_b) + 0.4 * min(aim_a, aim_b)
-            awareness = 0.55 + 0.45 * aim_pair
-
-            low_hp = 1.0 - min(a.health, b.health) / 100.0
-            urgency = 1.0 + 0.5 * low_hp
-            recent_a = bool(damage_recent and damage_recent(a.steamid))
-            recent_b = bool(damage_recent and damage_recent(b.steamid))
-            if recent_a:
-                urgency += 0.10       # A 也在挨打：正在对枪/换血
-            if recent_b:
-                urgency += 0.12       # B 刚掉血：交火已经在发生
-            if bomb_planted and b.defusing:
-                urgency += 0.25       # 拆包者是最可能被击杀的目标
-
-            win = _win_probability(a, b, aim_a, aim_b, prof_a, prof_b)
-            # 更偏向“胜率更高的一方”：0.25 + 0.75*win
-            score = prox * awareness * urgency * (0.25 + 0.75 * win) * ready_a
-
-            cand = Candidate(
-                slot=int(a.slot), steamid=a.steamid, name=a.name or f"slot{a.slot}",
-                team=a.team, score=score, win=win,
-                enemy_slot=b.slot, enemy_name=b.name or (f"slot{b.slot}" if b.slot is not None else "?"),
-                distance=d, aim_self=aim_a, aim_enemy=aim_b,
-                hp=a.health, armor=a.armor, enemy_hp=b.health,
-                weapon=_short_weapon(prof_a.name), enemy_weapon=_short_weapon(prof_b.name),
-                enemy_damaged=recent_b,
-            )
-            if best is None or cand.score > best.score:
-                best = cand
-
-        if best is not None and best.score > 0:
-            results.append(best)
-
-    results.sort(key=lambda c: c.score, reverse=True)
-    return results
-
-
-def _short_weapon(name: str) -> str:
-    if not name:
-        return "?"
-    return name.replace("weapon_", "", 1)
-
-
-def detect_bomb_site(map_name: str, bomb_pos: Any,
-                     cfg: dict[str, Any]) -> Optional[str]:
-    """按地图 + 炸弹世界坐标判定 A/B 包点；无法判定返回 None。
-
-    Nuke 的 A/B 上下重叠，必须用 3D 距离；其他地图用 x/y，
-    避免雷达相机高度差影响判定。
-    """
-    if not bomb_pos or len(bomb_pos) < 2:
-        return None
-    name = str(map_name or "").split("/")[-1].lower()
-    refs = cfg.get("bomb_site_refs") or {}
-    ref = refs.get(name)
-    if not isinstance(ref, dict):
-        return None
-    a = ref.get("A")
-    b = ref.get("B")
-    if not (isinstance(a, (list, tuple)) and isinstance(b, (list, tuple))):
-        return None
-    if len(a) < 2 or len(b) < 2:
-        return None
-    dims = 3 if name == "de_nuke" else 2
-    try:
-        da = sum((float(bomb_pos[i]) - float(a[i])) ** 2 for i in range(dims))
-        db = sum((float(bomb_pos[i]) - float(b[i])) ** 2 for i in range(dims))
-    except (TypeError, ValueError, IndexError):
-        return None
-    if abs(da - db) < 1e-9:
-        return None
-    return "A" if da < db else "B"
-
-
-def format_candidate(c: Candidate) -> str:
-    # 注意：不要在每行里重复 slot/昵称，调用方已经在“切换视角”前缀里打印过。
-    return (
-        f"分={c.score:.2f} 距敌={c.distance:.0f} "
-        f"瞄准={c.aim_self:.2f}/{c.aim_enemy:.2f} HP={c.hp}/{c.enemy_hp} "
-        f"胜率={c.win:.2f} 武器={c.weapon} 对手={c.enemy_name}"
-    )
-
-
-# --------------------------------------------------------------------------
-# 7. 切换决策（含防抖/迟滞/重复按键保护）
-# --------------------------------------------------------------------------
-
-@dataclass
-class Decision:
-    slot: Optional[int]
-    reason: str
-    candidate: Optional[Candidate] = None
-    source: str = "rule"
-
-
-def choose_slot(candidates: list[Candidate], current_slot: Optional[int],
-                now: float, last_switch_at: Optional[float],
-                last_switch_slot: Optional[int],
-                cfg: dict[str, Any]) -> Decision:
-    """纯函数决策，方便测试。返回 slot=None 表示保持当前视角。"""
-    if not candidates:
-        return Decision(None, "无交火迹象")
-
-    best = candidates[0]
-    if best.score < float(cfg["switch_min_score"]):
-        return Decision(None, f"最高分 {best.score:.2f} 低于阈值")
-
-    if current_slot is not None and best.slot == current_slot:
-        return Decision(None, f"已经在 slot={best.slot}")
-
-    try:
-        hard_floor = max(0.2, float(cfg.get("hard_min_switch_interval", 0.2)))
-    except (TypeError, ValueError):
-        hard_floor = 0.2
-    if last_switch_at is not None and (now - last_switch_at) < hard_floor:
-        return Decision(None, "切换硬间隔不足 200ms")
-
-    if last_switch_at is not None and (now - last_switch_at) < float(cfg["min_dwell_seconds"]):
-        return Decision(None, "切换冷却中")
-
-    # 防止 GSI 还没刷新 observer_slot 时对同一目标重复按键
-    if (last_switch_slot == best.slot and last_switch_at is not None
-            and (now - last_switch_at) < float(cfg["repeat_guard_seconds"])):
-        return Decision(None, f"slot={best.slot} 刚刚按过")
-
-    current = next((c for c in candidates if c.slot == current_slot), None)
-    if current is not None:
-        gap = best.score - current.score
-        if gap < float(cfg["switch_margin"]) and best.score < float(cfg["emergency_score"]):
-            return Decision(None, f"分数优势不足（+{gap:.2f}）")
-
-    return Decision(best.slot, f"切到 {best.name}", best, "rule")
-
 
 # --------------------------------------------------------------------------
 # 8. 运镜触发器（每回合 / 每次安放各一次）
@@ -1880,12 +1138,14 @@ def split_hotkey(hotkey: str) -> tuple[list[str], list[str]]:
 
 
 class InputController:
-    def __init__(self, cfg: dict[str, Any], log: LogBus) -> None:
+    def __init__(self, cfg: dict[str, Any], log: LogBus, authorization_gate=None) -> None:
         self.cfg = cfg
         self.log = log
+        self.authorization_gate = authorization_gate
+        self._held_keys = set()
         # 两个锁分开：钩子回调只碰 _suppress_lock，绝不能被“正在发送按键”
         # 的 _send_lock 阻塞，否则低级钩子会拖慢/卡住系统输入。
-        self._send_lock = threading.Lock()
+        self._send_lock = threading.RLock()
         self._suppress_lock = threading.Lock()
         # 概念上等价于全局 simulating_until；这里按数字键分别记录，
         # 避免把用户在抑制窗口内按下的“其他数字键”也一起吞掉。
@@ -1901,6 +1161,38 @@ class InputController:
                 pydirectinput.PAUSE = 0.0
             except Exception:
                 pass
+
+    def _authorized(self):
+        if self.authorization_gate is None:
+            return True  # Legacy local runtime; authenticated runtime injects a gate.
+        if self.authorization_gate.allowed():
+            return True
+        self.release_held_keys()
+        return False
+
+    def _press(self, backend, key):
+        if not self._authorized():
+            raise RuntimeError("设备离线授权不可用，请联网校验")
+        self._held_keys.add((backend, key))
+        if backend == "direct":
+            pydirectinput.keyDown(key)
+        else:
+            keyboard.press(key)
+
+    def _release(self, backend, key):
+        if backend == "direct":
+            pydirectinput.keyUp(key)
+        else:
+            keyboard.release(key)
+        self._held_keys.discard((backend, key))
+
+    def release_held_keys(self):
+        with self._send_lock:
+            for backend, key in list(self._held_keys):
+                try:
+                    self._release(backend, key)
+                except Exception:
+                    pass
 
     # ---- 自捕获抑制 ----
     def mark_self_press(self, digit: str) -> None:
@@ -1965,6 +1257,8 @@ class InputController:
 
     # ---- 按键 ----
     def press_slot(self, slot: int) -> bool:
+        if not self._authorized():
+            return False
         key = slot_to_key(slot)
         if key is None:
             return False
@@ -1980,16 +1274,19 @@ class InputController:
                 return False
             self.mark_self_press(key)
             try:
-                pydirectinput.keyDown(key)
+                self._press("direct", key)
                 time.sleep(0.03)  # 至少跨 1-2 帧，避免游戏轮询错过按键
-                pydirectinput.keyUp(key)
+                self._release("direct", key)
             except Exception as e:
+                self.release_held_keys()
                 self.log.warning(f"模拟数字键 {key} 失败：{type(e).__name__}: {e}")
                 return False
         return True
 
     def send_hotkey(self, hotkey: str, double: bool = False) -> bool:
         """发送 HLAE 快捷键；double=True 时连按两次（间隔可配）。"""
+        if not self._authorized():
+            return False
         hotkey = (hotkey or "").strip()
         if not hotkey:
             return False
@@ -2024,7 +1321,7 @@ class InputController:
                         # 连点两次主键”。既符合 comboClick 语义，也保证 keydown
                         # 至少保持 45ms，避免相机工具用 GetAsyncKeyState 轮询时漏掉。
                         for mod in mods:
-                            keyboard.press(mod)
+                            self._press("keyboard", mod)
                         if mods:
                             time.sleep(lead)  # 按住 Alt 80ms 再按主键
                         try:
@@ -2033,16 +1330,16 @@ class InputController:
                                     # interval 是"两次主键按下"的间隔；
                                     # 第一次已按住 hold，所以再等 interval-hold。
                                     time.sleep(max(0.0, interval - hold))
-                                keyboard.press(keys[0])
+                                self._press("keyboard", keys[0])
                                 time.sleep(hold)
-                                keyboard.release(keys[0])
+                                self._release("keyboard", keys[0])
                             if mods:
                                 # MulNX 在 200ms 后才消费 ComboClick；这里默认 300ms
                                 time.sleep(hold_after)
                         finally:
                             for mod in reversed(mods):
                                 try:
-                                    keyboard.release(mod)
+                                    self._release("keyboard", mod)
                                 except Exception:
                                     pass
                     else:
@@ -2050,9 +1347,13 @@ class InputController:
                         for i in range(presses):
                             if i:
                                 time.sleep(interval)
-                            keyboard.press_and_release(hotkey)
+                            for key in mods + keys:
+                                self._press("keyboard", key)
+                            for key in reversed(mods + keys):
+                                self._release("keyboard", key)
                     return True
                 except Exception as e:
+                    self.release_held_keys()
                     self.log.warning(
                         f"发送快捷键 {hotkey}（{mode_txt}）失败：{type(e).__name__}: {e}"
                     )
@@ -2063,11 +1364,12 @@ class InputController:
                 for i in range(presses):
                     if i:
                         time.sleep(interval)
-                    pydirectinput.keyDown(hotkey)
+                    self._press("direct", hotkey)
                     time.sleep(hold)
-                    pydirectinput.keyUp(hotkey)
+                    self._release("direct", hotkey)
                 return True
             except Exception as e:
+                self.release_held_keys()
                 self.log.warning(
                     f"发送单键 {hotkey}（{mode_txt}）失败：{type(e).__name__}: {e}"
                 )
@@ -2437,17 +1739,6 @@ def learner_path() -> Path:
     return app_data_dir() / "learner.json"
 
 
-def _candidate_features(c: Candidate) -> list[float]:
-    return [
-        c.aim_self,
-        c.aim_enemy,
-        c.win,
-        max(0.0, min(1.0, (100 - c.enemy_hp) / 100.0)),
-        max(0.0, min(1.0, (100 - c.hp) / 100.0)),
-        max(0.0, min(1.0, 1.0 - c.distance / 1500.0)),
-        1.0 if c.enemy_damaged else 0.0,
-        1.0 if c.hp >= c.enemy_hp else 0.0,
-    ]
 
 
 class DemoModel:
@@ -2539,7 +1830,8 @@ class DirectorEngine:
                  pro: Optional[pro_mod.ProDirector] = None,
                  decision_logger: Optional[dm.DecisionLogger] = None,
                  model_arbiter: Optional[dm.ModelArbiter] = None,
-                 timeline: Optional[story_mod.ShotTimeline] = None) -> None:
+                 timeline: Optional[story_mod.ShotTimeline] = None,
+                 authorization_gate=None) -> None:
         self.cfg = cfg
         self.bus = bus
         self.pro = pro
@@ -2549,7 +1841,10 @@ class DirectorEngine:
         self.story = story_mod.StoryTracker(cfg)
         self.store = SnapshotStore()
         self.server: Optional[GSIServer] = None
-        self.input = InputController(cfg, bus)
+        self.authorization_gate = authorization_gate
+        self.input = InputController(cfg, bus, authorization_gate)
+        if self.pro is not None and authorization_gate is not None:
+            self.pro.obs.authorization_gate = authorization_gate
         self.arbiter = AIArbiter(cfg, bus)
         self.learner = DemoModel(cfg, bus)
         self.triggers = TriggerTracker(cfg)
@@ -2662,6 +1957,7 @@ class DirectorEngine:
             )
 
     def stop(self) -> None:
+        self.input.release_held_keys()
         if not self._running and self.server is None:
             return
         self._stop.set()
@@ -2803,6 +2099,11 @@ class DirectorEngine:
             time.sleep(max(0.0, interval - elapsed))
 
     def _tick(self) -> None:
+        if self.authorization_gate is not None and not self.authorization_gate.allowed():
+            self.input.release_held_keys()
+            self._set_status({"running": True, "gsi": "authorization_required", "phase": "-",
+                              "reason": "离线授权不可用，请联网校验", "authorization": self.authorization_gate.last_state.reason})
+            return
         now = time.monotonic()
         snap = self.store.get()
         packets, _ = self.store.stats()
@@ -3561,7 +2862,8 @@ class DirectorEngine:
                     and cands[idx].score >= float(self.cfg["switch_min_score"]) * 0.9):
                 ordered = [cands[idx]] + cands[:idx] + cands[idx + 1:]
 
-        decision = choose_slot(
+        from director_core.scheduler import choose_compatible
+        decision = choose_compatible(
             ordered, snap.observer_slot, now,
             self._last_switch_at, self._last_switch_slot, self.cfg,
         )
@@ -3890,6 +3192,8 @@ class _ScrollableFrame(ttk.Frame):
 class DirectorApp:
     def __init__(self, cfg: dict[str, Any]) -> None:
         self.cfg = cfg
+        from account_client import default_account
+        self.account = default_account()
         self.bus = LogBus()
         self.pro = pro_mod.ProDirector(cfg)
         self.decision_logger = dm.DecisionLogger(cfg)
@@ -3968,6 +3272,11 @@ class DirectorApp:
             value=bool(cfg.get("utility_cam_enabled", True)))
 
         self._build()
+        from training_data_runtime import TrainingDataRuntime
+        self.training_data = TrainingDataRuntime(csv_path=self.decision_logger.path, identity_provider=self.account.upload_identity, binding_provider=self.account.binding)
+        self.account.start()
+        self.pro.obs.authorization_gate = self.account
+        self.decision_logger.mature_sink = self.training_data.recorder.offer
         self._register_pause_hotkey()
         self._update_model_label()
         self._refresh_deps()
@@ -4173,9 +3482,10 @@ class DirectorApp:
             self.rule_tree.column(col, width=width, anchor="w")
         self.rule_tree.grid(row=2, column=0, sticky="ew", pady=(6, 0))
 
-        lf5 = ttk.LabelFrame(parent, text=" 决策模型（独立训练器） ", padding=8)
+        lf5 = ttk.LabelFrame(parent, text=" 决策模型（内置训练工作台） ", padding=8)
         lf5.grid(row=2, column=0, sticky="ew", pady=(6, 0))
-        ttk.Button(lf5, text="打开训练器…", command=self._open_trainer).pack(side="left")
+        ttk.Button(lf5, text="训练数据状态", command=lambda: messagebox.showinfo("训练数据与补传", self.training_data.summary(), parent=self.root)).pack(side="right")
+        ttk.Button(lf5, text="打开训练工作台…", command=self._open_trainer).pack(side="left")
         ttk.Button(lf5, text="重新加载模型", command=self._reload_model).pack(
             side="left", padx=6)
         ttk.Button(lf5, text="校准线上模型", command=self._calibrate_online).pack(
@@ -4338,20 +3648,11 @@ class DirectorApp:
             self.root.after(0, self._update_model_label)
 
     def _open_trainer(self) -> None:
-        base = Path(sys.executable).parent if getattr(sys, "frozen", False) \
-            else Path(__file__).parent
-        names = ("Yuzi_CS2_AIDecisionTrainer.exe", "CS2AIDecisionTrainer.exe")
-        exe = next((base / n for n in names if (base / n).is_file()), base / names[0])
-        script = base / "trainer_gui.py"
+        from trainer_launcher import open_trainer
         try:
-            if exe.is_file():
-                subprocess.Popen([str(exe)], cwd=str(base))
-            elif script.is_file():
-                subprocess.Popen([sys.executable, str(script)], cwd=str(base))
-            else:
-                messagebox.showerror("训练器", f"找不到训练器：\n{exe}\n{script}")
+            self._trainer_process = open_trainer(getattr(self, "_trainer_process", None))
         except Exception as e:
-            messagebox.showerror("训练器", str(e))
+            messagebox.showerror("训练工作台", f"无法启动内置训练工作台：{e}", parent=self.root)
 
     def _pro_connect(self) -> None:
         self._sync_pro_cfg()
@@ -4561,8 +3862,14 @@ class DirectorApp:
                  fg="#7f7769", font=("Segoe UI", 9, "bold")).pack(
             side="right", anchor="e", padx=(0, 4))
 
+        from account_ui import mount_account
+        account_host = ttk.Frame(outer)
+        account_host.grid(row=1,column=0,sticky="ew")
+        mount_account(account_host,self.account)
+        outer.rowconfigure(1,weight=0)
+        outer.rowconfigure(2,weight=1)
         body = ttk.Frame(outer, padding=10)
-        body.grid(row=1, column=0, sticky="nsew")
+        body.grid(row=2, column=0, sticky="nsew")
         body.columnconfigure(0, weight=1)
         body.rowconfigure(0, weight=1)
 
@@ -5137,6 +4444,9 @@ class DirectorApp:
     def _start(self) -> None:
         if self.engine is not None:
             return
+        if not self.account.allowed():
+            messagebox.showerror("账号或模型尚未就绪", self.account.status + "\n请登录并取得有效资格及正式模型后启动。", parent=self.root)
+            return
         cfg = self._collect_cfg()
         if not self._validate_cfg(cfg):
             return
@@ -5148,15 +4458,20 @@ class DirectorApp:
         self.cfg = cfg
         self._register_pause_hotkey()
         try:
-            engine = DirectorEngine(
-                cfg, self.bus, pro=self.pro,
-                decision_logger=self.decision_logger,
-                model_arbiter=self.model_arbiter,
-                timeline=self.timeline,
-            )
+            from offline_runtime import create_local_engine
+            if not self.account.acquire_execution():
+                messagebox.showerror("模型尚未就绪", "正式模型正在切换或已有导播占用，请稍后重试。", parent=self.root)
+                return
+            engine, _ = create_local_engine(self.account.session, self.account.tokens['account_id'], self.account.model.path,
+                cfg, self.bus, pro=self.pro, decision_logger=self.decision_logger, timeline=self.timeline)
+            # Cache-based account gate avoids credential/network IO in the input loop.
+            engine.authorization_gate = self.account
+            engine.input.authorization_gate = self.account
+            self.pro.obs.authorization_gate = self.account
             engine.start()
         except Exception as e:
             self.bus.error(f"启动失败：{type(e).__name__}: {e}")
+            self.account.release_execution()
             messagebox.showerror("启动失败", str(e))
             return
         self.engine = engine
@@ -5173,6 +4488,7 @@ class DirectorApp:
             self.bus.exception("停止导播时出现异常")
         self.engine = None
         self.btn_start.configure(state="normal")
+        self.account.release_execution()
         self.btn_stop.configure(state="disabled")
         self.lbl_conn.configure(text="GSI：未启动", foreground="#555555")
 
@@ -5419,6 +4735,11 @@ class DirectorApp:
             save_config(self._collect_cfg())
         except Exception:
             pass
+        if not self.training_data.close():
+            self._closing = False
+            messagebox.showerror("训练数据尚未落盘", self.training_data.status_text(), parent=self.root)
+            return
+        self.account.close()
         self.root.destroy()
 
     def run(self) -> None:
@@ -5460,6 +4781,24 @@ def print_env_report() -> None:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
+    import multiprocessing
+    multiprocessing.freeze_support()
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if "--account-check" in arguments:
+        from account_client import main as account_main
+        return account_main([a for a in arguments if a != "--account-check"])
+    if "--data-queue" in arguments:
+        from training_data_runtime import main as queue_main
+        return queue_main([a for a in arguments if a != "--data-queue"])
+    if "--offline-check" in arguments:
+        from offline_runtime import main as offline_main
+        return offline_main([a for a in arguments if a != "--offline-check"])
+    if "--trainer" in arguments:
+        # Same executable, separate process: training does not occupy the director UI/GIL.
+        from trainer_gui import main as trainer_main
+        sys.argv = [sys.argv[0]] + [a for a in arguments if a != "--trainer"]
+        trainer_main()
+        return 0
     parser = argparse.ArgumentParser(description=f"{APP_TITLE} v{VERSION}")
     parser.add_argument("--check", action="store_true", help="打印环境自检表后退出")
     parser.add_argument("--install-deps", action="store_true", help="安装缺失依赖后退出")

@@ -1,0 +1,618 @@
+{
+  "date": "2026-11-07 Asia/Shanghai",
+  "client_version": "1.11.0",
+  "status": "tasks7-10-local-accepted; task11-local-implemented-G4-unverified; task12-release-preparation-only",
+  "tests": {
+    "python_full": 248,
+    "dotnet_full": 452,
+    "http_delivery": 28,
+    "http_training": 14,
+    "http_fault_and_canary": 16,
+    "browser_checks": 40,
+    "browser_screenshots": 20,
+    "web_typecheck_build": "passed",
+    "admin_typecheck_build": "passed",
+    "schemas": 7,
+    "restore_tables": 31,
+    "restore_objects": 36
+  },
+  "packaged": {
+    "generic": {
+      "path": "D:\\AIdirector\\dist\\task912\\Yuzi_CS2_AIDirector.exe",
+      "sha256": "3531c77a8576bb30945c68fcc0a59572bf0af1d006e7c522e74a6889291682a6",
+      "bytes": 193190904
+    },
+    "localhost_QA": {
+      "path": "D:\\AIdirector\\dist\\task912-qa\\Yuzi_CS2_AIDirector.exe",
+      "sha256": "b64834067c7eab63bdacfcdbc66a433fcc117e802655416013d28535e8f64d4d",
+      "bytes": 193191166
+    }
+  },
+  "real_demo": {
+    "dataset_rows": 21983,
+    "independent_series": 12,
+    "model_sha256": "7e473d6921200deb1f39acdc4f146fa17c2bd63cb89530f8f03ea73926781c87",
+    "split_hash": "b6363afe480fc4851d2858eedbb66225a874f6dff7958a7b8f5e76c2c86e093a",
+    "dataset_hash": "56d17e64c590abff68708896e18f856d67b1a8644ee346bb66cfed22edbc8aff",
+    "comparison": {
+      "RandomForest": {
+        "cv_auc": 0.81093830666377,
+        "test_auc": 0.8043874494564497,
+        "top1": 0.5178571428571429,
+        "top1_groups": 392,
+        "nodes": 22252,
+        "params": {
+          "n_estimators": "120",
+          "min_samples_leaf": "10",
+          "max_features": "sqrt",
+          "max_depth": "8",
+          "class_weight": "balanced"
+        }
+      },
+      "ExtraTrees": {
+        "cv_auc": 0.8145428091787105,
+        "test_auc": 0.800442463210924,
+        "top1": 0.4923469387755102,
+        "top1_groups": 392,
+        "nodes": 17588,
+        "params": {
+          "n_estimators": "120",
+          "min_samples_leaf": "10",
+          "max_features": "sqrt",
+          "max_depth": "8",
+          "class_weight": "balanced"
+        }
+      }
+    },
+    "final_test": {
+      "auc": 0.801618200140361,
+      "top1": 0.47802197802197804,
+      "groups": 182,
+      "samples": 3949,
+      "selection_used": false
+    },
+    "candidate_status": "local-only; not auto-published",
+    "programme_coverage": "not measured without same-match GSI/programme timeline; AUC is not camera coverage",
+    "gsi_alignment": "not measured",
+    "default_scheduler": "legacy",
+    "source_limitations": [
+      "missing GSI fields explicitly marked",
+      "64tick time assumption",
+      "filename series conservatively used for isolation; verify event IDs before production dataset publication"
+    ]
+  },
+  "inference": {
+    "platform": "Windows local CPU; pure Python forest inference only, excludes GSI/OBS/input",
+    "samples": 2000,
+    "median_ms": 0.11860002996399999,
+    "p95_ms": 0.15169999096542597,
+    "max_ms": 0.6025999900884926,
+    "model_sha256": "7e473d6921200deb1f39acdc4f146fa17c2bd63cb89530f8f03ea73926781c87"
+  },
+  "not_verified": [
+    "same-match GSI/feature alignment",
+    "full programme coverage replay and live benefit G4",
+    "Linux Docker image build/cgroup execution",
+    "production clone upgrade, keys, rollout and restore"
+  ],
+  "production_deployed": false,
+  "feature_switches": "all production defaults false",
+  "evidence_root": "D:\\Yuzibei\\source\\local-data\\task912-accepted",
+  "delivery-checks": {
+    "passed": 28,
+    "checks": [
+      "ordinary account cannot register candidate",
+      "existing evaluated RF registered as candidate",
+      "unreviewed candidate cannot publish",
+      "publisher cannot bypass separate review permission",
+      "candidate structure vectors and evaluation reviewed",
+      "reviewer cannot publish models",
+      "channel publication CAS single winner",
+      "first login downloads signed approved model and obtains device lease",
+      "downloaded bytes match official artifact hash",
+      "C# manifest signature verifies in Python",
+      "authenticated model download supports bounded byte range",
+      "director owns model activation barrier",
+      "running director keeps immutable approved generation",
+      "stopped director activates verified pending model and matching lease",
+      "rollback creates higher release sequence",
+      "non-revoked older artifact can be selected by explicit higher-sequence rollback",
+      "revoked model cannot be republished",
+      "signed active revocation immediately stops local execution",
+      "tampered model manifest rejected",
+      "new reviewed model restores formal initialization after revocation",
+      "server retains exact received part progress",
+      "scoped automatic upload commits stable sample identities",
+      "lost final response replays identical immutable receipt",
+      "scoped receipt durably confirms original local batch",
+      "batch identity cannot be reused with changed hash",
+      "cross-account upload status is isolated",
+      "manual history import shares validated private intake",
+      "ordinary account cannot use admin manual intake"
+    ],
+    "model_id": "e6d54df8-aa5a-48f2-8544-1a193ff26f8c",
+    "model_sha256": "0b97cf5229433c5411b0b62fe7b8212f182df827bcdabcbd5e67026eeaeaae2f",
+    "batch_id": "8b777657-3bdc-4944-bff5-bcb42fa6d275"
+  },
+  "training-checks": {
+    "passed": 14,
+    "checks": [
+      "product user cannot control cloud training",
+      "12 synthetic match sources independently quality-reviewed",
+      "snapshot content immutable and selection order independent",
+      "job request replay does not duplicate training",
+      "queued job cancellation persists",
+      "worker claims queued frozen snapshot",
+      "expired worker is reclaimed with strictly newer fence",
+      "stale worker heartbeat rejected",
+      "actual worker process executed one task",
+      "actual worker model and final-test report accepted: ",
+      "worker output remains candidate with no automatic publish",
+      "fixed held-out final split excluded from candidate selection",
+      "classification report does not invent camera coverage benefit",
+      "deleting snapshot input prevents new dependent training"
+    ],
+    "snapshot": "283c2797-498b-446d-a9c3-66c7a3280659",
+    "job": "b6e61f79-b3c2-4b6f-bcdc-9dac24b03fa9",
+    "report": {
+      "algorithm": "RandomForest",
+      "auc": 1.0,
+      "comparison": {
+        "ExtraTrees": {
+          "cv_auc": 1.0,
+          "nodes": 30,
+          "params": {
+            "class_weight": "balanced",
+            "max_depth": "4",
+            "max_features": "sqrt",
+            "min_samples_leaf": "3",
+            "n_estimators": "10"
+          },
+          "test_auc": 1.0,
+          "top1": null,
+          "top1_groups": 0
+        },
+        "RandomForest": {
+          "cv_auc": 1.0,
+          "nodes": 30,
+          "params": {
+            "class_weight": "balanced",
+            "max_depth": "4",
+            "max_features": "sqrt",
+            "min_samples_leaf": "3",
+            "n_estimators": "10"
+          },
+          "test_auc": 1.0,
+          "top1": null,
+          "top1_groups": 0
+        }
+      },
+      "dataset_hash": "8ecf500ab356afb65971b1f7ae55ab53a702bf9d83fca9c106a235db5fade263",
+      "environment": {
+        "core": "0.1.0",
+        "python": "3.14.0",
+        "threads": 1
+      },
+      "executionCoverage": {
+        "available": false,
+        "reason": "needs full event/scheduler replay with fixed latency; classification AUC is insufficient"
+      },
+      "final_test": {
+        "auc": 1.0,
+        "groups": 0,
+        "samples": 96,
+        "selection_used": false,
+        "top1": null
+      },
+      "model_json_bytes": 356,
+      "model_nodes": 30,
+      "negative": 192,
+      "parserStats": [],
+      "partitions": {
+        "final_test": 96,
+        "train": 192,
+        "validation": 96
+      },
+      "positive": 192,
+      "samples": 384,
+      "selectionUsesFinal": false,
+      "snapshotHash": "22b2f509bf6b13db0d153a6b82483421b32853720fe9c993d42d660397c90b57",
+      "split_hash": "417a65ae153e43558eeccba5ecab4e28b89d3744f7bea66fe9c1efa1efb40f28",
+      "top1": null
+    }
+  },
+  "fault-checks": {
+    "passed": 16,
+    "checks": [
+      "restart restores signed model and DPAPI lease",
+      "resegmentation preserves sample identities and avoids duplicate samples",
+      "same source/sequence with changed row is rejected",
+      "incomplete upload cannot be confirmed",
+      "different device of same account cannot query original upload",
+      "receipt query refuses missing or corrupted confirmed data",
+      "immutable parts repair storage before returning original receipt",
+      "manual retry uses stable request identity",
+      "manual reused request with different bytes conflicts",
+      "publisher can scope reviewed candidate to one account",
+      "target device receives signed account-canary catalogue and lease",
+      "other account remains on stable model",
+      "other account cannot download unpublished canary",
+      "ending canary restores stable via newer signed catalogue",
+      "actual device model reports show validation timestamp",
+      "device bearer has no website admin authentication"
+    ]
+  },
+  "package-resume-queue": {
+    "stats": {
+      "records": 252,
+      "states": {
+        "confirmed": 1
+      },
+      "last_error": ""
+    },
+    "formal_model_sha256": "0b97cf5229433c5411b0b62fe7b8212f182df827bcdabcbd5e67026eeaeaae2f",
+    "exe_sha256": "b64834067c7eab63bdacfcdbc66a433fcc117e802655416013d28535e8f64d4d"
+  },
+  "recovery-checks": {
+    "status": "passed-local-clone-only",
+    "source_database": "yuzibei_concurrency_director6",
+    "restore_database": "yuzibei_concurrency_restore_f203b8090b",
+    "schema": "director6_d68a53f612e0472da8f7762b91650358",
+    "table_counts": {
+      "director_account_states": 2,
+      "director_cdk_batches": 0,
+      "director_cdks": 0,
+      "director_client_releases": 0,
+      "director_credentials": 4,
+      "director_data_batches": 14,
+      "director_dataset_snapshots": 1,
+      "director_demo_sources": 0,
+      "director_device_auth": 4,
+      "director_devices": 4,
+      "director_download_tickets": 8,
+      "director_grants": 2,
+      "director_identity_audit": 2,
+      "director_identity_commands": 2,
+      "director_ingested_samples": 1800,
+      "director_manual_import_commands": 14,
+      "director_model_releases": 8,
+      "director_model_rollout": 0,
+      "director_models": 5,
+      "director_quality_audits": 13,
+      "director_release_heads": 1,
+      "director_training_jobs": 1,
+      "director_upload_parts": 3,
+      "director_uploads": 4,
+      "permissions": 9,
+      "platform_migrations": 4,
+      "refresh_tokens": 27,
+      "role_permissions": 16,
+      "roles": 7,
+      "user_roles": 7,
+      "users": 9
+    },
+    "dump_sha256": "1c741e30eb13150390fb3a1e77de4afe9f2b86efb59a375c9f3c8bd728ddef5a",
+    "checks": [
+      "DB dump restored into a new isolated database",
+      "all table row counts preserved",
+      "016-019 applied twice without changing rows",
+      "private artifact and data copies verified byte for byte"
+    ],
+    "production_backup_rehearsal": false
+  },
+  "real-demo-cloud-checks": {
+    "sources": [
+      {
+        "parser": "demo-v2-live",
+        "sample_windows": 198,
+        "rows": 760,
+        "positive": 56,
+        "negative": 704,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "tickrate_assumption": 64,
+        "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+        "source_name": "2026-10-07_Spirit_vs_M80_Cache.dem",
+        "source_sha256": "2de04461d4413c9fb3ab293a69893b0dab302e4fa85b84e5083df4575f1d45e4",
+        "canonical_series_sha256": "fe0c9b4db65774d1dbad13da162b8d14e6308e598c725b4be021666e48c77a49"
+      },
+      {
+        "parser": "demo-v2-live",
+        "sample_windows": 219,
+        "rows": 598,
+        "positive": 59,
+        "negative": 539,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "tickrate_assumption": 64,
+        "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+        "source_name": "2026-10-03_G2_vs_Natus_Vincere_Inferno_m2398723.dem",
+        "source_sha256": "2c11ec50e28acf95863894cc1cd945ae3f8e214d1904044b4e67d76b43f99100",
+        "canonical_series_sha256": "9c5dacdf2b8a394a836b712a53539195997eabf4af18495afc5afad68ea47109"
+      },
+      {
+        "parser": "demo-v2-live",
+        "sample_windows": 285,
+        "rows": 1143,
+        "positive": 91,
+        "negative": 1052,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "tickrate_assumption": 64,
+        "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+        "source_name": "2026-10-03_Aurora_vs_9z_Mirage_m2398721.dem",
+        "source_sha256": "b50ebdc6248845ddffcfb3d3dcbd0f4a745f912fb1c5734b2732408be35382e1",
+        "canonical_series_sha256": "dd39c1a95e8eba592234db5fb6c83b2ec25ebc23bad4f5c7a5fdc1a8939e929d"
+      },
+      {
+        "parser": "demo-v2-live",
+        "sample_windows": 387,
+        "rows": 1575,
+        "positive": 101,
+        "negative": 1474,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "tickrate_assumption": 64,
+        "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+        "source_name": "2026-10-06_Falcons_vs_Natus_Vincere_Mirage_m2398745.dem",
+        "source_sha256": "07cc2048043417d5ab29cfcf0c4745299a6103d8680117e2cdf6d30e1c30ac03",
+        "canonical_series_sha256": "57b8b44525ddf7b4d112e6bef0d95c1f7047a5c92674c989c7d41d466b138f82"
+      },
+      {
+        "parser": "demo-v2-live",
+        "sample_windows": 395,
+        "rows": 1851,
+        "positive": 140,
+        "negative": 1711,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "tickrate_assumption": 64,
+        "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+        "source_name": "2026-10-04_ShindeN_vs_Legacy_Nuke_m2398726.dem",
+        "source_sha256": "6e0b2690b4baae4cce8778c6616c5481136ddc0f8a3c08b073e68d0ce6cecff3",
+        "canonical_series_sha256": "2d4e29c6ca5b73684cb75c083efa73660d56c7ac6d42523e9486574580247334"
+      },
+      {
+        "parser": "demo-v2-live",
+        "sample_windows": 339,
+        "rows": 1380,
+        "positive": 135,
+        "negative": 1245,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "tickrate_assumption": 64,
+        "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+        "source_name": "2026-10-09_1win_vs_Aurora_Anubis.dem",
+        "source_sha256": "b2817e60c228436e14aa1deb6c97f4c6494174cc566ab66ea63fa139e9d066e2",
+        "canonical_series_sha256": "754d06e6a3e2d42c9ef8207fa2ef74908715ac94415843d5303a23400343b0f0"
+      },
+      {
+        "parser": "demo-v2-live",
+        "sample_windows": 437,
+        "rows": 1586,
+        "positive": 92,
+        "negative": 1494,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "tickrate_assumption": 64,
+        "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+        "source_name": "2026-10-04_G2_vs_1win_Dust2.dem",
+        "source_sha256": "0711d17bd05290c879d1b36e56d6fa12a5bf507fda42c34d8eef40266f026c99",
+        "canonical_series_sha256": "380218a2adde17806181d12dfca2298a2e6be6e1902ec3f7321c207517ac0065"
+      },
+      {
+        "parser": "demo-v2-live",
+        "sample_windows": 546,
+        "rows": 2046,
+        "positive": 158,
+        "negative": 1888,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "tickrate_assumption": 64,
+        "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+        "source_name": "2026-10-04_9z_vs_TYLOO_Mirage.dem",
+        "source_sha256": "a3a1a9146588c9d236ddbecf59f97e1c9efedf466c3ce4c3f3ae14ce36ee3cae",
+        "canonical_series_sha256": "0e9d84a8e66c844b29859b30503a2f11556da75e5fa7a57c0b84ec96015cb087"
+      }
+    ],
+    "snapshot": "0f76011e-1760-4449-a4e8-8f886ab63461",
+    "job": {
+      "id": "76897941-6e72-4d68-b24d-032541f513c3",
+      "snapshotId": "0f76011e-1760-4449-a4e8-8f886ab63461",
+      "status": "succeeded",
+      "attempt": 1,
+      "fence": 1,
+      "progress": 100,
+      "cancelRequested": false,
+      "modelId": "bc4a00de-c1e2-4906-98ff-76d00c9425f5",
+      "errorCode": "",
+      "createdAt": "2026-11-06T23:21:32.404693Z",
+      "parameters": {
+        "requestId": "624e2c7f-0cf3-473a-8e6f-a307260b4d1f",
+        "snapshotId": "0f76011e-1760-4449-a4e8-8f886ab63461",
+        "parameters": {
+          "trees": 40,
+          "maxDepth": 8,
+          "seed": 42,
+          "maxSeconds": 300,
+          "maxMemoryMb": 2048
+        },
+        "baselineModelId": null
+      },
+      "report": {
+        "algorithm": "RandomForest",
+        "auc": 0.7782484810391788,
+        "comparison": {
+          "ExtraTrees": {
+            "cv_auc": 0.8059927027865815,
+            "nodes": 7578,
+            "params": {
+              "class_weight": "balanced",
+              "max_depth": "8",
+              "max_features": "0.5",
+              "min_samples_leaf": "10",
+              "n_estimators": "40"
+            },
+            "test_auc": 0.772049025769956,
+            "top1": 0.5232558139534884,
+            "top1_groups": 86
+          },
+          "RandomForest": {
+            "cv_auc": 0.8023105721121245,
+            "nodes": 5800,
+            "params": {
+              "class_weight": "balanced",
+              "max_depth": "8",
+              "max_features": "sqrt",
+              "min_samples_leaf": "10",
+              "n_estimators": "40"
+            },
+            "test_auc": 0.7782484810391788,
+            "top1": 0.5348837209302325,
+            "top1_groups": 86
+          }
+        },
+        "dataset_hash": "24a3def9f1833457df1871a97adb9c9a56fae15e19dd9f374297c1a1579d3b62",
+        "environment": {
+          "core": "0.1.0",
+          "python": "3.14.0",
+          "threads": 1
+        },
+        "executionCoverage": {
+          "available": false,
+          "reason": "needs full event/scheduler replay with fixed latency; classification AUC is insufficient"
+        },
+        "final_test": {
+          "auc": 0.8191397686627437,
+          "groups": 129,
+          "samples": 2806,
+          "selection_used": false,
+          "top1": 0.5348837209302325
+        },
+        "model_json_bytes": 100509,
+        "model_nodes": 5800,
+        "negative": 10107,
+        "parserStats": [
+          {
+            "horizon_ticks": 192,
+            "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+            "missing_windows": 0,
+            "negative": 1888,
+            "parser": "demo-v2-live",
+            "positive": 158,
+            "rows": 2046,
+            "sample_windows": 546,
+            "step_ticks": 128,
+            "tickrate_assumption": 64
+          },
+          {
+            "horizon_ticks": 192,
+            "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+            "missing_windows": 0,
+            "negative": 1711,
+            "parser": "demo-v2-live",
+            "positive": 140,
+            "rows": 1851,
+            "sample_windows": 395,
+            "step_ticks": 128,
+            "tickrate_assumption": 64
+          },
+          {
+            "horizon_ticks": 192,
+            "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+            "missing_windows": 0,
+            "negative": 1494,
+            "parser": "demo-v2-live",
+            "positive": 92,
+            "rows": 1586,
+            "sample_windows": 437,
+            "step_ticks": 128,
+            "tickrate_assumption": 64
+          },
+          {
+            "horizon_ticks": 192,
+            "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+            "missing_windows": 0,
+            "negative": 1474,
+            "parser": "demo-v2-live",
+            "positive": 101,
+            "rows": 1575,
+            "sample_windows": 387,
+            "step_ticks": 128,
+            "tickrate_assumption": 64
+          },
+          {
+            "horizon_ticks": 192,
+            "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+            "missing_windows": 0,
+            "negative": 1245,
+            "parser": "demo-v2-live",
+            "positive": 135,
+            "rows": 1380,
+            "sample_windows": 339,
+            "step_ticks": 128,
+            "tickrate_assumption": 64
+          },
+          {
+            "horizon_ticks": 192,
+            "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+            "missing_windows": 0,
+            "negative": 539,
+            "parser": "demo-v2-live",
+            "positive": 59,
+            "rows": 598,
+            "sample_windows": 219,
+            "step_ticks": 128,
+            "tickrate_assumption": 64
+          },
+          {
+            "horizon_ticks": 192,
+            "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+            "missing_windows": 0,
+            "negative": 1052,
+            "parser": "demo-v2-live",
+            "positive": 91,
+            "rows": 1143,
+            "sample_windows": 285,
+            "step_ticks": 128,
+            "tickrate_assumption": 64
+          },
+          {
+            "horizon_ticks": 192,
+            "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+            "missing_windows": 0,
+            "negative": 704,
+            "parser": "demo-v2-live",
+            "positive": 56,
+            "rows": 760,
+            "sample_windows": 198,
+            "step_ticks": 128,
+            "tickrate_assumption": 64
+          }
+        ],
+        "partitions": {
+          "final_test": 2806,
+          "train": 6392,
+          "validation": 1741
+        },
+        "positive": 832,
+        "samples": 10939,
+        "selectionUsesFinal": false,
+        "snapshotHash": "b4d948e94dc337eb5200d91e9c8c9b88ef99e46b5b6269ebb9ecf76a3772a21c",
+        "split_hash": "7672ba9b719a601e30d99db128307f00c78870fa958093e75599ef2e6fb597f7",
+        "top1": 0.5348837209302325
+      }
+    },
+    "elapsed_seconds": 32.37916020001285,
+    "default_scheduler": "legacy",
+    "published": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-07",
+  "main_repository": "https://github.com/YuGaN525/cs2-ai-director",
+  "old_repository": "https://github.com/YuGaN525/cs2-ai-decision-trainer",
+  "trainer_source_commit": "5dde4ddaf58954d2dc91b8605e69351264a7e383",
+  "backup_path": "D:\\Yuzibei\\review-notes\\cs2-platform-20261106\\migration-backup-20261107",
+  "git_bundle_sha256": "976d1549780b860857dedbc8b725fd908940458f15700930d831895d4a23857c",
+  "complete_history_verified": true,
+  "git_refs_including_HEAD": 13,
+  "release_asset_count": 11,
+  "release_asset_bytes": 1979838789,
+  "asset_hash_manifest_sha256": "564b1e90a06e84849cd51ba14e16068bc49f6944b4a060fbd618481b3f8579d1",
+  "issues_and_pull_metadata_backed_up": true,
+  "wiki_enabled": false,
+  "discussions_enabled": false,
+  "lfs_files": 0,
+  "local_old_directory_preserved": true,
+  "main_upload": "pending exact commit verification",
+  "old_remote_deleted": false,
+  "production_deployed": false
+}

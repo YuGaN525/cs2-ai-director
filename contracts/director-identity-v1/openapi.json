@@ -1,0 +1,1047 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Director device identity and offline lease",
+    "version": "director-device-v1"
+  },
+  "paths": {
+    "/api/director/device-auth/start": {
+      "post": {
+        "operationId": "post_director_device-auth_start",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "publicKey": {
+                    "type": "string"
+                  },
+                  "deviceName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "publicKey",
+                  "deviceName"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/device-auth/token": {
+      "post": {
+        "operationId": "post_director_device-auth_token",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "deviceCode": {
+                    "type": "string"
+                  },
+                  "proof": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "deviceCode",
+                  "proof"
+                ]
+              }
+            }
+          }
+        },
+        "x-raw-error-values": [
+          "authorization_pending",
+          "slow_down",
+          "access_denied",
+          "expired_token"
+        ]
+      }
+    },
+    "/api/director/token/refresh": {
+      "post": {
+        "operationId": "post_director_token_refresh",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "type": "string"
+                  },
+                  "proof": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "refreshToken",
+                  "proof"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/device-auth/preview": {
+      "post": {
+        "operationId": "post_director_device-auth_preview",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userCode": {
+                    "type": "string"
+                  },
+                  "approve": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "userCode",
+                  "approve"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/device-auth/approve": {
+      "post": {
+        "operationId": "post_director_device-auth_approve",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userCode": {
+                    "type": "string"
+                  },
+                  "approve": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "userCode",
+                  "approve"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/me/entitlement": {
+      "get": {
+        "operationId": "get_director_me_entitlement",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          },
+          {
+            "DeviceBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        }
+      }
+    },
+    "/api/director/me/devices": {
+      "get": {
+        "operationId": "get_director_me_devices",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          },
+          {
+            "DeviceBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        }
+      }
+    },
+    "/api/director/me/devices/{id}": {
+      "delete": {
+        "operationId": "delete_director_me_devices_id",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/director/me/cdk/redeem": {
+      "post": {
+        "operationId": "post_director_me_cdk_redeem",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "code": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "code"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/logout": {
+      "post": {
+        "operationId": "post_director_logout",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "DeviceBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/me/lease": {
+      "post": {
+        "operationId": "post_director_me_lease",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "DeviceBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "data": {
+                      "$ref": "./lease.schema.json"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "modelSha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "proof": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "modelSha256",
+                  "proof"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/director/accounts": {
+      "get": {
+        "operationId": "get_admin_director_accounts",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-required-current-permission": "director:license;visible-and-editable-module-or-superadmin"
+      }
+    },
+    "/api/admin/director/accounts/{id}/grants": {
+      "post": {
+        "operationId": "post_admin_director_accounts_id_grants",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "expectedVersion": {
+                    "type": "integer"
+                  },
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endsAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "expectedVersion",
+                  "startsAt"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "x-required-current-permission": "director:license;visible-and-editable-module-or-superadmin"
+      }
+    },
+    "/api/admin/director/accounts/{id}/grants/{grant}/revoke": {
+      "post": {
+        "operationId": "post_admin_director_accounts_id_grants_grant_revoke",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "expectedVersion": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "grant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "x-required-current-permission": "director:license;visible-and-editable-module-or-superadmin"
+      }
+    },
+    "/api/admin/director/accounts/{id}/state": {
+      "post": {
+        "operationId": "post_admin_director_accounts_id_state",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "expectedVersion": {
+                    "type": "integer"
+                  },
+                  "disabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "x-required-current-permission": "director:license;visible-and-editable-module-or-superadmin"
+      }
+    },
+    "/api/admin/director/cdk-batches": {
+      "get": {
+        "operationId": "get_admin_director_cdk-batches",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "x-required-current-permission": "director:license;visible-and-editable-module-or-superadmin"
+      },
+      "post": {
+        "operationId": "post_admin_director_cdk-batches",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500
+                  },
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650
+                  },
+                  "expiresAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "label",
+                  "count",
+                  "days",
+                  "expiresAt"
+                ]
+              }
+            }
+          }
+        },
+        "x-required-current-permission": "director:license;visible-and-editable-module-or-superadmin"
+      }
+    },
+    "/api/admin/director/cdk-batches/{id}/state": {
+      "post": {
+        "operationId": "post_admin_director_cdk-batches_id_state",
+        "x-implementation-status": "implemented-local-not-deployed",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "success"
+          },
+          "400": {
+            "description": "invalid request or device poll error"
+          },
+          "401": {
+            "description": "reauthentication required"
+          },
+          "403": {
+            "description": "permission or product eligibility denied"
+          },
+          "409": {
+            "description": "version/idempotency conflict"
+          },
+          "429": {
+            "description": "rate limited; client backs off"
+          },
+          "503": {
+            "description": "service/trust/model unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "expectedVersion": {
+                    "type": "integer"
+                  },
+                  "disabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "x-required-current-permission": "director:license;visible-and-editable-module-or-superadmin"
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "WebsiteBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Existing website JWT. Never store in desktop; browser confirms device."
+      },
+      "DeviceBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Opaque d1_ token; explicit director endpoints only, no website/admin roles."
+      }
+    }
+  }
+}

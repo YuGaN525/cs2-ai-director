@@ -1,0 +1,417 @@
+[
+  {
+    "at": 0,
+    "gsi": {
+      "provider": {
+        "steamid": "observer",
+        "name": "obs"
+      },
+      "map": {
+        "name": "de_mirage",
+        "round": 1,
+        "phase": "live",
+        "team_ct": {
+          "score": 0
+        },
+        "team_t": {
+          "score": 0
+        }
+      },
+      "round": {
+        "phase": "live"
+      },
+      "phase_countdowns": {
+        "phase": "live"
+      },
+      "player": {
+        "steamid": "observer",
+        "observer_slot": 8
+      },
+      "allplayers": {
+        "sid0": {
+          "name": "P0",
+          "observer_slot": 0,
+          "team": "CT",
+          "position": "0, 0, 0",
+          "forward": "1, 0, 0",
+          "state": {
+            "health": 100,
+            "armor": 100,
+            "helmet": true,
+            "flashed": 0,
+            "defusing": false,
+            "round_kills": 0,
+            "round_totaldmg": 0,
+            "money": 0
+          },
+          "weapons": {
+            "weapon_0": {
+              "name": "weapon_ak47",
+              "type": "Rifle",
+              "state": "active",
+              "ammo_clip": 30
+            }
+          }
+        },
+        "sid1": {
+          "name": "P1",
+          "observer_slot": 1,
+          "team": "T",
+          "position": "300, 0, 0",
+          "forward": "-1, 0, 0",
+          "state": {
+            "health": 30,
+            "armor": 100,
+            "helmet": true,
+            "flashed": 0,
+            "defusing": false,
+            "round_kills": 0,
+            "round_totaldmg": 0,
+            "money": 0
+          },
+          "weapons": {
+            "weapon_0": {
+              "name": "weapon_ak47",
+              "type": "Rifle",
+              "state": "active",
+              "ammo_clip": 30
+            }
+          }
+        }
+      },
+      "bomb": null
+    }
+  },
+  {
+    "at": 0.1,
+    "gsi": {
+      "provider": {
+        "steamid": "observer",
+        "name": "obs"
+      },
+      "map": {
+        "name": "de_mirage",
+        "round": 1,
+        "phase": "live",
+        "team_ct": {
+          "score": 0
+        },
+        "team_t": {
+          "score": 0
+        }
+      },
+      "round": {
+        "phase": "live"
+      },
+      "phase_countdowns": {
+        "phase": "live"
+      },
+      "player": {
+        "steamid": "observer",
+        "observer_slot": 8
+      },
+      "allplayers": {
+        "sid0": {
+          "name": "P0",
+          "observer_slot": 0,
+          "team": "CT",
+          "position": "0, 0, 0",
+          "forward": "1, 0, 0",
+          "state": {
+            "health": 100,
+            "armor": 100,
+            "helmet": true,
+            "flashed": 0,
+            "defusing": false,
+            "round_kills": 0,
+            "round_totaldmg": 0,
+            "money": 0
+          },
+          "weapons": {
+            "weapon_0": {
+              "name": "weapon_ak47",
+              "type": "Rifle",
+              "state": "active",
+              "ammo_clip": 30
+            }
+          }
+        },
+        "sid1": {
+          "name": "P1",
+          "observer_slot": 1,
+          "team": "T",
+          "position": "300, 0, 0",
+          "forward": "-1, 0, 0",
+          "state": {
+            "health": 30,
+            "armor": 100,
+            "helmet": true,
+            "flashed": 0,
+            "defusing": false,
+            "round_kills": 0,
+            "round_totaldmg": 0,
+            "money": 0
+          },
+          "weapons": {
+            "weapon_0": {
+              "name": "weapon_ak47",
+              "type": "Rifle",
+              "state": "active",
+              "ammo_clip": 30
+            }
+          }
+        }
+      },
+      "bomb": null
+    }
+  },
+  {
+    "at": 2,
+    "gsi": {
+      "provider": {
+        "steamid": "observer",
+        "name": "obs"
+      },
+      "map": {
+        "name": "de_mirage",
+        "round": 1,
+        "phase": "live",
+        "team_ct": {
+          "score": 0
+        },
+        "team_t": {
+          "score": 0
+        }
+      },
+      "round": {
+        "phase": "live"
+      },
+      "phase_countdowns": {
+        "phase": "live"
+      },
+      "player": {
+        "steamid": "observer",
+        "observer_slot": 8
+      },
+      "allplayers": {
+        "sid0": {
+          "name": "P0",
+          "observer_slot": 0,
+          "team": "CT",
+          "position": "0, 0, 0",
+          "forward": "1, 0, 0",
+          "state": {
+            "health": 100,
+            "armor": 100,
+            "helmet": true,
+            "flashed": 0,
+            "defusing": false,
+            "round_kills": 0,
+            "round_totaldmg": 0,
+            "money": 0
+          },
+          "weapons": {
+            "weapon_0": {
+              "name": "weapon_ak47",
+              "type": "Rifle",
+              "state": "active",
+              "ammo_clip": 30
+            }
+          }
+        },
+        "sid1": {
+          "name": "P1",
+          "observer_slot": 1,
+          "team": "T",
+          "position": "300, 0, 0",
+          "forward": "-1, 0, 0",
+          "state": {
+            "health": 30,
+            "armor": 100,
+            "helmet": true,
+            "flashed": 0,
+            "defusing": false,
+            "round_kills": 0,
+            "round_totaldmg": 0,
+            "money": 0
+          },
+          "weapons": {
+            "weapon_0": {
+              "name": "weapon_ak47",
+              "type": "Rifle",
+              "state": "active",
+              "ammo_clip": 30
+            }
+          }
+        }
+      },
+      "bomb": null
+    }
+  },
+  {
+    "at": 5,
+    "gsi": {
+      "provider": {
+        "steamid": "observer",
+        "name": "obs"
+      },
+      "map": {
+        "name": "de_mirage",
+        "round": 1,
+        "phase": "live",
+        "team_ct": {
+          "score": 0
+        },
+        "team_t": {
+          "score": 0
+        }
+      },
+      "round": {
+        "phase": "live"
+      },
+      "phase_countdowns": {
+        "phase": "live"
+      },
+      "player": {
+        "steamid": "observer",
+        "observer_slot": 8
+      },
+      "allplayers": {
+        "sid0": {
+          "name": "P0",
+          "observer_slot": 0,
+          "team": "CT",
+          "position": "0, 0, 0",
+          "forward": "1, 0, 0",
+          "state": {
+            "health": 100,
+            "armor": 100,
+            "helmet": true,
+            "flashed": 0,
+            "defusing": false,
+            "round_kills": 0,
+            "round_totaldmg": 0,
+            "money": 0
+          },
+          "weapons": {
+            "weapon_0": {
+              "name": "weapon_ak47",
+              "type": "Rifle",
+              "state": "active",
+              "ammo_clip": 30
+            }
+          }
+        },
+        "sid1": {
+          "name": "P1",
+          "observer_slot": 1,
+          "team": "T",
+          "position": "300, 0, 0",
+          "forward": "-1, 0, 0",
+          "state": {
+            "health": 30,
+            "armor": 100,
+            "helmet": true,
+            "flashed": 0,
+            "defusing": false,
+            "round_kills": 0,
+            "round_totaldmg": 0,
+            "money": 0
+          },
+          "weapons": {
+            "weapon_0": {
+              "name": "weapon_ak47",
+              "type": "Rifle",
+              "state": "active",
+              "ammo_clip": 30
+            }
+          }
+        }
+      },
+      "bomb": null
+    }
+  },
+  {
+    "at": 8,
+    "gsi": {
+      "provider": {
+        "steamid": "observer",
+        "name": "obs"
+      },
+      "map": {
+        "name": "de_mirage",
+        "round": 1,
+        "phase": "live",
+        "team_ct": {
+          "score": 0
+        },
+        "team_t": {
+          "score": 0
+        }
+      },
+      "round": {
+        "phase": "live"
+      },
+      "phase_countdowns": {
+        "phase": "live"
+      },
+      "player": {
+        "steamid": "observer",
+        "observer_slot": 8
+      },
+      "allplayers": {
+        "sid0": {
+          "name": "P0",
+          "observer_slot": 0,
+          "team": "CT",
+          "position": "0, 0, 0",
+          "forward": "1, 0, 0",
+          "state": {
+            "health": 100,
+            "armor": 100,
+            "helmet": true,
+            "flashed": 0,
+            "defusing": false,
+            "round_kills": 0,
+            "round_totaldmg": 0,
+            "money": 0
+          },
+          "weapons": {
+            "weapon_0": {
+              "name": "weapon_ak47",
+              "type": "Rifle",
+              "state": "active",
+              "ammo_clip": 30
+            }
+          }
+        },
+        "sid1": {
+          "name": "P1",
+          "observer_slot": 1,
+          "team": "T",
+          "position": "300, 0, 0",
+          "forward": "-1, 0, 0",
+          "state": {
+            "health": 30,
+            "armor": 100,
+            "helmet": true,
+            "flashed": 0,
+            "defusing": false,
+            "round_kills": 0,
+            "round_totaldmg": 0,
+            "money": 0
+          },
+          "weapons": {
+            "weapon_0": {
+              "name": "weapon_ak47",
+              "type": "Rifle",
+              "state": "active",
+              "ammo_clip": 30
+            }
+          }
+        }
+      },
+      "bomb": null
+    }
+  }
+]

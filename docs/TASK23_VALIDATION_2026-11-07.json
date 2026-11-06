@@ -1,0 +1,103 @@
+{
+  "date": "2026-11-07 Asia/Shanghai",
+  "status": "local-accepted",
+  "baseline_head": "ad3d32648370fc578f4495a032e541c94a81f30f",
+  "tests": {
+    "baseline": 146,
+    "main_suite": 180,
+    "lookahead": 4,
+    "added_model_boundary_test": 1,
+    "total_distinct": 185,
+    "result": "passed",
+    "last_code_changes_rechecked": {
+      "ai_artifact_atomic_publish": 11,
+      "identity_signature_types": 34,
+      "model_boundaries": 1
+    }
+  },
+  "replay": "7bc54e4e407d175dee7162cad8462298c578d5508379a3d2c51750f0b3c00524",
+  "isolated_wheel_import": "passed",
+  "windows_dpapi": "actual-roundtrip-and-tamper-passed",
+  "packaged_smoke": {
+    "training_samples": 252,
+    "split_hash": "8bc028e0601458a7e09b1876846a52ba646f69dd015ceb3dff43709100f4baf4",
+    "final_test_reserved": true,
+    "offline": {
+      "ready": {
+        "exit_code": 0,
+        "allowed": true,
+        "expires_at": 1794590108.4517727,
+        "reason": "offline_ready",
+        "remaining_seconds": 604795.074911356
+      },
+      "expired": {
+        "exit_code": 1,
+        "allowed": false,
+        "expires_at": 1793985307.4517727,
+        "reason": "offline_expired",
+        "remaining_seconds": 0
+      },
+      "corrupt": {
+        "exit_code": 1,
+        "allowed": false,
+        "expires_at": 0,
+        "reason": "login_missing_or_invalid",
+        "remaining_seconds": 0
+      }
+    }
+  },
+  "artifacts": {
+    "dist/task23/Yuzi_CS2_AIDirector.exe": {
+      "bytes": 193115003,
+      "sha256": "eba90ec9c0c321357943844f9c4bb4d8ef8d575cc0d9353ce2ac3d446e654f7f"
+    },
+    "dist/task23/yuzi_director_core-0.1.0-py3-none-any.whl": {
+      "bytes": 15835,
+      "sha256": "1427a1c34ae789ca68a568461f1bba34682d7b4cf265833f1f0cec6bc7c6bcd4"
+    }
+  },
+  "protected_website_files_unchanged": {
+    "D:\\Yuzibei\\source\\yuzi-web\\src\\views\\UniversityVerificationView.vue": true,
+    "D:\\Yuzibei\\source\\doc\\后台管理不可用-静态资源404-2026-11-02.md": true
+  },
+  "scope": "Tasks2/3 local portion only; standard GUI remains legacy until real identity adapter is connected",
+  "not_executed": [
+    "SRV-01",
+    "SRV-02",
+    "real website login/renewal",
+    "automatic upload queue",
+    "Linux worker",
+    "real match quality evaluation",
+    "git commit/push",
+    "remote repository deletion",
+    "deployment"
+  ],
+  "source_sha256": {
+    "ai_trainer.py": "1526b5e401d421172edabf97754050deca96174303d4bc39c085a3e132acb964",
+    "backup_bundle.py": "9548504d213897306dd50e9a68f5820dc634314cc2a49e2951ee86e714fc2bde",
+    "build_plan_docx.py": "c2d04cfc6ec777cf76ea26d9d4273a5a14288dbbf8d1e126f025ae1cfa84f785",
+    "cs2_ai_director.py": "6685a322645b5577df8ea298b5498467dd5bc97d89678041929af9eed2296fa9",
+    "decision_calibration.py": "3e1c7ad904de770ebc771b4c9c1eb3289f3e63f0db87c1900d4078239affc795",
+    "decision_model.py": "2656b2f5013f94b8d521c5417464385690aee63db24c560a8823047b0fe4f774",
+    "demo_dataset.py": "1b710e62bd09f5b2831d87de89022195b64ba6ff9a5b601c3e3c4f6dbbe672de",
+    "device_identity.py": "af51157af72d4de312db811b8c8c5d99ad7b740ce955db62deff6d89ca0a198e",
+    "director_narrative.py": "26e95a709d49df4b065d9a86b7c3933bf82facc7c27765108148d611579e61c0",
+    "director_pro.py": "e9dbb971803c35ec753dba8ae408a150478f21fa3e6b508e808e13c8ed560fcd",
+    "director_story.py": "4be403feb802ef0e970167ccd218d867892343264d5ea86461931677235e0d32",
+    "offline_runtime.py": "fd7789c0ddecbc6cc6d6c13c5edc5f6c6f0458b1813ac230eaf2dc146da3df79",
+    "test_ai_trainer.py": "9b6318414409565b8c8dc2bf092af1858d02ed2bc1febcdc3461a09c5dcd2b82",
+    "test_cs2_ai_director.py": "83337b410d129cb08b8e54f4ee271c38c2be6baed8a8496f72d12ce5ebd6dba0",
+    "test_task23.py": "54717850f7f384fcb4fa68ae2e89f46aad9b23828eb14926651ad03b3a32860f",
+    "test_trainer_integration.py": "9d98b185db920962b7af3d8707863ed5980ff69c72810232cba08c00e1905328",
+    "trainer_gui.py": "e622a8d8fefadf6d03053fb58067d297d8b8587b9a32808e465041bde83d5f58",
+    "trainer_launcher.py": "7a752c54c1ab2803e9bdafe4b73b64e0d4c228eec1d532a3d9d2994c4eaf5d0a",
+    "training_splits.py": "e8aac4c4ef5ebd30d5690690394a923f29f7981600d04d8bdef5faf1a506a1b6",
+    "train_decision_model.py": "21d784d5f89b5e4b315d1dbcf0fe09486c16e2e9c2fb65af2f66794d405233bd",
+    "train_from_demos.py": "a7e749bf7d1eb9e9bfbbee356902d81b01afb63cf264ae93490f74031eb08cba",
+    "director_core\\config.py": "990ccccc5e89ce28e68b107b660dd24e8e6266ca37a8e152e92e4562af00e83a",
+    "director_core\\legacy.py": "e735232c4183fd6b0e964125a00982eb04b6d9a7a39033da89c07a17db74aab5",
+    "director_core\\model_format.py": "bbb62a1279c21c60bc9246d6ba8a45eb7b098172b6711e2fea2124ad323747c0",
+    "director_core\\replay.py": "6b6b654da74f2fe6b78b485f39f992888fa4e0b9506a6e17d39ce358bba1333a",
+    "director_core\\__init__.py": "6536ea98a5475c241b32a49a3a0bc870ada6cd006540169ab7310ba4bd061d7c"
+  }
+}

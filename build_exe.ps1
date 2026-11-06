@@ -1,26 +1,16 @@
-# Build a single Windows executable for CS2 AI Director.
-# Usage: powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
-
+# Build the unified director and trainer executable. The optional file is public trust only.
+param([string]$PublicTrustConfig = "")
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
-
-python -m pip install --upgrade pyinstaller
-python -m PyInstaller `
-  --noconfirm --clean --onefile --windowed `
-  --name Yuzi_CS2_AIDirector `
-  --icon "assets\yuzi.ico" `
-  --add-data "assets;assets" `
-  --hidden-import obsws_python `
-  --hidden-import websocket `
-  --collect-submodules obsws_python `
-  --exclude-module sklearn `
-  --exclude-module joblib `
-  --exclude-module demoparser2 `
-  --exclude-module pandas `
-  --exclude-module matplotlib `
-  cs2_ai_director.py
-
+if ($PublicTrustConfig) {
+    $env:DIRECTOR_PUBLIC_TRUST_CONFIG = (Resolve-Path -LiteralPath $PublicTrustConfig).Path
+} else {
+    Remove-Item Env:DIRECTOR_PUBLIC_TRUST_CONFIG -ErrorAction SilentlyContinue
+}
+python -m pip install -r requirements.txt -r requirements-train.txt pyinstaller
+if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed" }
+python -m PyInstaller --noconfirm --clean Yuzi_CS2_AIDirector.spec
+if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 $exe = Join-Path $PSScriptRoot "dist\Yuzi_CS2_AIDirector.exe"
-if (!(Test-Path $exe)) { throw "Build failed: $exe not found" }
-Write-Host ""
+if (!(Test-Path -LiteralPath $exe)) { throw "Build output missing" }
 Write-Host "Built: $exe"
