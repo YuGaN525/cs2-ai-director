@@ -1,5 +1,5 @@
 """Only public, pinned trust information can enter a client release."""
-import base64,json,re
+import base64,json,re,hashlib,sys
 from pathlib import Path
 from device_identity import server_origin
 
@@ -18,3 +18,29 @@ def read_public_trust(path):
             if not isinstance(raw,str) or not re.fullmatch('[A-Za-z0-9_-]{1,64}',key) or len(base64.b64decode(raw,validate=True))!=32:raise ValueError('Invalid public Ed25519 key')
     if set(value['trusted_public_keys'].values())&set(value['trusted_model_keys'].values()):raise ValueError('Identity/model signing keys must be separated')
     return value
+
+
+def runtime_trust_path():
+    """Use the same pinned source for account setup and diagnostic reports."""
+    if not getattr(sys, 'frozen', False):
+        return Path(__file__).parent/'identity-server.json'
+    external = Path(sys.executable).parent/'identity-server.json'
+    # An invalid explicit override must fail closed, not fall back silently.
+    return external if external.exists() else Path(sys._MEIPASS)/'identity-server.json'
+
+
+def public_trust_status():
+    """Allowlisted local diagnostics; no account data or private paths."""
+    path = runtime_trust_path()
+    if not path.exists():
+        return {'state': 'missing'}
+    try:
+        value = read_public_trust(path)
+    except (ValueError, OSError):
+        return {'state': 'invalid'}
+    normalized = json.dumps(value, sort_keys=True, separators=(',', ':')).encode('utf-8')
+    return {'state': 'configured', 'server_origin': value['server_origin'],
+            'configuration_sha256': hashlib.sha256(normalized).hexdigest(),
+            'identity_key_ids': sorted(value['trusted_public_keys']),
+            'model_key_ids': sorted(value['trusted_model_keys']),
+            'formal_model_approval_verified': False}

@@ -1,3 +1,4 @@
+from desktop_ui import schedule
 """Small shared account panel, using the existing Tk theme."""
 import threading
 from tkinter import ttk
@@ -14,6 +15,6 @@ def mount_account(parent,account):
     def poll():
         if not frame.winfo_exists():return
         label.configure(text=account.status)
-        frame.after(500,poll)
-    frame.after(500,poll)
+        schedule(frame,500,poll)
+    schedule(frame,500,poll)
     return frame

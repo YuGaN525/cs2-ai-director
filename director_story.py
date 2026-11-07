@@ -31,6 +31,7 @@ manual_takeover     人工裸 0-9 接管次数（另记录 GSI 确认次数）
 from __future__ import annotations
 
 import csv
+import io
 import json
 import os
 import statistics
@@ -642,8 +643,11 @@ class ShotTimeline:
     """
 
     def __init__(self, cfg: dict[str, Any], base_dir: Optional[Path] = None,
-                 log_fn: Optional[Callable[[str], None]] = None) -> None:
+                 log_fn: Optional[Callable[[str], None]] = None,
+                 async_writes: bool = False) -> None:
         self.cfg = cfg
+        self._writer = None
+        self._async_writes = async_writes
         self.enabled = bool(cfg.get("shot_timeline_enabled", True))
         self._log_fn = log_fn or (lambda _msg: None)
         if base_dir is None:
@@ -706,6 +710,20 @@ class ShotTimeline:
             except Exception as e:
                 self._log(f"镜头时间线初始化失败（已禁用落盘）：{type(e).__name__}: {e}")
 
+        if self.enabled and self._async_writes:
+            from ordered_writer import OrderedWriter
+            self._writer = OrderedWriter()
+
+    def persistence_status(self):
+        return self._writer.stats() if self._writer else {'error': 'write_failed' if self._write_error_logged else '', 'buffered': 0}
+
+    def _persist(self, operation):
+        if self._writer is None:
+            operation()
+        elif not self._writer.offer(operation):
+            self._write_error_logged = True
+            self._log('镜头记录缓冲已满或停止，本条未接收；请查看诊断计数')
+
     # ---- 基础 ----
     def _log(self, msg: str) -> None:
         try:
@@ -722,13 +740,27 @@ class ShotTimeline:
                     row: dict[str, Any]) -> None:
         if not self.enabled:
             return
+        buffer = io.StringIO(newline='')
+        csv.DictWriter(buffer, fieldnames=list(columns)).writerow(dict(row))
+        encoded = buffer.getvalue().encode('utf-8')
+        offset = None
+        def write():
+            nonlocal offset
+            if offset is None:
+                offset = path.stat().st_size
+            # Retry from the original row boundary after a partial disk write.
+            # Only this ordered writer owns these files during the session.
+            with path.open('r+b') as stream:
+                stream.seek(offset)
+                stream.truncate()
+                stream.write(encoded)
+                stream.flush()
+                os.fsync(stream.fileno())
         try:
-            with path.open("a", newline="", encoding="utf-8-sig") as f:
-                csv.DictWriter(f, fieldnames=columns).writerow(row)
-        except Exception as e:
-            if not self._write_error_logged:
-                self._write_error_logged = True
-                self._log(f"镜头数据写入失败：{type(e).__name__}: {e}")
+            self._persist(write)
+        except Exception as error:
+            self._write_error_logged = True
+            self._log(f'镜头记录写入失败：{type(error).__name__}')
 
     def _write_event(self, event: str, slot: Optional[int] = None,
                      other_slot: Optional[int] = None, value: Any = "",
@@ -762,6 +794,8 @@ class ShotTimeline:
 
     # ---- 回合生命周期 ----
     def start(self, now: float) -> None:
+        if self._writer:
+            self._writer.start()
         with self._lock:
             self._current = None
             self._round_key = ""
@@ -1338,11 +1372,13 @@ class ShotTimeline:
                 "summary": str(self.summary_path),
             },
         }
-        try:
-            tmp = self.summary_path.with_suffix(".json.tmp")
-            tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2),
-                           encoding="utf-8")
+        encoded = json.dumps(data, ensure_ascii=False, indent=2)
+        def write():
+            tmp = self.summary_path.with_suffix('.json.tmp')
+            tmp.write_text(encoded, encoding='utf-8')
             tmp.replace(self.summary_path)
+        try:
+            self._persist(write)
         except Exception as e:
             if not self._write_error_logged:
                 self._write_error_logged = True
@@ -1398,15 +1434,18 @@ class ShotTimeline:
             self._history_rounds = 0
 
     # ---- 生命周期 ----
-    def close(self, now: float, reason: str = "导播停止") -> None:
+    def close(self, now: float, reason: str = "导播停止") -> bool:
+        if self._writer and not self._writer.accepting:
+            self._writer.start()
         with self._lock:
             if not self.enabled:
-                return
+                return True
             if self._current is not None:
                 self._close(now, reason)
             if not self._finalized and self._round_key:
                 self._finalize(now, completed=False)
             self._write_summary()
+        return self._writer.close() if self._writer else not self._write_error_logged
 
     def status(self, now: Optional[float] = None) -> dict[str, Any]:
         now = time.monotonic() if now is None else now

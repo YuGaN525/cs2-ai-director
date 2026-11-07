@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestId",
+    "expectedVersion",
+    "granted",
+    "unlimited",
+    "paused",
+    "reason"
+  ],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "expectedVersion": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "granted": {
+      "type": "string",
+      "pattern": "^[0-9]{1,12}(\\.[0-9]{1,8})?$"
+    },
+    "unlimited": {
+      "type": "boolean"
+    },
+    "paused": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    }
+  }
+}

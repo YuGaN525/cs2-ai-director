@@ -5,7 +5,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "cs2_exe": "",
     "gsi_port": 3000,
     "window_title": "Counter-Strike 2",
-    # ---- HLAE 快捷键（必须由用户在 GUI 录入，留空则禁止启动，避免误按）----
+    # hlae_* 是早期误命名的兼容键；当前实际主适配目标是 MulNX，不改旧配置字段。
+    # ---- MulNX 快捷键（必须由用户在 GUI 录入，留空则禁止启动，避免误按）----
     # 出生点分 CT/T：按上一回合胜方选择。
     "hlae_spawn_ct_key": "",
     "hlae_spawn_t_key": "",
@@ -17,7 +18,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "hlae_round_key": "",
     "hlae_bomb_key": "",
     # 触发方式：single=按一次；double=连按两次（《星火杯导播快捷键指南》的
-    # alt+按键 交互中，HLAE 宏的 comboClick 为 2）。
+    # alt+按键 交互中，MulNX 宏的 comboClick 为 2）。
     "hlae_spawn_ct_mode": "double",
     "hlae_spawn_t_mode": "double",
     "hlae_round_mode": "double",  # 旧版兼容
@@ -36,10 +37,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     # 至少保持 200ms；默认 0.30s 留出轮询/帧回调余量。
     "hotkey_modifier_hold_after": 0.30,
     # ---- DeepSeek 仲裁（可选）----
-    "ai_enabled": True,
+    "ai_enabled": False,
+    "arbitration_mode": "off",
     "deepseek_api_key": "",
     "deepseek_base_url": "https://api.deepseek.com",
-    "deepseek_model": "deepseek-chat",
+    "deepseek_model": "deepseek-flash",
     "ai_timeout": 2.5,          # 单次请求超时（秒），超时立即降级到规则引擎
     "ai_min_interval": 3.0,     # 两次 API 调用最小间隔，控制成本
     "ai_max_per_minute": 12,

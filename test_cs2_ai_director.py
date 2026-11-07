@@ -88,7 +88,7 @@ class TestBranding(unittest.TestCase):
     def test_brand_names(self):
         self.assertEqual(d.APP_TITLE, "Yuzi_CS2_AIDirector")
         self.assertEqual(d.APP_SUBTITLE, "CS2 AI 专业导播")
-        self.assertTrue(d.VERSION.startswith("1.11."))
+        self.assertTrue(d.VERSION.startswith("1.13."))
 
     def test_brand_assets_exist(self):
         self.assertTrue(d.asset_path("yuzi.ico").is_file())
@@ -412,39 +412,11 @@ class TestAI(unittest.TestCase):
         self.assertIsNone(slot)
         self.assertEqual(arb.errors, 1)
 
-    def test_timeout_does_not_retry(self):
-        """超时只发一次请求，避免双倍等待与潜在重复计费。"""
-        cfg = dict(d.DEFAULT_CONFIG)
-        cfg["deepseek_api_key"] = "sk-test"
-        arb = d.AIArbiter(cfg, d.LogBus())
-        calls = []
-
-        def boom(*args, **kwargs):
-            calls.append(1)
-            raise TimeoutError("timed out")
-
-        arb._request_chat = boom  # type: ignore[assignment]
-        slot, _ = arb._ask("prompt", {1, 2})
-        self.assertIsNone(slot)
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(arb.errors, 1)
-
-    def test_format_error_retries_once(self):
-        cfg = dict(d.DEFAULT_CONFIG)
-        cfg["deepseek_api_key"] = "sk-test"
-        arb = d.AIArbiter(cfg, d.LogBus())
-        calls = []
-
-        def flaky(model, prompt, json_mode):
-            calls.append(json_mode)
-            if len(calls) == 1:
-                raise RuntimeError("response_format is not supported")
-            return '{"slot": 2, "reason": "test"}'
-
-        arb._request_chat = flaky  # type: ignore[assignment]
-        slot, _ = arb._ask("prompt", {1, 2})
-        self.assertEqual(slot, 2)
-        self.assertEqual(calls, [True, False])
+    def test_legacy_prompt_entry_cannot_call_provider(self):
+        arb = d.AIArbiter(dict(d.DEFAULT_CONFIG,deepseek_api_key='synthetic'),d.LogBus())
+        arb._request_chat = lambda *args, **kwargs: self.fail('Old API entry must not call network')
+        self.assertIsNone(arb._ask('prompt',{1})[0])
+        self.assertFalse(arb.enabled)
 
     def test_prompt_mentions_candidates(self):
         snap = snapshot(players=[
@@ -1274,7 +1246,7 @@ class TestConfigPersistence(unittest.TestCase):
                 loaded = d.load_config()
                 self.assertEqual(loaded["gsi_port"], 3123)
                 self.assertEqual(loaded["hlae_round_key"], "f8")
-                self.assertEqual(loaded["deepseek_api_key"], "sk-test")
+                self.assertEqual(loaded["deepseek_api_key"], "")
                 # 旧配置缺少的键会被默认值补齐
                 loaded.pop("switch_margin", None)
                 d.save_config(loaded)

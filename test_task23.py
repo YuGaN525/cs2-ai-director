@@ -223,6 +223,23 @@ class IdentityTests(unittest.TestCase):
         self.assertEqual(self.check().reason,'offline_expired')
         self.advance(1); self.assertFalse(self.check().allowed)
 
+    def test_small_verified_server_clock_lead_waits_without_extending_expiry(self):
+        envelope=self.lease(verified_at=self.now+0.9,offline_expires_at=self.now+604800)
+        def advance_sleep(seconds):self.now+=seconds
+        with mock.patch.object(identity.time,'sleep',side_effect=advance_sleep) as sleep:
+            self.session.install_verified_lease(envelope,'account-a')
+        sleep.assert_called_once()
+        self.assertEqual(self.session._read(self.session.path)['envelope'],envelope)
+        self.assertTrue(self.check().allowed)
+
+    def test_large_or_stationary_clock_skew_stays_rejected(self):
+        with mock.patch.object(identity.time,'sleep') as sleep:
+            with self.assertRaises(identity.IdentityError):
+                self.session.install_verified_lease(self.lease(verified_at=self.now+30),'account-a')
+            sleep.assert_not_called()
+            with self.assertRaises(identity.IdentityError):
+                self.session.install_verified_lease(self.lease(verified_at=self.now+0.9),'account-a')
+
     def test_reboot_does_not_extend_expired_lease(self):
         self.install(); self.advance(604801); self.session=self.new_session()
         self.assertFalse(self.check().allowed)

@@ -1,0 +1,877 @@
+{
+  "schema": 1,
+  "runtime_keys": [
+    {
+      "key": "ai_ambiguity_margin",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 0.08,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "ai_enabled",
+      "group": "模型/训练",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "ai_max_per_minute",
+      "group": "模型/训练",
+      "type": "int",
+      "default": 12,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "ai_min_interval",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 3.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "ai_result_ttl",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 2.5,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "ai_timeout",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 2.5,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "aim_fov_deg",
+      "group": "导播运行",
+      "type": "float",
+      "default": 70.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "auto_focus",
+      "group": "导播运行",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "bomb_cam_countdown",
+      "group": "运镜",
+      "type": "float",
+      "default": 8.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "bomb_cam_grace",
+      "group": "运镜",
+      "type": "float",
+      "default": 1.5,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "bomb_cam_policy",
+      "group": "运镜",
+      "type": "str",
+      "default": "pov_first",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "bomb_site_refs",
+      "group": "运镜",
+      "type": "dict",
+      "default": {
+        "de_mirage": {
+          "A": [
+            -461,
+            -2194
+          ],
+          "B": [
+            -2080,
+            254
+          ]
+        },
+        "de_inferno": {
+          "A": [
+            2055,
+            440
+          ],
+          "B": [
+            389,
+            2792
+          ]
+        },
+        "de_dust2": {
+          "A": [
+            1132,
+            2499
+          ],
+          "B": [
+            -1545,
+            2688
+          ]
+        },
+        "de_anubis": {
+          "A": [
+            1350,
+            2200
+          ],
+          "B": [
+            -1079,
+            667
+          ]
+        },
+        "de_ancient": {
+          "A": [
+            -1430,
+            846
+          ],
+          "B": [
+            774,
+            75
+          ]
+        },
+        "de_cache": {
+          "A": [
+            -286,
+            1806
+          ],
+          "B": [
+            -47,
+            -1247
+          ]
+        },
+        "de_nuke": {
+          "A": [
+            326,
+            -319,
+            -30
+          ],
+          "B": [
+            352,
+            -572,
+            -731
+          ]
+        }
+      },
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "cs2_exe",
+      "group": "导播运行",
+      "type": "str",
+      "default": "",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_calibration_after_match_only",
+      "group": "模型/训练",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_calibration_enabled",
+      "group": "模型/训练",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_calibration_min_samples",
+      "group": "模型/训练",
+      "type": "int",
+      "default": 500,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_label_window",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 3.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_log_enabled",
+      "group": "模型/训练",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_log_interval",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 1.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_model_calibrated_min_prob",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 0.16,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_model_calibrated_prob_margin",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 0.02,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_model_enabled",
+      "group": "模型/训练",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_model_margin",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 0.08,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_model_min_factor",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 0.9,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_model_min_prob",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 0.55,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "decision_model_prob_margin",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 0.05,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "deepseek_api_key",
+      "group": "模型/训练",
+      "type": "str",
+      "default": "[secret omitted]",
+      "effective": "停止后应用/下次启动",
+      "secret": true
+    },
+    {
+      "key": "deepseek_base_url",
+      "group": "模型/训练",
+      "type": "str",
+      "default": "https://api.deepseek.com",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "deepseek_model",
+      "group": "模型/训练",
+      "type": "str",
+      "default": "deepseek-chat",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "demo_model_blend",
+      "group": "模型/训练",
+      "type": "float",
+      "default": 0.25,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "demo_model_enabled",
+      "group": "模型/训练",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "demo_model_min_samples",
+      "group": "模型/训练",
+      "type": "int",
+      "default": 20,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "dry_run",
+      "group": "导播运行",
+      "type": "bool",
+      "default": false,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "economy_equip_force",
+      "group": "导播运行",
+      "type": "float",
+      "default": 0.8,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "economy_equip_full",
+      "group": "导播运行",
+      "type": "float",
+      "default": 1.5,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "economy_force_avg",
+      "group": "导播运行",
+      "type": "float",
+      "default": 2000.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "economy_full_avg",
+      "group": "导播运行",
+      "type": "float",
+      "default": 3500.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "emergency_score",
+      "group": "导播运行",
+      "type": "float",
+      "default": 0.72,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "engage_range",
+      "group": "导播运行",
+      "type": "float",
+      "default": 1500.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "event_actions_enabled",
+      "group": "OBS/事件",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "event_rules",
+      "group": "OBS/事件",
+      "type": "list",
+      "default": [],
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "fight_lock_aim",
+      "group": "导播运行",
+      "type": "float",
+      "default": 0.6,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "fight_lock_enabled",
+      "group": "导播运行",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "gsi_port",
+      "group": "导播运行",
+      "type": "int",
+      "default": 3000,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "gsi_stale_seconds",
+      "group": "导播运行",
+      "type": "float",
+      "default": 3.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hard_min_switch_interval",
+      "group": "导播运行",
+      "type": "float",
+      "default": 0.2,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_bomb_a_key",
+      "group": "运镜",
+      "type": "str",
+      "default": "",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_bomb_a_mode",
+      "group": "运镜",
+      "type": "str",
+      "default": "double",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_bomb_b_key",
+      "group": "运镜",
+      "type": "str",
+      "default": "",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_bomb_b_mode",
+      "group": "运镜",
+      "type": "str",
+      "default": "double",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_bomb_key",
+      "group": "运镜",
+      "type": "str",
+      "default": "",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_bomb_mode",
+      "group": "运镜",
+      "type": "str",
+      "default": "double",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_round_key",
+      "group": "运镜",
+      "type": "str",
+      "default": "",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_round_mode",
+      "group": "运镜",
+      "type": "str",
+      "default": "double",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_spawn_ct_key",
+      "group": "运镜",
+      "type": "str",
+      "default": "",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_spawn_ct_mode",
+      "group": "运镜",
+      "type": "str",
+      "default": "double",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_spawn_t_key",
+      "group": "运镜",
+      "type": "str",
+      "default": "",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hlae_spawn_t_mode",
+      "group": "运镜",
+      "type": "str",
+      "default": "double",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hotkey_double_interval",
+      "group": "运镜",
+      "type": "float",
+      "default": 0.08,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hotkey_modifier_hold_after",
+      "group": "运镜",
+      "type": "float",
+      "default": 0.3,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hotkey_modifier_lead",
+      "group": "运镜",
+      "type": "float",
+      "default": 0.08,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hotkey_modifier_release_delay",
+      "group": "运镜",
+      "type": "float",
+      "default": 0.05,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "hotkey_press_hold",
+      "group": "运镜",
+      "type": "float",
+      "default": 0.03,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "loop_hz",
+      "group": "导播运行",
+      "type": "int",
+      "default": 20,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "manual_pause_seconds",
+      "group": "导播运行",
+      "type": "float",
+      "default": 10.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "match_point_score",
+      "group": "导播运行",
+      "type": "int",
+      "default": 12,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "max_cuts_per_10s",
+      "group": "导播运行",
+      "type": "int",
+      "default": 3,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "max_vertical_diff",
+      "group": "导播运行",
+      "type": "float",
+      "default": 300.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "metric_engagement_gap",
+      "group": "导播运行",
+      "type": "float",
+      "default": 3.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "metric_kill_lookback",
+      "group": "导播运行",
+      "type": "float",
+      "default": 2.5,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "metric_min_live_seconds",
+      "group": "导播运行",
+      "type": "float",
+      "default": 5.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "metric_prefight_lookback",
+      "group": "导播运行",
+      "type": "float",
+      "default": 2.5,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "min_dwell_seconds",
+      "group": "导播运行",
+      "type": "float",
+      "default": 1.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "min_shot_duration",
+      "group": "导播运行",
+      "type": "float",
+      "default": 2.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "narrative_enabled",
+      "group": "导播运行",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "obs_host",
+      "group": "OBS/事件",
+      "type": "str",
+      "default": "127.0.0.1",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "obs_narrative_enabled",
+      "group": "OBS/事件",
+      "type": "bool",
+      "default": false,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "obs_narrative_source",
+      "group": "OBS/事件",
+      "type": "str",
+      "default": "",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "obs_password",
+      "group": "OBS/事件",
+      "type": "str",
+      "default": "[secret omitted]",
+      "effective": "停止后应用/下次启动",
+      "secret": true
+    },
+    {
+      "key": "obs_port",
+      "group": "OBS/事件",
+      "type": "int",
+      "default": 4455,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "pause_hotkey",
+      "group": "OBS/事件",
+      "type": "str",
+      "default": "ctrl+alt+p",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "repeat_guard_seconds",
+      "group": "导播运行",
+      "type": "float",
+      "default": 4.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "self_press_guard",
+      "group": "导播运行",
+      "type": "float",
+      "default": 0.3,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "shot_timeline_dir",
+      "group": "导播运行",
+      "type": "str",
+      "default": "",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "shot_timeline_enabled",
+      "group": "导播运行",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "spawn_cam_default_side",
+      "group": "运镜",
+      "type": "str",
+      "default": "CT",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "story_engage_recent_seconds",
+      "group": "导播运行",
+      "type": "float",
+      "default": 3.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "story_opening_seconds",
+      "group": "导播运行",
+      "type": "float",
+      "default": 12.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "switch_margin",
+      "group": "导播运行",
+      "type": "float",
+      "default": 0.1,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "switch_min_score",
+      "group": "导播运行",
+      "type": "float",
+      "default": 0.3,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "trigger_retry_seconds",
+      "group": "导播运行",
+      "type": "float",
+      "default": 1.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "utility_cam_enabled",
+      "group": "导播运行",
+      "type": "bool",
+      "default": true,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "utility_cam_fight_lookback",
+      "group": "导播运行",
+      "type": "float",
+      "default": 2.5,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "utility_cam_max_per_round",
+      "group": "导播运行",
+      "type": "int",
+      "default": 4,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "utility_cam_min_interval",
+      "group": "导播运行",
+      "type": "float",
+      "default": 3.0,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "utility_cam_post_hold",
+      "group": "导播运行",
+      "type": "float",
+      "default": 0.35,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "utility_cam_pre_buffer",
+      "group": "导播运行",
+      "type": "float",
+      "default": 0.35,
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "utility_cam_types",
+      "group": "导播运行",
+      "type": "list",
+      "default": [
+        "weapon_smokegrenade",
+        "weapon_flashbang",
+        "weapon_molotov",
+        "weapon_incgrenade",
+        "weapon_hegrenade"
+      ],
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    },
+    {
+      "key": "window_title",
+      "group": "导播运行",
+      "type": "str",
+      "default": "Counter-Strike 2",
+      "effective": "停止后应用/下次启动",
+      "secret": false
+    }
+  ],
+  "ui_preferences_separate": true
+}

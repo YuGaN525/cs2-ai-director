@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "sessionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "roundKey": {
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "pending",
+        "unknown",
+        "settled",
+        "released"
+      ]
+    },
+    "slot": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 10
+    },
+    "charge": {
+      "type": "string",
+      "pattern": "^\\d{1,12}\\.\\d{8}$"
+    },
+    "policyVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "code": {
+      "type": "string",
+      "maxLength": 64
+    }
+  },
+  "required": [
+    "requestId",
+    "sessionId",
+    "generation",
+    "roundKey",
+    "state",
+    "slot",
+    "charge",
+    "policyVersion",
+    "code"
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "sessionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "generation": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "roundKey": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_.:-]{1,64}$"
+    },
+    "map": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_]{1,48}$"
+    },
+    "policyVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "slot": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "features": {
+            "type": "array",
+            "minItems": 8,
+            "maxItems": 8,
+            "items": {
+              "type": "number",
+              "minimum": -1000000,
+              "maximum": 1000000
+            }
+          }
+        },
+        "required": [
+          "slot",
+          "features"
+        ]
+      }
+    }
+  },
+  "required": [
+    "requestId",
+    "sessionId",
+    "generation",
+    "roundKey",
+    "map",
+    "policyVersion",
+    "candidates"
+  ]
+}

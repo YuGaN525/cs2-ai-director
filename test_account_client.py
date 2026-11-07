@@ -38,6 +38,32 @@ class AccountClientTests(unittest.TestCase):
         envelope={'payload':p,'signature':b64(self.signer.sign(PURPOSE+canonical(p)))}
         self.account.session.install_verified_lease(envelope,self.tokens()['account_id']);self.account.check_local()
 
+    def test_status_reason_distinguishes_pending_revoked_and_expired(self):
+        self.account.pending={'user_code':'fixture'}
+        self.assertEqual(self.account.status_snapshot()['reason_code'],'login_pending')
+        self.account.pending=None
+        self.install()
+        self.now+=604800
+        self.account.check_local()
+        self.assertEqual(self.account.status_snapshot()['reason_code'],'lease_expired')
+        self.now+=1
+        self.install()
+        self.client.call.return_value={'enabled':False}
+        self.account.sync_once()
+        self.assertEqual(self.account.status_snapshot()['reason_code'],'revoked')
+
+    def test_status_snapshot_does_not_read_credentials_or_call_network(self):
+        self.install()
+        with mock.patch.object(self.account.session,'_read',side_effect=AssertionError('disk')):
+            self.assertEqual(self.account.status_snapshot()['reason_code'],'ready')
+        self.client.call.assert_not_called()
+
+    def test_status_immediate_clock_rollback_and_model_change(self):
+        self.install();self.now-=10
+        self.assertEqual(self.account.status_snapshot()['reason_code'],'clock_rollback')
+        self.now+=10;self.path.write_bytes(b'tampered')
+        self.assertEqual(self.account.status_snapshot()['reason_code'],'model_changed')
+
     def test_empty_session_denies_and_unbound_capture_stays_local(self):
         self.assertFalse(self.account.allowed());self.assertEqual(self.account.binding().origin,'local')
         self.assertIsNone(self.account.upload_identity())

@@ -48,8 +48,25 @@ class IntegrationTests(unittest.TestCase):
             TrainerApp._on_close(app)
         app.root.destroy.assert_not_called()
         app._training = False
+        app._closing = False
         TrainerApp._on_close(app)
+        app.root.destroy.assert_not_called()
+        key, work, done = app.tasks.submit.call_args.args
+        self.assertEqual(key, 'close')
+        done(work(), None)
         app.root.destroy.assert_called_once()
+
+    def test_close_failure_retains_window_and_allows_retry(self):
+        from trainer_gui import TrainerApp
+        app = mock.Mock(_training=False, _calibrating=False, _closing=False)
+        app.training_data.close.return_value = False
+        TrainerApp._on_close(app)
+        _, work, done = app.tasks.submit.call_args.args
+        with mock.patch('trainer_gui.messagebox.showerror'):
+            done(work(), None)
+        app.root.destroy.assert_not_called()
+        app.account.close.assert_not_called()
+        self.assertFalse(app._closing)
 
 
 if __name__ == "__main__":

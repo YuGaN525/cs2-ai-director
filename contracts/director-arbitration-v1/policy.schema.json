@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "configured": {
+      "type": "boolean"
+    },
+    "model": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "inputPerMillion": {
+      "type": "string",
+      "pattern": "^\\d{1,12}\\.\\d{8}$"
+    },
+    "cachedInputPerMillion": {
+      "type": "string",
+      "pattern": "^\\d{1,12}\\.\\d{8}$"
+    },
+    "outputPerMillion": {
+      "type": "string",
+      "pattern": "^\\d{1,12}\\.\\d{8}$"
+    }
+  },
+  "required": [
+    "version",
+    "enabled",
+    "configured",
+    "model",
+    "inputPerMillion",
+    "cachedInputPerMillion",
+    "outputPerMillion"
+  ]
+}

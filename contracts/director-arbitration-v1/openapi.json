@@ -1,0 +1,1241 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Yuzi Director optional arbitration",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/director/arbitration/policy": {
+      "get": {
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "policy.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        }
+      }
+    },
+    "/api/director/arbitration/device-budget": {
+      "get": {
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "budget.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        }
+      }
+    },
+    "/api/director/arbitration/requests": {
+      "post": {
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "receipt.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "request.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/arbitration/requests/{request}": {
+      "get": {
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "receipt.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        },
+        "parameters": [
+          {
+            "name": "request",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/director/arbitration/requests/{request}/observation": {
+      "post": {
+        "security": [
+          {
+            "device": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {}
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "observation.schema.json"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "request",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/director/arbitration/budget": {
+      "get": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "budget.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        }
+      }
+    },
+    "/api/director/arbitration/budget/history": {
+      "get": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {}
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-arbitration/policy": {
+      "get": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "policy.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "policy.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "policy-change.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/director-arbitration/pending": {
+      "get": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {}
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        }
+      }
+    },
+    "/api/admin/director-arbitration/summary": {
+      "get": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {}
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        }
+      }
+    },
+    "/api/admin/director-arbitration/requests/{row}/reconcile": {
+      "post": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "receipt.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "reconcile.schema.json"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "row",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-arbitration/requests/{row}/correct": {
+      "post": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "receipt.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "correction.schema.json"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "row",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-arbitration/budgets": {
+      "get": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "budget.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        },
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-arbitration/budgets/{account}": {
+      "post": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "budget.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "budget-change.schema.json"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-arbitration/budgets/{account}/history": {
+      "get": {
+        "security": [
+          {
+            "website": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse success; data follows schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$schema": "https://json-schema.org/draft/2020-12/schema",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {}
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "401": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "403": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "404": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "409": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "422": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "429": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          },
+          "503": {
+            "description": "Fail closed; see README recovery matrix. Never blindly retry a paid POST."
+          }
+        },
+        "parameters": [
+          {
+            "name": "account",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "device": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Existing DirectorDevice credential, not website JWT"
+      },
+      "website": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

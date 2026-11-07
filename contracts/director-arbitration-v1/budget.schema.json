@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "accountId",
+    "uid",
+    "currency",
+    "unlimited",
+    "paused",
+    "granted",
+    "consumed",
+    "reserved",
+    "available",
+    "version",
+    "platformState"
+  ],
+  "properties": {
+    "accountId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "uid": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "currency": {
+      "const": "CNY"
+    },
+    "unlimited": {
+      "type": "boolean"
+    },
+    "paused": {
+      "type": "boolean"
+    },
+    "granted": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,11})\\.[0-9]{8}$"
+    },
+    "consumed": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,11})\\.[0-9]{8}$"
+    },
+    "reserved": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,11})\\.[0-9]{8}$"
+    },
+    "available": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,11})\\.[0-9]{8}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "platformState": {
+      "enum": [
+        "provider_unconfigured",
+        "provider_paused",
+        "available"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "unlimited": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "available": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "available": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,11})\\.[0-9]{8}$"
+          }
+        }
+      }
+    }
+  ]
+}

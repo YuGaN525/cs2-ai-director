@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import copy
 import queue
 import threading
 import time
@@ -445,6 +446,9 @@ class EventActionEngine:
         self.obs = obs
         self.log = log
         self._queue: queue.Queue[Optional[dict[str, Any]]] = queue.Queue(maxsize=100)
+        self._stop_event = threading.Event()
+        self._generation = 0
+        self._dispatch_lock = threading.Lock()
         self._worker = threading.Thread(target=self._run, name="event-actions",
                                         daemon=True)
         self._worker.start()
@@ -454,7 +458,7 @@ class EventActionEngine:
         return [r for r in rules if isinstance(r, dict)] if isinstance(rules, list) else []
 
     def dispatch(self, events: list[GsiEvent]) -> None:
-        if not bool(self.cfg.get("event_actions_enabled", True)):
+        if self._stop_event.is_set() or not bool(self.cfg.get("event_actions_enabled", True)):
             return
         for ev in events:
             matched = [
@@ -465,14 +469,30 @@ class EventActionEngine:
                 continue
             self.log.info("EventAction", f"事件触发：{ev.label}，命中 {len(matched)} 条规则")
             for rule in matched:
-                try:
-                    self._queue.put_nowait(rule)
-                except queue.Full:
-                    self.log.warning("EventAction", "动作队列已满，丢弃规则")
+                self.enqueue(rule)
+
+    def enqueue(self, rule):
+        with self._dispatch_lock:
+            if self._stop_event.is_set():
+                return False
+            request = copy.deepcopy(rule)
+            request['_generation'] = self._generation
+            request['_created'] = time.monotonic()
+            try:
+                self._queue.put_nowait(request)
+                return True
+            except queue.Full:
+                self.log.warning('EventAction', '动作队列已满，本次请求未接收')
+                return False
 
     def _run(self) -> None:
-        while True:
-            rule = self._queue.get()
+        while not self._stop_event.is_set():
+            try:
+                rule = self._queue.get(timeout=.1)
+            except queue.Empty:
+                continue
+            if self._stop_event.is_set():
+                return
             if rule is None:
                 return
             try:
@@ -483,13 +503,20 @@ class EventActionEngine:
     def execute(self, rule: dict[str, Any]) -> None:
         name = str(rule.get("name", "未命名"))
         for action in rule.get("actions", []):
+            if self._stop_event.is_set() or rule.get('_generation', self._generation) != self._generation:
+                return
+            if time.monotonic()-rule.get('_created', time.monotonic()) > 2.5:
+                self.log.warning('EventAction', '已取消过期事件动作')
+                return
             if not isinstance(action, dict):
                 continue
             typ = str(action.get("type", ""))
             target = str(action.get("target", "") or "")
             label = ACTION_LABELS.get(typ, typ)
             try:
-                if typ == "play_media":
+                if typ == 'set_text':
+                    ok = self.obs.set_text(target, str(action.get('text', '')))
+                elif typ == "play_media":
                     ok = self.obs.media_action(target, "restart")
                 elif typ == "stop_media":
                     ok = self.obs.media_action(target, "stop")
@@ -507,11 +534,20 @@ class EventActionEngine:
             except Exception as e:
                 self.log.error("EventAction", f"规则「{name}」动作「{label}」失败：{e}")
 
+    def cancel_pending(self) -> None:
+        with self._dispatch_lock:
+            self._generation += 1
+            while True:
+                try:
+                    self._queue.get_nowait()
+                except queue.Empty:
+                    break
+
     def stop(self) -> None:
-        try:
-            self._queue.put_nowait(None)
-        except queue.Full:
-            pass
+        self._stop_event.set()
+        self.cancel_pending()
+        if threading.current_thread() is not self._worker:
+            self._worker.join(timeout=2)
 
 
 # --------------------------------------------------------------------------
@@ -549,6 +585,7 @@ class ProDirector:
             self.actions.dispatch(events)
 
     def reset(self) -> None:
+        self.actions.cancel_pending()
         self.detector = EventDetector()
         self.last_events = []
         self._last_phase = ""

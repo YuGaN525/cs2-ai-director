@@ -6,14 +6,14 @@ CS2 AI 导播（CS2 AI Director）
 
 一个只依赖 GSI（Game State Integration）数据的 CS2 观战导播：
   1) 自动把观战视角切到“未来几秒最可能造成击杀”的选手第一视角；
-  2) 回合进入 freezetime 时触发 HLAE 出生点运镜宏（每回合一次）；
-  3) 炸弹即将爆炸（countdown <= 8s）时触发 HLAE 包点运镜宏（每次安放一次）；
+  2) 回合进入 freezetime 时触发 MulNX 出生点运镜宏（每回合一次）；
+  3) 炸弹即将爆炸（countdown <= 8s）时触发 MulNX 包点运镜宏（每次安放一次）；
   4) 提供 tkinter GUI：检测/选择 cs2.exe、一键安装 GSI 配置、录入快捷键与 API Key。
 
 硬性边界（代码里也反复强调）：
   * 只读取 GSI 的 HTTP 推送，不读内存、不注入、不发送游戏控制台命令；
-  * 对游戏的全部“动作”只有两类：模拟 0-9 数字键、模拟两个用户录入的 HLAE 宏快捷键；
-  * 不直接与 HLAE 通信。
+  * 对游戏的全部“动作”只有两类：模拟 0-9 数字键、模拟两个用户录入的 MulNX 宏快捷键；
+  * 不直接与 MulNX 通信。
 
 运行：
     python cs2_ai_director.py
@@ -42,6 +42,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from desktop_ui import schedule
 from typing import Any, Callable, Optional
 
 # --------------------------------------------------------------------------
@@ -70,7 +71,7 @@ DIGITS = "0123456789"
 
 
 def is_admin() -> bool:
-    """当前进程是否管理员；UIPI 会拦截对提升权限 CS2/HLAE 的模拟按键。"""
+    """当前进程是否管理员；UIPI 会拦截对提升权限 CS2/MulNX 的模拟按键。"""
     if not IS_WINDOWS:
         return False
     try:
@@ -173,6 +174,12 @@ def load_config() -> dict[str, Any]:
     """读取本地 JSON，与默认配置合并（旧版本缺的键自动补默认值）。"""
     cfg = copy.deepcopy(DEFAULT_CONFIG)
     path = config_path()
+    from arbitration_runtime import PersonalKeyStore, migrate_config
+    try:
+        migrate_config(path, PersonalKeyStore(app_data_dir()))
+    except Exception:
+        # Keep the source recoverable; never enable a key whose migration failed.
+        pass
     if path.is_file():
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
@@ -216,12 +223,17 @@ def load_config() -> dict[str, Any]:
         if not str(cfg.get("hlae_bomb_b_key") or "").strip():
             cfg["hlae_bomb_b_key"] = legacy_key
             cfg["hlae_bomb_b_mode"] = str(cfg.get("hlae_bomb_mode") or "double")
+    cfg['deepseek_api_key'] = ''
+    cfg['ai_enabled'] = False
+    cfg['arbitration_mode'] = 'off'
     return cfg
 
 
 def save_config(cfg: dict[str, Any]) -> None:
-    """只保存已知的键，保持 JSON 可读；API Key 为明文，见 README 说明。"""
-    data = {k: cfg.get(k, DEFAULT_CONFIG[k]) for k in DEFAULT_CONFIG}
+    """Persist ordinary preferences; paid arbitration always needs explicit re-enabling."""
+    from arbitration_runtime import sanitize_config, migrate_config, PersonalKeyStore
+    migrate_config(config_path(), PersonalKeyStore(app_data_dir()))
+    data = sanitize_config({k: cfg.get(k, DEFAULT_CONFIG[k]) for k in DEFAULT_CONFIG})
     tmp = config_path().with_suffix(".json.tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(config_path())
@@ -279,7 +291,7 @@ class LogBus:
 DEPENDENCY_SPECS = (
     # (import 名, pip 包名, 用途, 是否必需)
     ("pydirectinput", "pydirectinput", "向 DirectX 游戏模拟数字键", True),
-    ("keyboard", "keyboard", "全局热键监听 / HLAE 组合键", True),
+    ("keyboard", "keyboard", "全局热键监听 / MulNX 组合键", True),
     ("pygetwindow", "pygetwindow", "查找并激活 CS2 窗口", True),
     ("openai", "openai", "DeepSeek 仲裁（可选）", False),
 )
@@ -406,155 +418,7 @@ from director_core.legacy import (
 )
 
 
-class SnapshotStore:
-    """GSI 服务端与导播线程之间的共享状态。"""
-
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._snap: Optional[Snapshot] = None
-        self._count = 0
-        self._last_at: Optional[float] = None
-
-    def update(self, snap: Snapshot) -> None:
-        with self._lock:
-            self._count += 1
-            snap.seq = self._count
-            self._snap = snap
-            self._last_at = time.monotonic()
-
-    def get(self) -> Optional[Snapshot]:
-        with self._lock:
-            return self._snap
-
-    def stats(self) -> tuple[int, Optional[float]]:
-        with self._lock:
-            return self._count, self._last_at
-
-    def has_positions(self) -> bool:
-        with self._lock:
-            snap = self._snap
-            return bool(
-                snap and any(p.pos for p in snap.players.values() if p.health > 0)
-            )
-
-
-class _GSIHandler(BaseHTTPRequestHandler):
-    protocol_version = "HTTP/1.1"
-    server_version = "CS2AIDirectorGSI"
-
-    def do_POST(self) -> None:  # noqa: N802
-        try:
-            length = int(self.headers.get("Content-Length") or 0)
-            body = self.rfile.read(length) if length > 0 else b""
-            payload = json.loads(body.decode("utf-8", "replace"))
-            snap = parse_snapshot(payload, time.monotonic())
-            if snap is None:
-                self._reply(400, b"bad payload")
-                return
-            # 同一端口可能被多个 GSI 配置共用（CS2 会把同一份数据发给所有
-            # URI）。其他工具的精简包缺少 allplayers_position，绝不能让它
-            # 覆盖掉本程序的完整快照，否则会误报“缺少 allplayers_position”。
-            accepted, why = self.server.accept(snap)  # type: ignore[attr-defined]
-            if not accepted:
-                self.server.note_rejected(why)  # type: ignore[attr-defined]
-                self._reply(200, b"ignored")
-                return
-            self.server.store.update(snap)  # type: ignore[attr-defined]
-            self._reply(200, b"ok")
-        except Exception as e:
-            try:
-                self.server.log_fn(f"GSI 解析失败：{type(e).__name__}: {e}")  # type: ignore[attr-defined]
-            except Exception:
-                pass
-            try:
-                self._reply(400, b"error")
-            except Exception:
-                pass
-
-    def _reply(self, code: int, body: bytes) -> None:
-        self.send_response(code)
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        try:
-            self.wfile.write(body)
-        except Exception:
-            pass
-
-    def log_message(self, fmt: str, *args: Any) -> None:
-        # 静默：GSI 的心跳会刷屏
-        return
-
-
-class GSIServer:
-    """只监听 127.0.0.1 的 GSI HTTP 接收端。"""
-
-    def __init__(self, host: str, port: int, store: SnapshotStore,
-                 log_fn: Callable[[str], None]) -> None:
-        self.host = host
-        self.port = port
-        self.store = store
-        self.log_fn = log_fn
-        self._httpd: Optional[ThreadingHTTPServer] = None
-        self._thread: Optional[threading.Thread] = None
-        self._reject_lock = threading.Lock()
-        self._reject_count = 0
-        self._last_reject_log = 0.0
-
-    def accept(self, snap: Snapshot) -> tuple[bool, str]:
-        """只接受本程序 GSI 配置发来的完整快照，过滤同端口的其他工具包。"""
-        if not snap.provider_steamid:
-            return False, "缺少 provider（很可能来自其他 GSI 配置）"
-        alive = [p for p in snap.players.values() if p.health > 0]
-        if alive and not any(p.pos for p in alive) and self.store.has_positions():
-            return False, "缺少 allplayers_position（很可能与其他 GSI 配置共用端口）"
-        return True, ""
-
-    def note_rejected(self, why: str) -> None:
-        with self._reject_lock:
-            self._reject_count += 1
-            now = time.monotonic()
-            if now - self._last_reject_log < 10.0:
-                return
-            self._last_reject_log = now
-            total = self._reject_count
-        self.log_fn(
-            f"已忽略 {total} 条不完整的 GSI 数据：{why}。"
-            f"如果有其他 HUD/导播 GSI 配置指向同一端口，请改用不同端口。"
-        )
-
-    def start(self) -> None:
-        try:
-            httpd = ThreadingHTTPServer((self.host, self.port), _GSIHandler)
-        except OSError as e:
-            raise RuntimeError(
-                f"GSI 端口 {self.port} 无法监听：{e}。"
-                f"请换一个端口并重新“一键安装 GSI”，或关闭占用该端口的程序。"
-            ) from e
-        httpd.daemon_threads = True
-        httpd.store = self.store  # type: ignore[attr-defined]
-        httpd.log_fn = self.log_fn  # type: ignore[attr-defined]
-        httpd.accept = self.accept  # type: ignore[attr-defined]
-        httpd.note_rejected = self.note_rejected  # type: ignore[attr-defined]
-        self._httpd = httpd
-        self._thread = threading.Thread(target=httpd.serve_forever, name="gsi-server", daemon=True)
-        self._thread.start()
-
-    def stop(self) -> None:
-        httpd = self._httpd
-        self._httpd = None
-        if httpd is not None:
-            try:
-                httpd.shutdown()
-            except Exception:
-                pass
-            try:
-                httpd.server_close()
-            except Exception:
-                pass
-        if self._thread is not None:
-            self._thread.join(timeout=2.0)
-            self._thread = None
+from director_adapters.gsi import SnapshotStore, GSIServer, _GSIHandler
 
 
 # --------------------------------------------------------------------------
@@ -1028,7 +892,7 @@ def activate_window(hwnd: int) -> bool:
             attached = bool(_user32.AttachThreadInput(fg_tid, cur_tid, True))
         try:
             # 只用窗口 API，不额外模拟 ALT 等按键（对游戏的动作必须严格
-            # 限制在 0-9 与两个 HLAE 快捷键内）。若系统前台锁拦截，失败即跳过。
+            # 限制在 0-9 与两个 MulNX 快捷键内）。若系统前台锁拦截，失败即跳过。
             _user32.BringWindowToTop(hwnd)
             _user32.SetForegroundWindow(hwnd)
             _user32.SetFocus(hwnd)
@@ -1113,7 +977,7 @@ MODIFIER_VKS = (0x12, 0x11, 0x10, 0x5B, 0x5C)
 
 HOTKEY_MODIFIERS = {"alt", "ctrl", "control", "shift", "windows", "win", "cmd"}
 
-# GUI 只允许这三类修饰键 + A-Z/0-9，避免自由输入写出 HLAE 不认的组合。
+# GUI 只允许这三类修饰键 + A-Z/0-9，避免自由输入写出 MulNX 不认的组合。
 SELECTABLE_MODIFIERS = ("ALT", "SHIFT", "CTRL")
 SELECTABLE_KEYS = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ") + tuple("0123456789")
 
@@ -1137,245 +1001,13 @@ def split_hotkey(hotkey: str) -> tuple[list[str], list[str]]:
     return mods, keys
 
 
-class InputController:
-    def __init__(self, cfg: dict[str, Any], log: LogBus, authorization_gate=None) -> None:
-        self.cfg = cfg
-        self.log = log
-        self.authorization_gate = authorization_gate
-        self._held_keys = set()
-        # 两个锁分开：钩子回调只碰 _suppress_lock，绝不能被“正在发送按键”
-        # 的 _send_lock 阻塞，否则低级钩子会拖慢/卡住系统输入。
-        self._send_lock = threading.RLock()
-        self._suppress_lock = threading.Lock()
-        # 概念上等价于全局 simulating_until；这里按数字键分别记录，
-        # 避免把用户在抑制窗口内按下的“其他数字键”也一起吞掉。
-        self._simulating_until: dict[str, float] = {}
-        self._window_cache: Optional[WindowInfo] = None
-        self._window_cache_at = 0.0
-        self._last_focus_fail_log = 0.0
-        self._proc_cache_at = 0.0
-        self._proc_cache_ok = False
-        if HAS_PYDIRECTINPUT and pydirectinput is not None:
-            try:
-                pydirectinput.FAILSAFE = False  # 鼠标在屏幕角落时不要抛异常
-                pydirectinput.PAUSE = 0.0
-            except Exception:
-                pass
+from director_adapters.input import InputControllerAdapter
 
-    def _authorized(self):
-        if self.authorization_gate is None:
-            return True  # Legacy local runtime; authenticated runtime injects a gate.
-        if self.authorization_gate.allowed():
-            return True
-        self.release_held_keys()
-        return False
 
-    def _press(self, backend, key):
-        if not self._authorized():
-            raise RuntimeError("设备离线授权不可用，请联网校验")
-        self._held_keys.add((backend, key))
-        if backend == "direct":
-            pydirectinput.keyDown(key)
-        else:
-            keyboard.press(key)
-
-    def _release(self, backend, key):
-        if backend == "direct":
-            pydirectinput.keyUp(key)
-        else:
-            keyboard.release(key)
-        self._held_keys.discard((backend, key))
-
-    def release_held_keys(self):
-        with self._send_lock:
-            for backend, key in list(self._held_keys):
-                try:
-                    self._release(backend, key)
-                except Exception:
-                    pass
-
-    # ---- 自捕获抑制 ----
-    def mark_self_press(self, digit: str) -> None:
-        with self._suppress_lock:
-            self._simulating_until[digit] = time.monotonic() + float(self.cfg["self_press_guard"])
-
-    def is_self_press(self, digit: str) -> bool:
-        with self._suppress_lock:
-            return time.monotonic() < self._simulating_until.get(digit, 0.0)
-
-    # ---- 窗口 ----
-    def _find_window(self, force: bool = False) -> Optional[WindowInfo]:
-        now = time.monotonic()
-        if (not force and self._window_cache is not None
-                and now - self._window_cache_at < 2.0
-                and is_window(self._window_cache.hwnd)):
-            return self._window_cache
-        win = find_cs2_window(self.cfg)
-        self._window_cache = win
-        self._window_cache_at = now
-        return win
-
-    def foreground_is_game(self, force: bool = False) -> bool:
-        # 注意：激活窗口后必须 force=True 重新查询，否则 0.4s 缓存会把
-        # “刚激活成功”误判成失败，导致第一次切换被跳过。
-        now = time.monotonic()
-        if not force and now - self._proc_cache_at < 0.4:
-            return self._proc_cache_ok
-        hwnd = get_foreground_hwnd()
-        ok = bool(hwnd) and is_game_process(hwnd)
-        self._proc_cache_at = now
-        self._proc_cache_ok = ok
-        return ok
-
-    def ensure_foreground(self) -> bool:
-        """
-        按键前必须保证 CS2 在前台。找不到窗口或激活失败就跳过并记录，
-        绝不盲目发送按键（否则数字键会落到浏览器/聊天框里）。
-        """
-        if self.foreground_is_game():
-            return True
-        win = self._find_window(force=True)
-        if win is None:
-            self._log_focus_fail("未找到 CS2 窗口（cs2.exe），跳过本次按键")
-            return False
-        if not bool(self.cfg.get("auto_focus", True)):
-            self._log_focus_fail("CS2 不在前台且已关闭自动聚焦，跳过本次按键")
-            return False
-        activate_window(win.hwnd)
-        for _ in range(8):
-            if self.foreground_is_game(force=True):
-                return True
-            time.sleep(0.04)
-        self._log_focus_fail("CS2 窗口激活失败（可能被系统前台锁拦截），跳过本次按键")
-        return False
-
-    def _log_focus_fail(self, msg: str) -> None:
-        now = time.monotonic()
-        if now - self._last_focus_fail_log > 3.0:
-            self._last_focus_fail_log = now
-            self.log.warning(msg)
-
-    # ---- 按键 ----
-    def press_slot(self, slot: int) -> bool:
-        if not self._authorized():
-            return False
-        key = slot_to_key(slot)
-        if key is None:
-            return False
-        if bool(self.cfg.get("dry_run")):
-            self.log.info(
-                f"[演练] 模拟按下观察者切换键 {key}（GSI slot={int(slot)}）")
-            return True
-        if not HAS_PYDIRECTINPUT or pydirectinput is None:
-            self.log.warning("pydirectinput 未安装，无法模拟按键（请先安装依赖）")
-            return False
-        with self._send_lock:
-            if not self.ensure_foreground():
-                return False
-            self.mark_self_press(key)
-            try:
-                self._press("direct", key)
-                time.sleep(0.03)  # 至少跨 1-2 帧，避免游戏轮询错过按键
-                self._release("direct", key)
-            except Exception as e:
-                self.release_held_keys()
-                self.log.warning(f"模拟数字键 {key} 失败：{type(e).__name__}: {e}")
-                return False
-        return True
-
-    def send_hotkey(self, hotkey: str, double: bool = False) -> bool:
-        """发送 HLAE 快捷键；double=True 时连按两次（间隔可配）。"""
-        if not self._authorized():
-            return False
-        hotkey = (hotkey or "").strip()
-        if not hotkey:
-            return False
-        mode_txt = "双击" if double else "单次"
-        if bool(self.cfg.get("dry_run")):
-            self.log.info(f"[演练] 模拟 HLAE 快捷键 {hotkey}（{mode_txt}）")
-            return True
-        try:
-            interval = max(0.03, min(0.5, float(self.cfg.get("hotkey_double_interval", 0.08))))
-            hold = max(0.02, min(0.2, float(self.cfg.get("hotkey_press_hold", 0.03))))
-            lead = max(0.0, min(0.3, float(self.cfg.get("hotkey_modifier_lead", 0.08))))
-            release_delay = max(0.0, min(0.3, float(
-                self.cfg.get("hotkey_modifier_release_delay", 0.05))))
-            hold_after = max(0.0, min(1.0, float(
-                self.cfg.get("hotkey_modifier_hold_after", 0.30))))
-        except (TypeError, ValueError):
-            interval, hold, lead = 0.08, 0.03, 0.08
-            release_delay, hold_after = 0.05, 0.30
-        # MulNX 的 200ms 连击缓冲要求 Alt 在最后一次主键后仍保持按下；
-        # 兼容旧配置：取 release_delay 与新 hold_after 的较大值。
-        hold_after = max(release_delay, hold_after)
-        presses = 2 if double else 1
-        mods, keys = split_hotkey(hotkey)
-
-        with self._send_lock:
-            if not self.ensure_foreground():
-                return False
-            if HAS_KEYBOARD and keyboard is not None:
-                try:
-                    if len(keys) == 1:
-                        # 关键：修饰键只在开头按下、结尾释放；双击是“按住 Alt，
-                        # 连点两次主键”。既符合 comboClick 语义，也保证 keydown
-                        # 至少保持 45ms，避免相机工具用 GetAsyncKeyState 轮询时漏掉。
-                        for mod in mods:
-                            self._press("keyboard", mod)
-                        if mods:
-                            time.sleep(lead)  # 按住 Alt 80ms 再按主键
-                        try:
-                            for i in range(presses):
-                                if i:
-                                    # interval 是"两次主键按下"的间隔；
-                                    # 第一次已按住 hold，所以再等 interval-hold。
-                                    time.sleep(max(0.0, interval - hold))
-                                self._press("keyboard", keys[0])
-                                time.sleep(hold)
-                                self._release("keyboard", keys[0])
-                            if mods:
-                                # MulNX 在 200ms 后才消费 ComboClick；这里默认 300ms
-                                time.sleep(hold_after)
-                        finally:
-                            for mod in reversed(mods):
-                                try:
-                                    self._release("keyboard", mod)
-                                except Exception:
-                                    pass
-                    else:
-                        # 非常规组合（多个主键）退回整体发送
-                        for i in range(presses):
-                            if i:
-                                time.sleep(interval)
-                            for key in mods + keys:
-                                self._press("keyboard", key)
-                            for key in reversed(mods + keys):
-                                self._release("keyboard", key)
-                    return True
-                except Exception as e:
-                    self.release_held_keys()
-                    self.log.warning(
-                        f"发送快捷键 {hotkey}（{mode_txt}）失败：{type(e).__name__}: {e}"
-                    )
-                    return False
-        # 没有 keyboard 时只支持单键
-        if len(hotkey) == 1 and HAS_PYDIRECTINPUT and pydirectinput is not None:
-            try:
-                for i in range(presses):
-                    if i:
-                        time.sleep(interval)
-                    self._press("direct", hotkey)
-                    time.sleep(hold)
-                    self._release("direct", hotkey)
-                return True
-            except Exception as e:
-                self.release_held_keys()
-                self.log.warning(
-                    f"发送单键 {hotkey}（{mode_txt}）失败：{type(e).__name__}: {e}"
-                )
-                return False
-        self.log.warning("未安装 keyboard，无法发送组合快捷键")
-        return False
+class InputController(InputControllerAdapter):
+    """Compatibility facade; preserves existing imports and test patches."""
+    def __init__(self, cfg, log, authorization_gate=None):
+        super().__init__(cfg, log, authorization_gate, runtime=sys.modules[__name__])
 
 
 class ManualKeyWatcher:
@@ -1469,7 +1101,7 @@ class ManualKeyWatcher:
 
     def _handle(self, digit: str) -> None:
         now = time.monotonic()
-        # alt+1 / ctrl+2 等是 HLAE 运镜宏（指南交互格式 alt+按键），
+        # alt+1 / ctrl+2 等是 MulNX 运镜宏（指南交互格式 alt+按键），
         # 不能算手动接管，否则每次出生点/包点运镜都会误暂停 AI 10 秒。
         if self._modifier_down():
             return
@@ -1561,37 +1193,85 @@ class AIArbiter:
         self._client: Any = None
         self._client_sig: tuple[str, str] = ("", "")
         self._client = None
+        self.cloud = None
+        self._result_generation = None
+        self._result_request = None
+        self._reported_terminal = set()
+        self._observations = queue.Queue(maxsize=16)
+        self.received = self.applied = self.discarded = 0
+
+    def observe(self, request, state, captured_at, now):
+        if request is None:
+            return
+        key = request['requestId']
+        if state != 'received':
+            if key in self._reported_terminal:
+                return
+            if len(self._reported_terminal) > 1000:
+                self._reported_terminal.clear()
+            self._reported_terminal.add(key)
+        if state == 'received': self.received += 1
+        elif state == 'applied': self.applied += 1
+        else: self.discarded += 1
+        if getattr(self.cloud, 'mode', '') == 'platform':
+            try:self._observations.put_nowait((key,state,(now-captured_at)*1000))
+            except queue.Full:pass  # Best-effort telemetry never blocks or changes billing.
+
+    def applied_hint(self, slot, now):
+        with self._lock:
+            if self._result and self._result[0] == slot:
+                self.observe(self._result_request,'applied',self._result[1],now)
+
+    def configure(self, account, store):
+        from arbitration_runtime import CloudSession
+        self.cloud = CloudSession(account, store, self.cfg.get('arbitration_mode', 'off'),
+                                  self.cfg.get('deepseek_model', 'deepseek-flash'))
+
+    def invalidate(self):
+        if self.cloud:
+            self.cloud.invalidate()
+        with self._lock:
+            self._result = None
+
+    def sync_context(self, snap):
+        if self.cloud:
+            self.cloud.sync((snap.map_name, snap.round_num, snap.phase,
+                             tuple(sorted((str(key),player.slot) for key,player in snap.players.items()))))
 
     @property
     def enabled(self) -> bool:
-        return bool(self.cfg.get("ai_enabled")) and bool(str(self.cfg.get("deepseek_api_key") or "").strip())
+        return bool(self.cfg.get("ai_enabled")) and self.cloud is not None and self.cloud.allowed()
 
     def start(self) -> None:
         if not self.enabled:
-            self.log.info("未启用 DeepSeek 仲裁（无 API Key 或已关闭），仅使用规则引擎。")
+            self.log.info("云端仲裁未启用，继续使用本地模型与规则引擎。")
             return
         self._thread = threading.Thread(target=self._worker, name="ai-arbiter", daemon=True)
         self._thread.start()
-        self.log.info(f"DeepSeek 仲裁已启用，模型 {self.cfg.get('deepseek_model')}")
+        self.log.info("云端仲裁已启用：" + self.cloud.mode)
 
     def stop(self) -> None:
         self._stop.set()
+        with self._lock:
+            self._result = None
         if self._thread is not None:
             self._thread.join(timeout=2.0)
             self._thread = None
 
     def request(self, snap: Snapshot, cands: list[Candidate], now: float) -> None:
-        if not self.enabled or not cands:
+        if self._stop.is_set() or not self.enabled or not cands:
             return
         if now - self._last_call < float(self.cfg["ai_min_interval"]):
             return
-        self._call_times = deque(t for t in self._call_times if now - t < 60.0)
-        if len(self._call_times) >= int(self.cfg["ai_max_per_minute"]):
+        try:
+            cloud_request = self.cloud.request(snap, cands)
+        except Exception:
+            self._fail('仲裁上下文不可用，继续本地规则')
             return
         req = {
             "ts": now,
-            "prompt": build_ai_prompt(snap, cands),
             "slots": {c.slot for c in cands},
+            "cloud": cloud_request,
         }
         try:
             self._q.put_nowait(req)
@@ -1604,15 +1284,30 @@ class AIArbiter:
 
     def fresh(self, now: float) -> Optional[tuple[int, float, str]]:
         with self._lock:
-            if self._result is None:
+            if self._stop.is_set() or not self.enabled or self._result is None:
+                return None
+            if self.cloud and self._result_generation != self.cloud.generation:
+                self.observe(self._result_request,'discarded',self._result[1],now)
                 return None
             slot, ts, reason = self._result
-            if now - ts > float(self.cfg["ai_result_ttl"]):
+            if not 0 <= now - ts <= float(self.cfg["ai_result_ttl"]):
+                self.observe(self._result_request,'discarded',ts,now)
                 return None
             return slot, ts, reason
 
     def _worker(self) -> None:
+        if getattr(self.cloud,'mode','') == 'platform':
+            try:self.cloud.provider.prepare()
+            except Exception:
+                self.cloud.disabled=True
+                self._fail('平台配置或额度不可用，请在网站核对后重新主动启用')
+                return
         while not self._stop.is_set():
+            try:
+                observation = self._observations.get_nowait()
+                try:self.cloud.provider.observe(*observation)
+                except Exception:pass  # Telemetry is not a paid request and never controls balances.
+            except queue.Empty:pass
             try:
                 req = self._q.get(timeout=0.2)
             except queue.Empty:
@@ -1623,92 +1318,44 @@ class AIArbiter:
             if now - float(req["ts"]) > 2.0:
                 continue  # 过期请求直接丢弃
             try:
-                slot, reason = self._ask(str(req["prompt"]), set(req["slots"]))
+                if not self.enabled or req["cloud"]["generation"] != self.cloud.generation:
+                    continue
+                # Authoritative rate check is on the single worker, including work queued
+                # before a previous request started. UI sampling must not bypass cooldown.
+                self._call_times = deque(t for t in self._call_times if now - t < 60.0)
+                if (now-self._last_call < max(3.0,float(self.cfg['ai_min_interval']))
+                        or len(self._call_times) >= min(12,int(self.cfg['ai_max_per_minute']))):
+                    continue
+                self._call_times.append(now)
+                self._last_call = now
+                self.calls += 1
+                slot = self.cloud.ask(req["cloud"])
+                reason = "云端候选建议"
+                self.last_latency = time.monotonic() - now
             except Exception as e:
                 # _ask 内部已处理预期异常；这里兜底，保证仲裁线程不会因
                 # 未预料错误退出（规则引擎继续工作）。
-                self._fail(f"仲裁线程异常：{type(e).__name__}: {e}")
+                from arbitration_runtime import ArbitrationError
+                self._fail(str(e) if isinstance(e, ArbitrationError) else "仲裁请求失败，继续本地规则")
                 continue
             if slot is not None:
                 with self._lock:
-                    self._result = (slot, time.monotonic(), reason)
+                    # TTL belongs to the captured scene, never to response arrival.
+                    captured_at = float(req["ts"])
+                    age = time.monotonic() - captured_at
+                    if (not self._stop.is_set() and self.enabled
+                            and req["cloud"]["generation"] == self.cloud.generation
+                            and 0 <= age <= float(self.cfg["ai_result_ttl"])):
+                        self._result = (slot, captured_at, reason)
+                        self._result_generation = req["cloud"]["generation"]
+                        self._result_request = req["cloud"]
+                        self.observe(req["cloud"],'received',captured_at,captured_at+age)
+                    else:
+                        self.observe(req["cloud"],'discarded',captured_at,captured_at+age)
 
-    def _ask(self, prompt: str, allowed: set[int]) -> tuple[Optional[int], str]:
-        key = str(self.cfg.get("deepseek_api_key") or "").strip()
-        base = str(self.cfg.get("deepseek_base_url") or "").strip()
-        model = str(self.cfg.get("deepseek_model") or "deepseek-chat").strip()
-        t0 = time.monotonic()
-        # 只保留最近 60 秒的调用时间，避免长局运行后 deque 无限增长
-        self._call_times = deque(t for t in self._call_times if t0 - t < 60.0)
-        self._call_times.append(t0)
-        self._last_call = t0
-        self.calls += 1
-        try:
-            from openai import OpenAI
-        except Exception as e:
-            self._fail(f"openai 未安装：{e}")
-            return None, ""
-        try:
-            sig = (key, base)
-            if self._client is None or self._client_sig != sig:
-                self._client = OpenAI(
-                    api_key=key,
-                    base_url=base or None,
-                    timeout=float(self.cfg["ai_timeout"]),
-                    max_retries=0,
-                )
-                self._client_sig = sig
-            content = self._request_chat(model, prompt, json_mode=True)
-        except Exception as e:
-            # 只有“端点不支持 response_format”才值得去掉参数重试。
-            # 超时/网络错误重试会白花一次费用并让决策多等一个 timeout，
-            # 这类错误直接降级到规则引擎。
-            if not self._is_format_error(e):
-                self._fail(f"{type(e).__name__}: {e}")
-                return None, ""
-            try:
-                content = self._request_chat(model, prompt, json_mode=False)
-            except Exception as e2:
-                self._fail(f"{type(e2).__name__}: {e2}")
-                return None, ""
-        self.last_latency = time.monotonic() - t0
-        if not content:
-            self._fail("API 返回空 content")
-            return None, ""
-        slot, reason = parse_ai_response(content)
-        if slot is None:
-            self.log.info(f"AI 未给出有效目标（{reason}），继续使用规则引擎")
-            return None, ""
-        if slot not in allowed:
-            self.log.warning(f"AI 返回了候选之外的 slot={slot}，忽略")
-            return None, ""
-        self.log.info(f"AI 仲裁建议 slot={slot}（{reason}，{self.last_latency:.2f}s）")
-        return slot, reason
-
-    @staticmethod
-    def _is_format_error(exc: Exception) -> bool:
-        text = f"{type(exc).__name__} {exc}".lower()
-        return ("response_format" in text or "json_object" in text
-                or "json mode" in text)
-
-    def _request_chat(self, model: str, prompt: str, json_mode: bool) -> Optional[str]:
-        assert self._client is not None
-        kwargs: dict[str, Any] = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": "你是 CS2 电竞导播助手，只输出 JSON。"},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.0,
-            "max_tokens": 100,
-        }
-        if json_mode:
-            kwargs["response_format"] = {"type": "json_object"}
-        resp = self._client.chat.completions.create(**kwargs)
-        if not getattr(resp, "choices", None):
-            return None
-        msg = resp.choices[0].message
-        return getattr(msg, "content", None)
+    def _ask(self, prompt, allowed):
+        self._fail('旧提示词仲裁入口已停用，请使用登录后的结构化提供器')
+        return None, ''
 
     def _fail(self, msg: str) -> None:
         self.errors += 1
@@ -1722,6 +1369,9 @@ class AIArbiter:
             "errors": self.errors,
             "last_error": self.last_error,
             "last_latency": self.last_latency,
+            "mode": getattr(self.cloud,'mode','off'),
+            "received": self.received, "applied_input_reports": self.applied,
+            "discarded": self.discarded,
         }
 
 
@@ -1852,6 +1502,7 @@ class DirectorEngine:
         self.watcher: Optional[ManualKeyWatcher] = None
 
         self._stop = threading.Event()
+        self.input.cancel_event = self._stop
         self._thread: Optional[threading.Thread] = None
         self._running = False
         self._status_lock = threading.Lock()
@@ -1903,6 +1554,8 @@ class DirectorEngine:
     def start(self) -> None:
         if self._running:
             return
+        if self._thread is not None and self._thread.is_alive():
+            raise RuntimeError('上一导播线程尚未退出')
         if self.pro is not None:
             self.pro.reset()
         port = int(self.cfg["gsi_port"])
@@ -1934,7 +1587,13 @@ class DirectorEngine:
             self.watcher = ManualKeyWatcher(self._on_manual_key, self.input.is_self_press, self.bus)
             self.watcher.start()
         except Exception:
+            if self.watcher is not None:
+                self.watcher.stop()
+                self.watcher = None
+            self.arbiter.stop()
             server.stop()
+            self.server = None
+            self.input.release_held_keys()
             raise
         self._stop.clear()
         if self.timeline is not None:
@@ -1951,17 +1610,20 @@ class DirectorEngine:
         )
         if IS_WINDOWS and not admin and not self.cfg.get("dry_run"):
             self.bus.warning(
-                "当前不是管理员：如果 CS2/HLAE 是以管理员运行，Windows UIPI "
+                "当前不是管理员：如果 CS2/MulNX 是以管理员运行，Windows UIPI "
                 "会拦截模拟按键，日志会显示“已发送”但运镜/切人可能不触发。"
                 "请右键以管理员身份重新启动本程序。"
             )
 
     def stop(self) -> None:
+        self._stop.set()
         self.input.release_held_keys()
-        if not self._running and self.server is None:
+        if not self._running and self.server is None and self._thread is None and not getattr(self, '_needs_flush', False):
             return
         self._stop.set()
         self._running = False
+        if self.pro is not None:
+            self.pro.actions.cancel_pending()
         if self.watcher is not None:
             self.watcher.stop()
             self.watcher = None
@@ -1971,12 +1633,16 @@ class DirectorEngine:
             self.server = None
         if self._thread is not None:
             self._thread.join(timeout=2.0)
+            if self._thread.is_alive():
+                self.input.release_held_keys()
+                raise RuntimeError('导播线程仍在停止，暂不能启动新会话，请稍后重试停止')
             self._thread = None
+        self.input.release_held_keys()
         if self.timeline is not None:
-            try:
-                self.timeline.close(time.monotonic(), "导播停止")
-            except Exception:
-                self.bus.exception("关闭镜头时间线时出现异常")
+            self._needs_flush = True
+            if self.timeline.close(time.monotonic(), '导播停止') is False:
+                raise RuntimeError('镜头时间线尚未完全落盘，请检查磁盘后重试停止')
+            self._needs_flush = False
         with self._status_lock:
             self._status = {"running": False}
         self.bus.info("导播已停止。")
@@ -1990,6 +1656,7 @@ class DirectorEngine:
         now = time.monotonic()
         pause = float(self.cfg["manual_pause_seconds"])
         self._manual_until = max(self._manual_until, now + pause)
+        self.arbiter.invalidate()
         slot = key_to_slot(digit)
         if self.timeline is not None and slot is not None:
             try:
@@ -2081,9 +1748,8 @@ class DirectorEngine:
         source = str(self.cfg.get("obs_narrative_source", "") or "").strip()
         if not source or self.pro is None:
             return
-        threading.Thread(
-            target=self.pro.obs.set_text, args=(source, text),
-            daemon=True, name="obs-narrative").start()
+        self.pro.actions.enqueue({'name': '叙事文字', 'actions': [
+            {'type': 'set_text', 'target': source, 'text': text}]})
 
     # ---- 主循环 ----
     def _loop(self) -> None:
@@ -2096,10 +1762,11 @@ class DirectorEngine:
             except Exception:
                 self.bus.exception("导播循环出现异常（已继续运行）")
             elapsed = time.monotonic() - t0
-            time.sleep(max(0.0, interval - elapsed))
+            self._stop.wait(max(0.0, interval - elapsed))
 
     def _tick(self) -> None:
         if self.authorization_gate is not None and not self.authorization_gate.allowed():
+            self.arbiter.invalidate()
             self.input.release_held_keys()
             self._set_status({"running": True, "gsi": "authorization_required", "phase": "-",
                               "reason": "离线授权不可用，请联网校验", "authorization": self.authorization_gate.last_state.reason})
@@ -2146,6 +1813,7 @@ class DirectorEngine:
             self._set_status(status)
             return
 
+        self.arbiter.sync_context(snap)
         age = max(0.0, now - snap.received_at)
         status["gsi_age"] = age
         status["phase"] = snap.phase or "?"
@@ -2422,7 +2090,7 @@ class DirectorEngine:
                     why = f"默认 {side}" if spawn_default else f"上回合 {side} 胜"
                     self.bus.info(
                         f"回合开始（{snap.phase}），{why}，"
-                        f"已发送 HLAE {side} 出生点运镜：{hotkey}（{mode_txt}）；"
+                        f"已发送 MulNX {side} 出生点运镜：{hotkey}（{mode_txt}）；"
                         f"若画面未变化：确认以管理员运行，或把该项改为单次再试"
                     )
                     if self.timeline is not None:
@@ -2435,7 +2103,7 @@ class DirectorEngine:
                         self._bomb_cam_until = now + grace
                     cd = snap.bomb.countdown if snap.bomb else None
                     self.bus.info(
-                        f"炸弹剩余 {cd:.1f}s，{site} 包点，已发送 HLAE 包点运镜：{hotkey}（{mode_txt}）"
+                        f"炸弹剩余 {cd:.1f}s，{site} 包点，已发送 MulNX 包点运镜：{hotkey}（{mode_txt}）"
                         + (f"（AI 切换让位 {grace:.1f}s）" if grace > 0 else "")
                         + "；若画面未变化：确认管理员权限/单次双击"
                     )
@@ -2897,6 +2565,8 @@ class DirectorEngine:
                 return
             cand = decision.candidate
             ok = self.input.press_slot(decision.slot)
+            if ok and hint and hint[0] == decision.slot:
+                self.arbiter.applied_hint(decision.slot,now)
             if ok:
                 self._last_switch_at = now
                 self._last_switch_slot = decision.slot
@@ -3154,51 +2824,20 @@ def detect_cs2_executables() -> list[Path]:
 # 14. GUI
 # --------------------------------------------------------------------------
 
-class _ScrollableFrame(ttk.Frame):
-    """Vertically scrollable tab page; keeps settings usable on 1080p."""
-
-    def __init__(self, parent: Any) -> None:
-        super().__init__(parent)
-        self.canvas = tk.Canvas(self, bg=UI_CARD, highlightthickness=0, bd=0)
-        self.scrollbar = ttk.Scrollbar(
-            self, orient="vertical", command=self.canvas.yview)
-        self.inner = ttk.Frame(self.canvas, padding=10)
-        self._window = self.canvas.create_window(
-            (0, 0), window=self.inner, anchor="nw")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.scrollbar.pack(side="right", fill="y")
-        self.inner.bind("<Configure>", self._on_inner_configure)
-        self.canvas.bind("<Configure>", self._on_canvas_configure)
-        self.inner.bind("<Enter>", self._bind_wheel)
-        self.inner.bind("<Leave>", self._unbind_wheel)
-
-    def _on_inner_configure(self, _event: Any) -> None:
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-    def _on_canvas_configure(self, event: Any) -> None:
-        self.canvas.itemconfigure(self._window, width=event.width)
-
-    def _bind_wheel(self, _event: Any) -> None:
-        self.canvas.bind_all("<MouseWheel>", self._on_wheel)
-
-    def _unbind_wheel(self, _event: Any) -> None:
-        self.canvas.unbind_all("<MouseWheel>")
-
-    def _on_wheel(self, event: Any) -> None:
-        self.canvas.yview_scroll(int(-event.delta / 120), "units")
+from desktop_ui import ScrollableFrame as _ScrollableFrame
 
 
 class DirectorApp:
     def __init__(self, cfg: dict[str, Any]) -> None:
-        self.cfg = cfg
+        self.cfg = copy.deepcopy(cfg)
+        self._config_version = 0
         from account_client import default_account
         self.account = default_account()
         self.bus = LogBus()
         self.pro = pro_mod.ProDirector(cfg)
         self.decision_logger = dm.DecisionLogger(cfg)
         self.model_arbiter = dm.ModelArbiter(cfg)
-        self.timeline = story_mod.ShotTimeline(cfg, log_fn=self.bus.info)
+        self.timeline = story_mod.ShotTimeline(cfg, log_fn=self.bus.info, async_writes=True)
         self.engine: Optional[DirectorEngine] = None
         self._closing = False
         self._detecting = False
@@ -3208,9 +2847,16 @@ class DirectorApp:
         self._last_model_check = 0.0
 
         self.root = tk.Tk()
+        from desktop_tasks import Tasks
+        self.tasks = Tasks(self.root)
         self.root.title(f"{APP_TITLE} v{VERSION} · {APP_SUBTITLE}")
         self.root.geometry("1060x940")
-        self.root.minsize(960, 860)
+        from desktop_ui import fit_window
+        fit_window(self.root)
+        from preferences import Preferences
+        self.preferences = Preferences(app_data_dir())
+        from desktop_ui import restore_window
+        restore_window(self, 'director', 1060, 850)
         self.root.report_callback_exception = self._on_tk_exception
         self._init_style()
         self._set_window_icon()
@@ -3260,8 +2906,12 @@ class DirectorApp:
         self.var_pro_enabled = tk.BooleanVar(value=bool(cfg.get("event_actions_enabled", True)))
         self.var_pause_hotkey = tk.StringVar(value=str(cfg.get("pause_hotkey", "ctrl+alt+p")))
         self._pause_hotkey_handle: Any = None
-        self.var_api = tk.StringVar(value=str(cfg.get("deepseek_api_key", "")))
-        self.var_model = tk.StringVar(value=str(cfg.get("deepseek_model", "deepseek-chat")))
+        self.var_api = tk.StringVar(value='')
+        self.var_mode = tk.StringVar(value='off')
+        from arbitration_runtime import PersonalKeyStore
+        self.personal_keys = PersonalKeyStore(app_data_dir())
+        self.var_cloud_status = tk.StringVar(value='关闭；登录后可选平台额度或自有 API。密钥仅保存在本机。')
+        self.var_model = tk.StringVar(value=str(cfg.get("deepseek_model", "deepseek-flash")))
         self.var_ai = tk.BooleanVar(value=bool(cfg.get("ai_enabled", True)))
         self.var_learn = tk.BooleanVar(value=bool(cfg.get("demo_model_enabled", True)))
         self.var_dry = tk.BooleanVar(value=bool(cfg.get("dry_run", False)))
@@ -3272,6 +2922,7 @@ class DirectorApp:
             value=bool(cfg.get("utility_cam_enabled", True)))
 
         self._build()
+        self._apply_preferences()
         from training_data_runtime import TrainingDataRuntime
         self.training_data = TrainingDataRuntime(csv_path=self.decision_logger.path, identity_provider=self.account.upload_identity, binding_provider=self.account.binding)
         self.account.start()
@@ -3282,9 +2933,22 @@ class DirectorApp:
         self._refresh_deps()
         self._refresh_gsi_status()
         self.bus.info(f"配置目录：{app_data_dir()}")
-        self.bus.info("使用步骤：选择 cs2.exe → 一键安装 GSI → 重启 CS2 → 填写 HLAE 快捷键 → 启动导播。")
+        self.bus.info("使用步骤：选择 cs2.exe → 一键安装 GSI → 重启 CS2 → 填写 MulNX 快捷键 → 启动导播。")
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
-        self.root.after(200, self._poll)
+        schedule(self.root,200, self._poll)
+
+    def _apply_preferences(self):
+        from desktop_ui import theme
+        prefs = self.preferences.read()
+        self._ui_preferences = prefs
+        theme(self.root, prefs['theme'], prefs['font_size'])
+        self._follow_logs = prefs['follow_logs']
+        from desktop_ui import PALETTES
+        self._colors = PALETTES[prefs['theme']]
+        for widget in self._developer_widgets:
+            widget.grid() if prefs['developer_mode'] else widget.grid_remove()
+        for tab in self._developer_tabs:
+            self.notebook.add(tab) if prefs['developer_mode'] else self.notebook.hide(tab)
 
     def _on_tk_exception(self, exc: Any, val: Any, tb: Any) -> None:
         """tkinter 回调里的未捕获异常不能只打到 stderr（pythonw 下看不见）。"""
@@ -3294,64 +2958,11 @@ class DirectorApp:
             pass
 
     def _init_style(self) -> None:
-        try:
-            self.root.configure(bg=UI_BG)
-            self.root.option_add("*Font", ("Microsoft YaHei UI", 9))
-            style = ttk.Style()
-            if "clam" in style.theme_names():
-                style.theme_use("clam")
-            elif "vista" in style.theme_names():
-                style.theme_use("vista")
-            style.configure(".", font=("Microsoft YaHei UI", 9),
-                            background=UI_CARD, foreground=UI_INK)
-            style.configure("TFrame", background=UI_CARD)
-            style.configure("TLabel", background=UI_CARD, foreground=UI_INK)
-            style.configure("Muted.TLabel", foreground=UI_MUTED)
-            style.configure("TLabelframe", background=UI_CARD,
-                            bordercolor=UI_BORDER, relief="solid", borderwidth=1)
-            style.configure("TLabelframe.Label", background=UI_CARD,
-                            foreground=UI_GOLD_DARK,
-                            font=("Microsoft YaHei UI", 10, "bold"))
-            style.configure("TNotebook", background=UI_BG, borderwidth=0,
-                            tabmargins=(0, 4, 0, 0))
-            style.configure("TNotebook.Tab", padding=(18, 8),
-                            background="#e8ddc9", foreground=UI_MUTED,
-                            font=("Microsoft YaHei UI", 9, "bold"))
-            style.map("TNotebook.Tab",
-                      background=[("selected", UI_CARD)],
-                      foreground=[("selected", UI_GOLD_DARK)])
-            style.configure("TButton", padding=(10, 5), background="#efe4cf",
-                            foreground=UI_INK, bordercolor=UI_BORDER)
-            style.map("TButton",
-                      background=[("active", "#e1d0af"), ("disabled", "#eee7da")],
-                      foreground=[("disabled", "#a09a90")])
-            style.configure("Accent.TButton", background=UI_GOLD,
-                            foreground="#171a20",
-                            font=("Microsoft YaHei UI", 9, "bold"))
-            style.map("Accent.TButton",
-                      background=[("active", "#c99a44"),
-                                  ("disabled", "#d8c8a8")])
-            style.configure("Stop.TButton", background="#8b2e2e",
-                            foreground="#ffffff")
-            style.map("Stop.TButton",
-                      background=[("active", "#a53b3b"),
-                                  ("disabled", "#d9c7c7")])
-            style.configure("TEntry", fieldbackground="#ffffff",
-                            bordercolor=UI_BORDER)
-            style.configure("TCombobox", fieldbackground="#ffffff",
-                            background="#ffffff", bordercolor=UI_BORDER)
-            style.configure("TCheckbutton", background=UI_CARD,
-                            foreground=UI_INK)
-            style.configure("Treeview", background="#ffffff",
-                            fieldbackground="#ffffff", rowheight=24,
-                            bordercolor=UI_BORDER)
-            style.configure("Treeview.Heading", background="#efe4cf",
-                            foreground=UI_GOLD_DARK,
-                            font=("Microsoft YaHei UI", 9, "bold"))
-            style.map("Treeview", background=[("selected", "#e8d5ad")],
-                      foreground=[("selected", UI_INK)])
-        except Exception:
-            pass
+        from desktop_ui import theme
+        self.root.option_add('*Font', ('Microsoft YaHei UI', 10))
+        from desktop_ui import PALETTES
+        self._colors = PALETTES[self.preferences.read()['theme']]
+        theme(self.root, self.preferences.read()['theme'])
 
     def _checkbutton(self, parent: Any, text: str,
                      variable: tk.BooleanVar, **kwargs: Any) -> tk.Checkbutton:
@@ -3484,7 +3095,7 @@ class DirectorApp:
 
         lf5 = ttk.LabelFrame(parent, text=" 决策模型（内置训练工作台） ", padding=8)
         lf5.grid(row=2, column=0, sticky="ew", pady=(6, 0))
-        ttk.Button(lf5, text="训练数据状态", command=lambda: messagebox.showinfo("训练数据与补传", self.training_data.summary(), parent=self.root)).pack(side="right")
+        ttk.Button(lf5, text="训练数据状态", command=lambda: __import__("desktop_ui").settings(self)).pack(side="right")
         ttk.Button(lf5, text="打开训练工作台…", command=self._open_trainer).pack(side="left")
         ttk.Button(lf5, text="重新加载模型", command=self._reload_model).pack(
             side="left", padx=6)
@@ -3512,6 +3123,7 @@ class DirectorApp:
         ttk.Label(row, text="shot_timeline.csv / shot_events.csv / round_metrics.csv / "
                             "director_metrics.json",
                   foreground="#777777").pack(side="left", padx=8)
+        self._pro_developer_widgets = [lf5, lf6]
         self._refresh_rules()
 
     def _build_pro_logs(self, parent: Any) -> None:
@@ -3575,27 +3187,14 @@ class DirectorApp:
                 rule.get("name", ""), actions,
                 "是" if rule.get("enabled", True) else "否",
             ))
-        try:
-            self._sync_pro_cfg()
-        except Exception:
-            pass
+        # Editing a rule only updates the draft; apply at save/start.
 
     # ---- 专业导播动作 ----
     def _sync_pro_cfg(self) -> None:
-        c = self.pro.cfg
-        c["obs_host"] = self.var_obs_host.get().strip() or "127.0.0.1"
-        try:
-            c["obs_port"] = int(self.var_obs_port.get().strip())
-        except Exception:
-            c["obs_port"] = 4455
-        c["obs_password"] = self.var_obs_pwd.get()
-        c["event_actions_enabled"] = bool(self.var_pro_enabled.get())
-        c["narrative_enabled"] = bool(self.var_narrative_enabled.get())
-        c["obs_narrative_enabled"] = bool(self.var_obs_narrative_enabled.get())
-        c["obs_narrative_source"] = self.var_obs_narrative_source.get().strip()
-        # 规则编辑只更新 self.cfg；事件线程读的是 pro.cfg，必须同步，
-        # 否则“保存配置/启动”后新增的规则不会生效。
-        c["event_rules"] = copy.deepcopy(self.cfg.get("event_rules", []))
+        if self.engine is not None:
+            return  # Running sessions retain their validated configuration snapshot.
+        cfg = self._collect_cfg()
+        self._apply_runtime_cfg(cfg)
 
     def _pro_thread(self, fn: Callable[[], None]) -> None:
         threading.Thread(target=fn, daemon=True).start()
@@ -3605,21 +3204,24 @@ class DirectorApp:
         if st.get("loaded"):
             cal = " · 已校准" if st.get("calibrated") else ""
             self.lbl_model.configure(
-                text=f"随机森林：已加载（{st.get('format', '?')}）{cal}",
-                foreground="#087f23")
+                text=f"本地候选模型：已加载（{st.get('format', '?')}）{cal}",
+                foreground=self._colors['success'])
         else:
             self.lbl_model.configure(
-                text="随机森林：未加载（先训练，或点击重新加载）",
-                foreground="#a15c00")
+                text="本地候选模型：未加载；正式执行模型状态请查看设置中心",
+                foreground=self._colors['accent'])
 
     def _reload_model(self) -> None:
-        ok = self.model_arbiter.load()
-        self._update_model_label()
-        self.bus.info("随机森林模型已重新加载。" if ok else
-                      f"随机森林模型加载失败：{self.model_arbiter.error}")
-        if not ok:
-            messagebox.showwarning(
-                "模型", "未找到 decision_model.json.gz，或模型格式不匹配。")
+        if self.engine is not None or self._closing or 'model-check' in self.tasks.running:
+            self.bus.warning('请停止导播并等待检查结束后重新加载本地候选模型。')
+            return
+        def done(ok, error):
+            self._update_model_label()
+            if error or not ok:
+                self.bus.warning('本地候选模型加载未完成，请检查模型文件。')
+            else:
+                self.bus.info('本地候选模型已重新加载。')
+        self.tasks.submit('model-load', self.model_arbiter.load, done)
 
     def _calibrate_online(self) -> None:
         if not self.model_arbiter.loaded:
@@ -3645,7 +3247,7 @@ class DirectorApp:
         except Exception as e:
             self.bus.warning(f"校准异常：{type(e).__name__}: {e}")
         finally:
-            self.root.after(0, self._update_model_label)
+            schedule(self.root,0, self._update_model_label)
 
     def _open_trainer(self) -> None:
         from trainer_launcher import open_trainer
@@ -3660,13 +3262,14 @@ class DirectorApp:
 
     def _pro_connect_worker(self) -> None:
         ok = self.pro.obs.connect()
-        self.root.after(0, lambda: self.lbl_obs.configure(
+        schedule(self.root,0, lambda: self.lbl_obs.configure(
             text=("OBS：已连接" if ok else f"OBS：连接失败 {self.pro.obs.last_error}"),
-            foreground=("#087f23" if ok else "#b00020")))
+            foreground=(self._colors['success'] if ok else self._colors['error'])))
 
     def _pro_disconnect(self) -> None:
-        self.pro.obs.disconnect()
-        self.lbl_obs.configure(text="OBS：未连接", foreground="#555555")
+        def done(result, error):
+            self.lbl_obs.configure(text='OBS：断开失败' if error else 'OBS：未连接')
+        self.tasks.submit('obs-disconnect', self.pro.obs.disconnect, done)
 
     def _pro_add_rule(self) -> None:
         self._pro_rule_dialog(None)
@@ -3877,6 +3480,16 @@ class DirectorApp:
         notebook = ttk.Notebook(body)
         self.notebook = notebook
         notebook.grid(row=0, column=0, sticky="nsew")
+        workspace = _ScrollableFrame(notebook)
+        notebook.add(workspace, text=" 导播工作台 ")
+        ttk.Label(workspace.inner, text="把注意力留给比赛。", font=("Microsoft YaHei UI", 20, "bold")).pack(anchor="w", pady=(8, 16))
+        ttk.Label(workspace.inner, text="先完成账号与正式模型初始化，再检查游戏连接。收到有效观战数据后，程序按现有策略自动导播。", wraplength=760).pack(anchor="w", pady=8)
+        self.workspace_status = ttk.Label(workspace.inner, text="导播尚未启动", wraplength=760, justify="left")
+        self.workspace_status.pack(anchor="w", pady=16)
+        ttk.Button(workspace.inner, text="打开训练工作台", command=self._open_trainer).pack(anchor="w", pady=8)
+        from desktop_ui import settings as open_settings
+        ttk.Button(workspace.inner, text="账号、模型与程序状态", command=lambda: open_settings(self)).pack(anchor="w", pady=8)
+        ttk.Button(workspace.inner, text="配置游戏与运镜", command=lambda: notebook.select(settings_scroll)).pack(anchor="w", pady=8)
         settings_scroll = _ScrollableFrame(notebook)
         pro_scroll = _ScrollableFrame(notebook)
         settings = settings_scroll.inner
@@ -3887,6 +3500,7 @@ class DirectorApp:
         notebook.add(pro_scroll, text=" 专业导播 ")
         notebook.add(pro_logs, text=" 导播日志 ")
         notebook.add(logs, text=" 日志 ")
+        self._developer_tabs = (pro_logs, logs)
         settings.columnconfigure(0, weight=1)
         self._build_pro(pro_page)
         self._build_pro_logs(pro_logs)
@@ -3910,11 +3524,11 @@ class DirectorApp:
         row.grid(row=2, column=0, columnspan=4, sticky="w", pady=(6, 0))
         ttk.Button(row, text="一键安装 GSI", command=self._install_gsi).pack(side="left")
         ttk.Button(row, text="打开 cfg 目录", command=self._open_cfg_dir).pack(side="left", padx=6)
-        ttk.Label(row, text="安装/覆盖后需要完全重启 CS2 才会生效", foreground="#a15c00").pack(
+        ttk.Label(row, text="安装/覆盖后需要完全重启 CS2 才会生效", foreground=self._colors['accent']).pack(
             side="left", padx=6)
 
-        # 2) HLAE
-        lf2 = ttk.LabelFrame(settings, text=" 2. HLAE 运镜快捷键（与 HLAE 内绑定一致） ", padding=8)
+        # 2) MulNX
+        lf2 = ttk.LabelFrame(settings, text=" 2. MulNX 运镜快捷键（与 MulNX 内绑定一致） ", padding=8)
         lf2.grid(row=1, column=0, sticky="ew", pady=(0, 6))
         lf2.columnconfigure(0, weight=1)
 
@@ -3944,6 +3558,14 @@ class DirectorApp:
                              state="readonly", width=5).grid(
                     row=0, column=3, sticky="w")
 
+            def reflow(event):
+                narrow = event.width < 760
+                for index, child in enumerate(pair.winfo_children()):
+                    child.grid_configure(row=index if narrow else 0, column=0 if narrow else index,
+                                         padx=0 if narrow or index else (0, 16), pady=4 if narrow else 0)
+                pair.columnconfigure(1, weight=0 if narrow else 1)
+            pair.bind('<Configure>', reflow, add='+')
+
         add_pair_row(0,
                      ("CT 出生点", self.var_spawn_ct_mod,
                       self.var_spawn_ct_keyname, self.var_spawn_ct_mode),
@@ -3960,17 +3582,25 @@ class DirectorApp:
             row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
         # 3) AI
-        lf3 = ttk.LabelFrame(settings, text=" 3. DeepSeek 仲裁（可选） ", padding=8)
+        lf3 = ttk.LabelFrame(settings, text=" 3. 云端仲裁与本地模型 ", padding=8)
         lf3.grid(row=2, column=0, sticky="ew", pady=(0, 6))
         lf3.columnconfigure(1, weight=1)
-        ttk.Label(lf3, text="API Key").grid(row=0, column=0, sticky="w")
+        ttk.Label(lf3, text="个人 API Key").grid(row=0, column=0, sticky="w")
         ttk.Entry(lf3, textvariable=self.var_api, show="*").grid(
             row=0, column=1, sticky="ew", padx=6, columnspan=3)
         ttk.Label(lf3, text="模型").grid(row=1, column=0, sticky="w", pady=(6, 0))
         ttk.Entry(lf3, textvariable=self.var_model, width=24).grid(
             row=1, column=1, sticky="w", padx=6, pady=(6, 0))
-        self._checkbutton(lf3, "启用 AI 仲裁（留空 Key 则自动只用规则引擎）",
-                         self.var_ai).grid(row=2, column=0, columnspan=2, sticky="w", pady=(6, 0))
+        modes = ttk.Frame(lf3)
+        modes.grid(row=2, column=0, columnspan=2, sticky='w', pady=(6,0))
+        for text, value in [('关闭','off'),('平台额度','platform'),('自有 API','personal')]:
+            ttk.Radiobutton(modes, text=text, value=value, variable=self.var_mode,
+                            command=self._cloud_mode_changed).pack(side='left', padx=3)
+        keys = ttk.Frame(lf3)
+        keys.grid(row=5, column=0, columnspan=4, sticky='w', pady=(6,0))
+        for text, action in [('保存个人密钥','save'),('清除个人密钥','clear'),('接管旧密钥','adopt'),('查看平台额度','budget')]:
+            ttk.Button(keys,text=text,command=lambda a=action:self._cloud_key_action(a)).pack(side='left',padx=3)
+        ttk.Label(lf3,textvariable=self.var_cloud_status,wraplength=850).grid(row=6,column=0,columnspan=4,sticky='w',pady=(6,0))
         self._checkbutton(lf3, "演练模式（不实际发送按键）",
                          self.var_dry).grid(row=2, column=2, columnspan=2, sticky="w", pady=(6, 0))
         self._checkbutton(lf3, "启用 demo 模型（离线权重，不即时更新）",
@@ -4012,6 +3642,8 @@ class DirectorApp:
         ttk.Button(row, text="重新检查", command=self._refresh_deps).pack(side="left")
         ttk.Button(row, text="安装缺失依赖", command=self._install_deps_async).pack(side="left", padx=6)
 
+        self._developer_widgets = [lf5] + self._pro_developer_widgets
+
         # 6) 控制条（始终可见）
         ctrl = ttk.Frame(body)
         ctrl.grid(row=1, column=0, sticky="ew", pady=(10, 6))
@@ -4023,12 +3655,10 @@ class DirectorApp:
             style="Stop.TButton")
         self.btn_stop.pack(side="left", padx=6)
         ttk.Button(ctrl, text="保存配置", command=self._save_only).pack(side="left")
-        ttk.Button(ctrl, text="导出备份…", command=self._export_bundle).pack(
-            side="left", padx=(12, 0))
-        ttk.Button(ctrl, text="导入备份…", command=self._import_bundle).pack(
-            side="left", padx=4)
-        self.lbl_conn = ttk.Label(ctrl, text="GSI：未启动", foreground=UI_GOLD_DARK)
-        self.lbl_conn.pack(side="right")
+        from desktop_ui import settings as open_settings
+        ttk.Button(ctrl, text="设置中心", command=lambda: open_settings(self)).pack(side="left", padx=4)
+        self.lbl_conn = ttk.Label(body, text="GSI：未启动", foreground=UI_GOLD_DARK, wraplength=580)
+        self.lbl_conn.grid(row=3, column=0, sticky="w")
 
         # 7) 运行状态（始终可见）
         status_box = ttk.LabelFrame(body, text=" 运行状态 ", padding=10)
@@ -4052,10 +3682,12 @@ class DirectorApp:
         self.lbl_metrics = ttk.Label(status_box, text="专业指标：-", foreground="#666666",
                                      justify="left", wraplength=940)
         self.lbl_metrics.grid(row=5, column=0, sticky="w", pady=(3, 0))
+        self._developer_widgets.extend([self.lbl_ai, self.lbl_reason, self.lbl_metrics])
 
         # 8) 日志页
         logs.rowconfigure(0, weight=1)
         logs.columnconfigure(0, weight=1)
+        ttk.Button(logs, text='回到最新日志', command=lambda: self.txt.see('end')).grid(row=1, column=0, sticky='e')
         self.txt = scrolledtext.ScrolledText(
             logs, height=10, state="disabled", wrap="word",
             font=("Consolas", 9), background="#111418", foreground="#d6d6d6",
@@ -4068,15 +3700,18 @@ class DirectorApp:
 
     # ---- 依赖 ----
     def _refresh_deps(self) -> None:
-        try:
+        self.lbl_deps.configure(text='依赖：后台检查中…')
+        def done(dependencies, error):
+            if error:
+                self.lbl_deps.configure(text='依赖检查失败，请查看日志。')
+                return
             parts = []
-            for d in check_dependencies():
-                mark = "✓" if d["installed"] else "✗ 缺失"
-                ver = f" {d['version']}" if d.get("version") else ""
-                parts.append(f"{d['module']}{ver} {mark}")
-            self.lbl_deps.configure(text="依赖：" + "    ".join(parts))
-        except Exception:
-            self.lbl_deps.configure(text="依赖检查失败，请查看日志。")
+            for dependency in dependencies:
+                mark = '✓' if dependency['installed'] else '✗ 缺失'
+                version = f" {dependency['version']}" if dependency.get('version') else ''
+                parts.append(f"{dependency['module']}{version} {mark}")
+            self.lbl_deps.configure(text='依赖：'+'    '.join(parts))
+        self.tasks.submit('dependencies', check_dependencies, done)
 
     def _train_demos(self) -> None:
         """选择包含 .dem 的文件夹，后台运行 train_from_demos.py。"""
@@ -4124,7 +3759,7 @@ class DirectorApp:
                 code = proc.wait()
             except Exception as e:
                 self.bus.error(f"demo 训练启动失败：{type(e).__name__}: {e}")
-            self.root.after(0, lambda: self._train_done(code, out))
+            schedule(self.root,0, lambda: self._train_done(code, out))
 
         threading.Thread(target=worker, name="demo-train", daemon=True).start()
 
@@ -4151,7 +3786,7 @@ class DirectorApp:
 
         def worker() -> None:
             ok = install_dependencies(lambda line: self.bus.info("pip | " + line))
-            self.root.after(0, lambda: self._deps_done(ok))
+            schedule(self.root,0, lambda: self._deps_done(ok))
 
         threading.Thread(target=worker, name="pip-install", daemon=True).start()
 
@@ -4176,7 +3811,7 @@ class DirectorApp:
                 found = detect_cs2_executables()
             except Exception:
                 found = []
-            self.root.after(0, lambda: self._detect_done(found))
+            schedule(self.root,0, lambda: self._detect_done(found))
 
         threading.Thread(target=worker, name="detect-cs2", daemon=True).start()
 
@@ -4210,7 +3845,7 @@ class DirectorApp:
         if cfg_dir is None:
             self.lbl_gsi.configure(
                 text="GSI 配置：路径无法推导 game/csgo/cfg，请确认选择的是 cs2.exe",
-                foreground="#b00020",
+                foreground=self._colors['error'],
             )
             return
         target = cfg_dir / GSI_CFG_NAME
@@ -4241,13 +3876,13 @@ class DirectorApp:
                     extra += f"；端口同时被 {', '.join(conflicts)} 使用"
                 self.lbl_gsi.configure(
                     text=f"GSI 配置：已安装 → {target}   ({uri}{extra})",
-                    foreground=("#b00020" if (conflicts or not ok_pos or not is_keyvalues
+                    foreground=(self._colors['error'] if (conflicts or not ok_pos or not is_keyvalues
                                                or port_mismatch) else "#1b7f3b"),
                 )
             except Exception:
-                self.lbl_gsi.configure(text=f"GSI 配置：已存在但无法解析 → {target}", foreground="#b00020")
+                self.lbl_gsi.configure(text=f"GSI 配置：已存在但无法解析 → {target}", foreground=self._colors['error'])
         else:
-            self.lbl_gsi.configure(text=f"GSI 配置：未安装（目标 {target}）", foreground="#a15c00")
+            self.lbl_gsi.configure(text=f"GSI 配置：未安装（目标 {target}）", foreground=self._colors['accent'])
 
     def _install_gsi(self) -> None:
         exe = self.var_exe.get().strip()
@@ -4329,7 +3964,11 @@ class DirectorApp:
 
     # ---- 启动 / 停止 ----
     def _collect_cfg(self) -> dict[str, Any]:
-        self._sync_pro_cfg()
+        from config_service import parse_fields
+        checked = parse_fields({'gsi_port': self.var_port.get(),
+                                'obs_port': self.var_obs_port.get(),
+                                'switch_min_score': self.var_score.get(),
+                                'manual_pause_seconds': self.var_pause.get()})
         cfg = copy.deepcopy(self.cfg)
         cfg["cs2_exe"] = self.var_exe.get().strip()
 
@@ -4364,9 +4003,10 @@ class DirectorApp:
         cfg["narrative_enabled"] = bool(self.var_narrative_enabled.get())
         cfg["obs_narrative_enabled"] = bool(self.var_obs_narrative_enabled.get())
         cfg["obs_narrative_source"] = self.var_obs_narrative_source.get().strip()
-        cfg["deepseek_api_key"] = self.var_api.get().strip()
+        cfg["deepseek_api_key"] = ""
         cfg["deepseek_model"] = self.var_model.get().strip() or "deepseek-chat"
-        cfg["ai_enabled"] = bool(self.var_ai.get())
+        cfg["arbitration_mode"] = self.var_mode.get()
+        cfg["ai_enabled"] = cfg["arbitration_mode"] in ('platform','personal')
         cfg["demo_model_enabled"] = bool(self.var_learn.get())
         cfg["dry_run"] = bool(self.var_dry.get())
         try:
@@ -4382,6 +4022,13 @@ class DirectorApp:
         except Exception:
             cfg["manual_pause_seconds"] = DEFAULT_CONFIG["manual_pause_seconds"]
         cfg["utility_cam_enabled"] = bool(self.var_utility_cam.get())
+        cfg.update(checked)
+        return cfg
+
+    def _apply_runtime_cfg(self, cfg):
+        cfg = copy.deepcopy(cfg)
+        self._config_version += 1
+        self._runtime_cfg = cfg
         self.decision_logger.cfg = cfg
         self.model_arbiter.cfg = cfg
         self.timeline.cfg = cfg
@@ -4389,7 +4036,6 @@ class DirectorApp:
         self.pro.cfg = cfg
         self.pro.obs.cfg = cfg
         self.pro.actions.cfg = cfg
-        return cfg
 
     def _validate_cfg(self, cfg: dict[str, Any]) -> bool:
         if not (1024 <= int(cfg["gsi_port"]) <= 65535):
@@ -4417,7 +4063,13 @@ class DirectorApp:
         if len(set(keys)) < 4:
             if not messagebox.askyesno("确认", "CT/T 出生点或 A/B 包点中有重复快捷键，确定继续？"):
                 return False
-        if cfg["ai_enabled"] and not cfg["deepseek_api_key"]:
+        from arbitration_runtime import owner_of
+        try:
+            personal_missing = cfg.get('arbitration_mode') == 'personal' and not self.personal_keys.get(owner_of(self.account))
+        except Exception:
+            messagebox.showerror('个人密钥不可用','请重新登录并保存个人密钥。',parent=self.root)
+            return False
+        if personal_missing:
             if not messagebox.askyesno(
                 "未填写 API Key",
                 "未填写 DeepSeek API Key，将只使用规则引擎。\n是否继续启动？",
@@ -4437,17 +4089,24 @@ class DirectorApp:
             messagebox.showwarning(
                 "缺少 keyboard",
                 "keyboard 未安装：手动接管检测会退化为轮询（仍可用），"
-                "但 HLAE 组合快捷键可能发送失败。建议先安装依赖。",
+                "但 MulNX 组合快捷键可能发送失败。建议先安装依赖。",
             )
         return True
 
     def _start(self) -> None:
-        if self.engine is not None:
+        if self.engine is not None or self._closing:
+            return
+        if 'model-check' in self.tasks.running or 'model-load' in self.tasks.running:
+            self.bus.warning('本地模型检查尚未完成，请稍后启动。')
             return
         if not self.account.allowed():
             messagebox.showerror("账号或模型尚未就绪", self.account.status + "\n请登录并取得有效资格及正式模型后启动。", parent=self.root)
             return
-        cfg = self._collect_cfg()
+        try:
+            cfg = self._collect_cfg()
+        except ValueError as error:
+            messagebox.showerror("配置错误", str(error), parent=self.root)
+            return
         if not self._validate_cfg(cfg):
             return
         try:
@@ -4455,7 +4114,9 @@ class DirectorApp:
         except Exception as e:
             # 配置写不进去（只读目录/杀软拦截）不应该阻止本次运行
             self.bus.warning(f"配置保存失败（将继续启动）：{type(e).__name__}: {e}")
-        self.cfg = cfg
+        self.cfg = copy.deepcopy(cfg)
+        self._apply_runtime_cfg(cfg)
+        cfg = self._runtime_cfg
         self._register_pause_hotkey()
         try:
             from offline_runtime import create_local_engine
@@ -4466,6 +4127,8 @@ class DirectorApp:
                 cfg, self.bus, pro=self.pro, decision_logger=self.decision_logger, timeline=self.timeline)
             # Cache-based account gate avoids credential/network IO in the input loop.
             engine.authorization_gate = self.account
+            if cfg.get('ai_enabled'):
+                engine.arbiter.configure(self.account,self.personal_keys)
             engine.input.authorization_gate = self.account
             self.pro.obs.authorization_gate = self.account
             engine.start()
@@ -4477,20 +4140,67 @@ class DirectorApp:
         self.engine = engine
         self.btn_start.configure(state="disabled")
         self.btn_stop.configure(state="normal")
-        self.lbl_conn.configure(text="GSI：等待数据…", foreground="#1a4f8a")
+        self.lbl_conn.configure(text="GSI：等待数据…", foreground=self._colors['accent'])
 
     def _stop(self) -> None:
-        if self.engine is None:
+        if self.engine is None or 'stop' in self.tasks.running:
             return
+        engine = self.engine
+        self.btn_stop.configure(state='disabled')
+        self.lbl_conn.configure(text='正在停止导播…')
+        def done(result, error):
+            if error:
+                self.bus.error(f'停止导播失败：{error}')
+                self.btn_stop.configure(state='normal')
+                return
+            self.engine = None
+            self.account.release_execution()
+            self.btn_start.configure(state='normal')
+            self.lbl_conn.configure(text='GSI：未启动')
+        self.tasks.submit('stop', engine.stop, done)
+
+    def _cloud_mode_changed(self):
+        self.var_ai.set(self.var_mode.get() != 'off')
+        if self.engine is not None:
+            # A setting change immediately cancels old responses; a new paid session needs restart.
+            self.engine.arbiter.cfg['ai_enabled'] = False
+            self.engine.arbiter.invalidate()
+            self.var_cloud_status.set('已停止本次云端仲裁。停止并重新启动导播后应用新模式。')
+        else:
+            self.var_cloud_status.set('模式将在主动启动导播时应用；关闭程序或导入备份后默认关闭。')
+
+    def _cloud_key_action(self, action):
+        from arbitration_runtime import owner_of, PlatformProvider
         try:
-            self.engine.stop()
+            owner = owner_of(self.account)
         except Exception:
-            self.bus.exception("停止导播时出现异常")
-        self.engine = None
-        self.btn_start.configure(state="normal")
-        self.account.release_execution()
-        self.btn_stop.configure(state="disabled")
-        self.lbl_conn.configure(text="GSI：未启动", foreground="#555555")
+            messagebox.showerror('需要登录','请先联网登录网站账号。',parent=self.root)
+            return
+        if action != 'budget' and self.engine is not None:
+            messagebox.showerror('请先停止','修改密钥前请停止导播。',parent=self.root)
+            return
+        key = self.var_api.get().strip()
+        if action == 'adopt' and not messagebox.askyesno('接管旧密钥','将本机已加密的旧密钥绑定到当前登录账号？不会自动启用。',parent=self.root):
+            return
+        def work():
+            if owner_of(self.account) != owner:
+                raise ValueError('账号已切换')
+            if action == 'budget':
+                provider = PlatformProvider(self.account)
+                provider.prepare()
+                budget = provider.summary
+                return ('无限额度' if budget['unlimited'] else budget['available']+' 元') + '；当前仅查询，未发起付费调用。'
+            if action == 'save':self.personal_keys.set(owner,key)
+            elif action == 'clear':self.personal_keys.clear(owner)
+            elif action == 'adopt':self.personal_keys.adopt_legacy(owner)
+            return '个人密钥已更新，仅存本机加密目录；需要主动选择自有 API 模式。'
+        def done(result,error):
+            self.var_api.set('')
+            try:
+                if owner_of(self.account)!=owner:return
+            except Exception:return
+            self.var_cloud_status.set('操作失败，请核对登录、产品资格及平台配置。' if error else result)
+        self.tasks.submit('arbitration-config',work,done)
 
     def _export_bundle(self) -> None:
         cfg = self._collect_cfg()
@@ -4502,7 +4212,7 @@ class DirectorApp:
             return
         include = messagebox.askyesno(
             "导出密钥",
-            "是否包含 DeepSeek API Key 和 OBS 密码？\n\n"
+            "是否包含 OBS 密码？个人 API 密钥始终不会导出。\n\n"
             "选择“否”更安全，适合分享；导入后需要重新填写。\n"
             "选择“是”会把明文密钥写入 ZIP。",
             parent=self.root, default="no")
@@ -4555,14 +4265,16 @@ class DirectorApp:
                                  parent=self.root)
 
     def _save_only(self) -> None:
-        cfg = self._collect_cfg()
         try:
+            cfg = self._collect_cfg()
             save_config(cfg)
             self.cfg = cfg
-            self._register_pause_hotkey()
+            if self.engine is None:
+                self._apply_runtime_cfg(cfg)
+                self._register_pause_hotkey()
             self.bus.info(f"配置已保存：{config_path()}")
             self._refresh_gsi_status()
-            messagebox.showinfo("保存配置", f"已保存到：\n{config_path()}")
+            messagebox.showinfo("保存配置", f"已保存到：\n{config_path()}\n运行中的导播保持原配置，下次启动应用。")
         except Exception as e:
             messagebox.showerror("保存配置", f"保存失败：{e}")
 
@@ -4572,23 +4284,34 @@ class DirectorApp:
             return
         try:
             self._drain_logs()
+            running = self.engine.status() if self.engine else {}
+            self.workspace_status.configure(text=(
+                f"导播：{'运行中' if running.get('running') else '已停止'}\n"
+                f"游戏数据：{running.get('gsi', '等待启动')}\n"
+                f"当前视角：{running.get('observed') or '-'}\n"
+                f"提示：{running.get('reason') or '可在设置中心查看账号与模型状态'}"))
             now = time.monotonic()
             if now - self._last_pro_log_refresh > 1.0:
                 self._last_pro_log_refresh = now
                 self._refresh_pro_logs()
                 obs = self.pro.status()
                 if obs.get("obs"):
-                    self.lbl_obs.configure(text="OBS：已连接", foreground="#087f23")
+                    self.lbl_obs.configure(text="OBS：已连接", foreground=self._colors['success'])
             if now - self._last_model_check > 5.0:
                 self._last_model_check = now
-                if self.model_arbiter.reload_if_changed():
-                    self.bus.info("检测到新的随机森林模型，已自动重新加载。")
-                    self._update_model_label()
+                if self.engine is None and 'model-load' not in self.tasks.running:
+                    def reloaded(changed, error):
+                        if error:
+                            self.bus.warning(f'本地候选模型检查失败：{error}')
+                        elif changed:
+                            self.bus.info('检测到更新的本地候选模型。')
+                            self._update_model_label()
+                    self.tasks.submit('model-check', self.model_arbiter.reload_if_changed, reloaded)
             status = self.engine.status() if self.engine else None
             if status and status.get("running"):
                 self._render_status(status)
             elif self.engine is None:
-                self.lbl_conn.configure(text="GSI：未启动", foreground="#555555")
+                self.lbl_conn.configure(text="GSI：未启动", foreground=self._colors['muted'])
                 self.lbl_play.configure(text="阶段：-    当前视角：-    AI 目标：-")
                 self.lbl_ai.configure(text="AI：未启动    运镜：-")
                 self.lbl_reason.configure(text="决策：-")
@@ -4600,7 +4323,7 @@ class DirectorApp:
             if now - self._last_gui_warn > 5.0:
                 self._last_gui_warn = now
                 self.bus.warning(f"状态刷新异常（继续运行）：{type(e).__name__}: {e}")
-        self.root.after(200, self._poll)
+        schedule(self.root,200, self._poll)
 
     def _render_status(self, st: dict[str, Any]) -> None:
         gsi = st.get("gsi")
@@ -4608,13 +4331,13 @@ class DirectorApp:
         packets = st.get("packets", 0)
         if gsi == "ok" and age is not None:
             text = f"GSI：已连接（{age:.1f}s 前，收包 {packets}）"
-            color = "#1b7f3b"
+            color = self._colors['success']
         elif gsi == "stale" and age is not None:
             text = f"GSI：断流 {age:.1f}s"
-            color = "#b00020"
+            color = self._colors['error']
         else:
             text = "GSI：等待数据…（检查是否重启 CS2）"
-            color = "#a15c00"
+            color = self._colors['accent']
         self.lbl_conn.configure(text=text, foreground=color)
 
         observed = st.get("observed")
@@ -4703,6 +4426,7 @@ class DirectorApp:
                 break
         if not lines:
             return
+        follow = getattr(self, '_follow_logs', True) and self.txt.yview()[1] >= .999
         stamp = datetime.now().strftime("%H:%M:%S")
         self.txt.configure(state="normal")
         try:
@@ -4713,34 +4437,60 @@ class DirectorApp:
             # 每个批次只裁剪/滚动一次，避免每行都触发 Tk 布局。
             if int(self.txt.index("end-1c").split(".")[0]) > 800:
                 self.txt.delete("1.0", "200.0")
-            self.txt.see("end")
+            if follow:
+                self.txt.see("end")
         finally:
             self.txt.configure(state="disabled")
 
     # ---- 关闭 ----
     def _on_close(self) -> None:
+        if self._closing:
+            return
+        if "stop" in self.tasks.running:
+            schedule(self.root, 100, self._on_close)
+            return
         self._closing = True
         self._unregister_pause_hotkey()
+        self.btn_start.configure(state='disabled')
+        self.btn_stop.configure(state='disabled')
+        self.lbl_conn.configure(text='正在停止并保存本地记录…')
         try:
-            if self.engine is not None:
-                self.engine.stop()
-                self.engine = None
-        except Exception:
-            pass
-        try:
+            draft = self._collect_cfg()
+        except ValueError:
+            draft = None
+        engine = self.engine
+        stopped = threading.Event()
+        from desktop_ui import window_preferences
+        window_changes = window_preferences(self, 'director')
+        def work():
+            if window_changes:
+                self.preferences.update(**window_changes)
+            if engine is not None:
+                engine.stop()
+            if self.timeline.close(time.monotonic(), '窗口关闭') is False:
+                raise RuntimeError('镜头时间线尚未完全落盘，请检查磁盘后重试关闭')
+            stopped.set()
+            if draft is not None:
+                save_config(draft)
+            if not self.training_data.close():
+                return False
             self.pro.stop()
-        except Exception:
-            pass
-        try:
-            save_config(self._collect_cfg())
-        except Exception:
-            pass
-        if not self.training_data.close():
-            self._closing = False
-            messagebox.showerror("训练数据尚未落盘", self.training_data.status_text(), parent=self.root)
-            return
-        self.account.close()
-        self.root.destroy()
+            self.account.close()
+            return True
+        def done(flushed, error):
+            if stopped.is_set():
+                self.engine = None
+                self.account.release_execution()
+            if error or not flushed:
+                self._closing = False
+                self.btn_start.configure(state='normal' if self.engine is None else 'disabled')
+                self.btn_stop.configure(state='normal' if self.engine is not None else 'disabled')
+                self._register_pause_hotkey()
+                schedule(self.root, 200, self._poll)
+                messagebox.showerror('关闭未完成', str(error) if error else self.training_data.status_text(), parent=self.root)
+                return
+            self.root.destroy()
+        self.tasks.submit('close', work, done)
 
     def run(self) -> None:
         self.root.mainloop()
@@ -4801,11 +4551,24 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 0
     parser = argparse.ArgumentParser(description=f"{APP_TITLE} v{VERSION}")
     parser.add_argument("--check", action="store_true", help="打印环境自检表后退出")
+    parser.add_argument('--check-report', type=Path, help='将环境自检写入 JSON，供无控制台 exe 验证')
     parser.add_argument("--install-deps", action="store_true", help="安装缺失依赖后退出")
     args = parser.parse_args(argv)
 
-    if args.check:
+    if args.check or args.check_report:
         print_env_report()
+        if args.check_report:
+            import platform
+            from director_core import __version__ as core_version
+            from demo_live_dataset import PARSER_VERSION
+            from public_trust import public_trust_status
+            report = {'client_version': VERSION, 'core_version': core_version,
+                      'feature_version': 'pov-v1', 'demo_parser': PARSER_VERSION,
+                      'python': sys.version.split()[0], 'platform': platform.platform(),
+                      'frozen': bool(getattr(sys, 'frozen', False)),
+                      'dependencies': check_dependencies(),
+                      'public_trust': public_trust_status()}
+            args.check_report.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
         return 0
     if args.install_deps:
         print_env_report()

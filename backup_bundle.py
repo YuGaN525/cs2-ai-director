@@ -43,7 +43,8 @@ def export_bundle(dest: Path, cfg: dict[str, Any], data_dir: Path,
                   app_version: str, include_secrets: bool = False) -> dict[str, Any]:
     dest = Path(dest)
     data_dir = Path(data_dir)
-    payload = dict(cfg)
+    from arbitration_runtime import sanitize_config
+    payload = sanitize_config(cfg)
     if not include_secrets:
         payload["deepseek_api_key"] = ""
         payload["obs_password"] = ""
@@ -129,9 +130,20 @@ def import_bundle(path: Path, data_dir: Path) -> dict[str, Any]:
     with zipfile.ZipFile(path, "r") as z:
         payload = {_safe_name(i.filename): z.read(i.filename)
                    for i in z.infolist()}
+    # Preflight secret protection before replacing any imported artifact.
+    from arbitration_runtime import PersonalKeyStore, sanitize_config
+    imported_cfg = json.loads(payload[CONFIG])
+    legacy_key = str(imported_cfg.get('deepseek_api_key') or '').strip()
+    if legacy_key:
+        PersonalKeyStore(data_dir).set('legacy-pending',legacy_key)
+    info['config'] = sanitize_config(imported_cfg)
+    payload[CONFIG] = json.dumps(info['config'],ensure_ascii=False).encode('utf-8')
     for name, raw in payload.items():
         if name == MANIFEST:
             continue
+        if name == CONFIG:
+            from arbitration_runtime import sanitize_config
+            raw = json.dumps(sanitize_config(json.loads(raw)), ensure_ascii=False).encode('utf-8')
         target = data_dir / name
         tmp = target.with_name(target.name + ".importtmp")
         tmp.write_bytes(raw)

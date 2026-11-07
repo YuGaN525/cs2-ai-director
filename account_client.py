@@ -70,6 +70,7 @@ class DesktopAccount:
         self._signed_out_requested=False
         self._local_ready=False;self._local_expiry=0;self._local_wall=clock();self._local_mono=time.monotonic()
         self._local_model_hash=''
+        self._local_reason='not_checked'
         self._reload()
         self.check_local()
 
@@ -153,7 +154,7 @@ class DesktopAccount:
     def _block_current(self,reason):
         # Caller owns session transaction. Persist tombstone without nesting the OS file lock.
         state=self.session._read(self.session.path) if self.session.path.exists() else {}
-        state['blocked']=reason;self.session._write(self.session.path,state);self._local_ready=False
+        state['blocked']=reason;self.session._write(self.session.path,state);self._local_ready=False;self._local_reason=reason
 
     def logout(self):
         self.cancel_event.set()
@@ -219,6 +220,39 @@ class DesktopAccount:
                     if self.tokens and self.tokens.get('access_token')==token:
                         self._block_current('entitlement_or_device_revoked')
 
+    def status_snapshot(self):
+        allowed = self.allowed()
+        now = max(self.clock(), self._local_wall + max(0, time.monotonic()-self._local_mono))
+        local_reason = self._local_reason
+        if self.pending is not None:
+            reason = 'login_pending'
+        elif allowed:
+            reason = 'ready'
+        elif local_reason in ('entitlement_unavailable', 'entitlement_or_device_revoked'):
+            reason = 'revoked'
+        elif local_reason == 'reauth_required':
+            reason = 'reauth_required'
+        elif not self.tokens:
+            reason = 'login_required'
+        elif self.clock() < self._local_wall-2 or local_reason == 'clock_rollback':
+            reason = 'clock_rollback'
+        elif local_reason == 'offline_expired' or (self._local_expiry and now >= self._local_expiry):
+            reason = 'lease_expired'
+        elif local_reason == 'model_missing_or_changed' or (self._local_model_hash and self.model.current_hash() != self._local_model_hash):
+            reason = 'model_changed'
+        elif not self._local_model_hash:
+            reason = 'model_or_validation_required'
+        else:
+            reason = 'local_validation_required'
+        manager = self.model_manager
+        return {'logged_in': bool(self.tokens), 'login_pending': self.pending is not None,
+                'allowed': allowed, 'reason_code': reason,
+                'lease_expires_at': self._local_expiry if self._local_expiry else None,
+                'remaining_seconds': max(0, int(self._local_expiry-now)) if allowed else 0,
+                'last_verified_at': self.last_renew or None,
+                'model_ready': bool(self._local_model_hash),
+                'model_state': manager.status if manager else '未配置正式模型发行源'}
+
     def allowed(self):
         # No network, credential IO or waiting on network-held locks in the input loop.
         effective=max(self.clock(),self._local_wall+max(0,time.monotonic()-self._local_mono))
@@ -233,13 +267,14 @@ class DesktopAccount:
             if self.model_manager is not None:
                 self.model_manager.select_account(self.tokens['account_id'])
                 selected=self.model_manager.cached_model()
-                if selected is None:self._local_ready=False;return
+                if selected is None:self._local_ready=False;self._local_reason='model_missing_or_changed';return
                 self.model=selected
             state=self.session.check(self.tokens['account_id'],self.model.current_hash())
             self._local_ready,self._local_expiry=state.allowed,state.expires_at
+            self._local_reason=state.reason
             self._local_model_hash=self.model.current_hash() if state.allowed else ''
             self._local_wall,self._local_mono=self.clock(),time.monotonic()
-        except Exception:self._local_ready=False
+        except Exception:self._local_ready=False;self._local_reason='local_validation_failed'
 
     @property
     def last_state(self):
@@ -256,6 +291,8 @@ class DesktopAccount:
                 self.check_local()
 
     def start(self):
+        if self.thread and self.thread.is_alive():return
+        self.stop_event.clear()
         self.thread=threading.Thread(target=self._loop,name='device-session',daemon=True);self.thread.start()
 
     def acquire_execution(self):
@@ -274,8 +311,8 @@ class DesktopAccount:
 def default_account():
     root=Path(os.environ.get('APPDATA') or Path.home())/'CS2AIDirector'
     # Trust keys are shipped/provisioned by the application, never by the login response.
-    path=(Path(sys.executable).parent if getattr(sys,'frozen',False) else Path(__file__).parent)/'identity-server.json'
-    if not path.exists() and getattr(sys,'frozen',False):path=Path(sys._MEIPASS)/'identity-server.json'
+    from public_trust import runtime_trust_path
+    path=runtime_trust_path()
     if not path.exists():
         return DesktopAccount(root/'identity','https://www.yuzibei.cn',{},root/'verified-model.json.gz',model_keys={})
     from public_trust import read_public_trust

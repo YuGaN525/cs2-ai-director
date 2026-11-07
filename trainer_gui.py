@@ -11,6 +11,7 @@ import sys
 import threading
 import tkinter as tk
 from pathlib import Path
+from desktop_ui import schedule
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 from typing import Any, Optional
 
@@ -42,9 +43,17 @@ def asset_path(name: str) -> Path:
 class TrainerApp:
     def __init__(self) -> None:
         self.root = tk.Tk()
+        from desktop_tasks import Tasks
+        self.tasks = Tasks(self.root)
+        self._closing = False
         self.root.title(f"{APP_TITLE} v{VERSION} · {APP_SUBTITLE}")
         self.root.geometry("940x920")
-        self.root.minsize(840, 800)
+        from desktop_ui import fit_window
+        fit_window(self.root, 940, 850)
+        from preferences import Preferences
+        self.preferences = Preferences(decision_model_path().parent)
+        from desktop_ui import restore_window
+        restore_window(self, 'trainer', 940, 850)
         self.root.report_callback_exception = self._on_tk_exception
         self._init_style()
         self._set_window_icon()
@@ -66,15 +75,32 @@ class TrainerApp:
             value=(f"DeepSeek 已就绪：{ai_cfg.model}" if ai_cfg.enabled
                    else "未找到 API Key，将只做本地扩展搜索"))
 
-        self._events: queue.Queue[tuple[str, Any]] = queue.Queue()
+        self._events: queue.Queue[tuple[str, Any]] = queue.Queue(maxsize=2000)
+        self._dropped_log_lines = 0
         from account_client import default_account
         self.account = default_account()
         self._build()
+        self._apply_preferences()
         from training_data_runtime import TrainingDataRuntime
         self.training_data = TrainingDataRuntime(identity_provider=self.account.upload_identity, binding_provider=self.account.binding)
         self.account.start()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
-        self.root.after(100, self._poll_events)
+        schedule(self.root,100, self._poll_events)
+
+    def _apply_preferences(self):
+        from desktop_ui import theme
+        prefs = self.preferences.read()
+        self._ui_preferences = prefs
+        from desktop_ui import PALETTES
+        self._colors = PALETTES[prefs['theme']]
+        theme(self.root, prefs['theme'], prefs['font_size'])
+        self._follow_logs = prefs['follow_logs']
+        for widget in self._developer_widgets:
+            widget.grid() if prefs['developer_mode'] else widget.grid_remove()
+        if prefs['developer_mode']:
+            self.btn_calibrate.pack(side='left', before=self.progress)
+        else:
+            self.btn_calibrate.pack_forget()
 
     def _on_tk_exception(self, exc: Any, val: Any, tb: Any) -> None:
         try:
@@ -84,35 +110,11 @@ class TrainerApp:
             pass
 
     def _init_style(self) -> None:
-        try:
-            self.root.configure(bg=UI_BG)
-            self.root.option_add("*Font", ("Microsoft YaHei UI", 9))
-            style = ttk.Style()
-            if "clam" in style.theme_names():
-                style.theme_use("clam")
-            style.configure(".", font=("Microsoft YaHei UI", 9),
-                            background=UI_CARD, foreground=UI_INK)
-            style.configure("TFrame", background=UI_CARD)
-            style.configure("TLabel", background=UI_CARD, foreground=UI_INK)
-            style.configure("TLabelframe", background=UI_CARD,
-                            bordercolor=UI_BORDER, relief="solid", borderwidth=1)
-            style.configure("TLabelframe.Label", background=UI_CARD,
-                            foreground=UI_GOLD_DARK,
-                            font=("Microsoft YaHei UI", 10, "bold"))
-            style.configure("TButton", padding=(10, 5), background="#efe4cf",
-                            foreground=UI_INK, bordercolor=UI_BORDER)
-            style.map("TButton", background=[("active", "#e1d0af")])
-            style.configure("Accent.TButton", background=UI_GOLD,
-                            foreground="#171a20",
-                            font=("Microsoft YaHei UI", 9, "bold"))
-            style.map("Accent.TButton",
-                      background=[("active", "#c99a44")])
-            style.configure("TEntry", fieldbackground="#ffffff",
-                            bordercolor=UI_BORDER)
-            style.configure("TProgressbar", background=UI_GOLD,
-                            troughcolor="#e8ddc9")
-        except Exception:
-            pass
+        from desktop_ui import theme
+        self.root.option_add('*Font', ('Microsoft YaHei UI', 10))
+        from desktop_ui import PALETTES
+        self._colors = PALETTES[self.preferences.read()['theme']]
+        theme(self.root, self.preferences.read()['theme'])
 
     def _set_window_icon(self) -> None:
         try:
@@ -153,8 +155,13 @@ class TrainerApp:
 
         from account_ui import mount_account
         mount_account(self.root,self.account)
-        outer = ttk.Frame(self.root, padding=10)
-        outer.pack(fill="both", expand=True)
+        from desktop_ui import ScrollableFrame, settings as open_settings
+        bar = ttk.Frame(self.root)
+        bar.pack(fill="x")
+        ttk.Button(bar, text="设置中心", command=lambda: open_settings(self)).pack(side="right", padx=10)
+        scroll = ScrollableFrame(self.root)
+        scroll.pack(fill="both", expand=True)
+        outer = scroll.inner
         outer.columnconfigure(1, weight=1)
 
         ttk.Label(outer, text="决策 CSV").grid(row=0, column=0, sticky="w")
@@ -206,6 +213,7 @@ class TrainerApp:
             foreground="#555555", wraplength=820, justify="left",
         ).grid(row=2, column=0, columnspan=2, sticky="w")
 
+        self._developer_widgets = [params, ai_box]
         demo = ttk.LabelFrame(outer, text=" 从 .dem 导入（可选） ", padding=8)
         demo.grid(row=4, column=0, columnspan=3, sticky="ew", pady=(4, 6))
         demo.columnconfigure(1, weight=1)
@@ -238,7 +246,7 @@ class TrainerApp:
         self.btn_calibrate = ttk.Button(
             actions, text="校准线上模型", command=self._calibrate)
         self.btn_calibrate.pack(side="left")
-        ttk.Button(actions, text="训练数据状态", command=lambda: messagebox.showinfo("训练数据与补传", self.training_data.summary(), parent=self.root)).pack(side="left", padx=4)
+        ttk.Button(actions, text="训练数据状态", command=lambda: __import__("desktop_ui").settings(self)).pack(side="left", padx=4)
         self.progress = ttk.Progressbar(actions, mode="indeterminate", length=200)
         self.progress.pack(side="left", padx=10)
         self.lbl_status = ttk.Label(actions, text="就绪", foreground="#555555")
@@ -256,6 +264,7 @@ class TrainerApp:
             background="#111418", foreground="#d6d6d6",
             insertbackground="#d6d6d6", relief="flat")
         self.log.grid(row=7, column=0, columnspan=3, sticky="nsew")
+        ttk.Button(outer, text="回到最新日志", command=lambda: self.log.see("end")).grid(row=8, column=0, columnspan=3, sticky="e")
         self.log.configure(state="disabled")
         outer.rowconfigure(7, weight=1)
 
@@ -277,6 +286,8 @@ class TrainerApp:
             messagebox.showerror("打开目录", str(e), parent=self.root)
 
     def _calibrate(self) -> None:
+        if self._closing:
+            return
         if self._training or self._calibrating:
             return
         csv_path = decision_csv_path()
@@ -290,7 +301,7 @@ class TrainerApp:
             return
         self._calibrating = True
         self.btn_calibrate.configure(state="disabled")
-        self.lbl_status.configure(text="校准中…", foreground="#a15c00")
+        self.lbl_status.configure(text="校准中…", foreground=self._colors['accent'])
         self._append("开始用线上 decisions.csv 校准概率…")
 
         def worker() -> None:
@@ -307,17 +318,21 @@ class TrainerApp:
         threading.Thread(target=worker, daemon=True).start()
 
     def _append(self, text: str) -> None:
-        self.log.configure(state="normal")
-        self.log.insert("end", text.rstrip() + "\n")
-        self.log.see("end")
-        self.log.configure(state="disabled")
+        from desktop_ui import append_log
+        append_log(self.log, text, follow_enabled=getattr(self, '_follow_logs', True))
 
     def _worker_log(self, text: str) -> None:
-        self._events.put(("log", text))
+        try:
+            self._events.put_nowait(('log', text))
+        except queue.Full:
+            self._dropped_log_lines += 1
 
     def _poll_events(self) -> None:
+        if self._dropped_log_lines:
+            count, self._dropped_log_lines = self._dropped_log_lines, 0
+            self._append(f'显示队列繁忙，省略 {count} 条日志；训练结果与本地记录不受影响。')
         try:
-            while True:
+            for _ in range(80):
                 kind, payload = self._events.get_nowait()
                 if kind == "log":
                     self._append(str(payload))
@@ -336,7 +351,7 @@ class TrainerApp:
         except queue.Empty:
             pass
         if self.root.winfo_exists():
-            self.root.after(100, self._poll_events)
+            schedule(self.root,100, self._poll_events)
 
     def _browse_demos(self) -> None:
         paths = filedialog.askopenfilenames(
@@ -370,7 +385,7 @@ class TrainerApp:
         self.btn_demo.configure(state="disabled")
         self.btn_ai.configure(state="disabled")
         self.progress.start(10)
-        self.lbl_status.configure(text=message, foreground="#a15c00")
+        self.lbl_status.configure(text=message, foreground=self._colors['accent'])
         self.log.configure(state="normal")
         self.log.delete("1.0", "end")
         self.log.configure(state="disabled")
@@ -405,6 +420,8 @@ class TrainerApp:
         threading.Thread(target=worker, daemon=True).start()
 
     def _start(self) -> None:
+        if self._closing:
+            return
         if self._training:
             return
         params = self._read_params()
@@ -422,6 +439,8 @@ class TrainerApp:
         )
 
     def _start_demo(self) -> None:
+        if self._closing:
+            return
         if self._training:
             return
         params = self._read_params()
@@ -452,6 +471,8 @@ class TrainerApp:
         )
 
     def _start_ai(self) -> None:
+        if self._closing:
+            return
         if self._training or self._calibrating:
             return
         params = self._read_params()
@@ -504,7 +525,7 @@ class TrainerApp:
         size_mb = float(final.get("model_json_mb") or 0.0)
         self.lbl_status.configure(
             text=f"{label}：AUC {auc:.4f} / top-1 {top1_text}",
-            foreground="#087f23")
+            foreground=self._colors['success'])
         self._append("")
         self._append(f"AI 辅助训练完成：{label}，最终 AUC={auc:.4f}，"
                      f"top-1={top1_text}，JSON={size_mb:.2f}MB")
@@ -533,13 +554,14 @@ class TrainerApp:
             f"模型：{((report.get('outputs') or {}).get('model_json', ''))}",
             f"报告：{report.get('report_path', '')}",
         ])
-        messagebox.showinfo("AI 辅助训练完成", "\n".join(body), parent=self.root)
+        from desktop_ui import text_dialog
+        text_dialog(self.root, "AI 辅助训练完成 · 本地候选", "\n".join(body)+"\n\n本地训练生成候选，正式执行仍需后台审核与发布。")
 
     def _calibration_done(self, result: dict[str, Any]) -> None:
         self._calibrating = False
         self.btn_calibrate.configure(state="normal")
         if result.get("ok"):
-            self.lbl_status.configure(text="校准完成", foreground="#087f23")
+            self.lbl_status.configure(text="校准完成", foreground=self._colors['success'])
             text = (f"校准完成：Brier {result.get('brier_before'):.4f} → "
                     f"{result.get('brier_after'):.4f}，"
                     f"AUC {result.get('auc', 0):.4f}，"
@@ -550,7 +572,7 @@ class TrainerApp:
                 text + f"\n\n导播会自动加载：\n{result.get('path', '')}",
                 parent=self.root)
         else:
-            self.lbl_status.configure(text="校准未应用", foreground="#a15c00")
+            self.lbl_status.configure(text="校准未应用", foreground=self._colors['accent'])
             self._append("校准未应用：" + str(result.get("reason", "")))
             messagebox.showwarning(
                 "校准未应用", str(result.get("reason", "")), parent=self.root)
@@ -562,7 +584,7 @@ class TrainerApp:
         self.btn_ai.configure(state="normal")
         self.progress.stop()
         if error:
-            self.lbl_status.configure(text="训练失败", foreground="#b00020")
+            self.lbl_status.configure(text="训练失败", foreground=self._colors['error'])
             self._append("训练失败：" + error)
             messagebox.showerror("训练失败", error, parent=self.root)
             return
@@ -575,7 +597,7 @@ class TrainerApp:
         self.lbl_status.configure(
             text=f"完成：AUC {result['auc']:.4f} / top-1 {top1_text}，"
                  f"{result.get('algorithm', '')}，{size_mb:.1f}MB，样本 {result['samples']}",
-            foreground="#087f23",
+            foreground=self._colors['success'],
         )
         self._append("")
         self._append(f"训练完成。AUC={result['auc']:.4f}，top-1={top1_text}，"
@@ -589,7 +611,9 @@ class TrainerApp:
         if size_mb > 20:
             warning += (f"\n\n注意：模型 JSON 为 {size_mb:.1f}MB，较大；"
                         "启动/推理会变慢，建议在指标接近时优先选 RandomForest。")
-        messagebox.showinfo(
+        from desktop_ui import text_dialog
+        text_dialog(
+            self.root,
             "训练完成",
             f"AUC：{result['auc']:.4f}\n"
             f"top-1：{top1_text}（{result.get('top1_groups', 0)} 组）\n"
@@ -597,20 +621,34 @@ class TrainerApp:
             f"模糊样本：{ambiguous}\n"
             f"模型：{result.get('algorithm', '')}（JSON {size_mb:.1f}MB）\n"
             f"样本：{result['samples']}\n"
-            f"导播会自动加载：\n{result['model_json']}"
+            f"本地候选模型（正式执行需服务端批准）：\n{result['model_json']}"
             + warning,
-            parent=self.root,
         )
 
     def _on_close(self) -> None:
         if self._training or self._calibrating:
             messagebox.showinfo("任务运行中", "请等待训练或校准完成后关闭工作台。", parent=self.root)
             return
-        if not self.training_data.close():
-            messagebox.showerror("训练数据尚未落盘", self.training_data.status_text(), parent=self.root)
+        if self._closing:
             return
-        self.account.close()
-        self.root.destroy()
+        self._closing = True
+        self._append('正在保存本地记录，请稍候…')
+        from desktop_ui import window_preferences
+        window_changes = window_preferences(self, 'trainer')
+        def work():
+            if window_changes:
+                self.preferences.update(**window_changes)
+            if not self.training_data.close():
+                return False
+            self.account.close()
+            return True
+        def done(flushed, error):
+            if error or not flushed:
+                self._closing = False
+                messagebox.showerror('关闭未完成', str(error) if error else self.training_data.status_text(), parent=self.root)
+                return
+            self.root.destroy()
+        self.tasks.submit('close', work, done)
 
     def run(self) -> None:
         self.root.mainloop()
