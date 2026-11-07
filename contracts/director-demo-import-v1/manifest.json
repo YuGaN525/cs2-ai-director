@@ -1,0 +1,15 @@
+{
+  "Begin.schema.json": "9ed62b806eb6d603e9a5f508df7b0dd511b4b76e46e694817346e6561c7063f0",
+  "Capabilities.schema.json": "ac573b6305deafb293f508d13df6f972e4294346933832861f43fec150eb261e",
+  "Claim.schema.json": "5ac11abcdbb9ac8b603d4c35c796344b593b2f26414f2a9ffe6c2167f23fffb7",
+  "Command.schema.json": "199ed24e94be267c2d368c06a8d162a4fc048f6d61536ebe3fa7e7b75a930b0b",
+  "DerivedManifest.schema.json": "cab0276c57c782d2e1defa8e1fe27ddf7448828e0a25f4d44c810634433b4631",
+  "EntryResult.schema.json": "639d9cbf0e6d8914639c57225ed0558fe72a65a8050e84df3a052927e0e5a28d",
+  "fixtures.json": "c763d6aeea2c160d67b5cf4504f22e4f1557d24d87ac700fd0881633a9baf73d",
+  "Heartbeat.schema.json": "bcfc15c3def2b9dec1fcaa74f9a17a67f9a6491271ef2a69b08b0e1a84e69d7b",
+  "Lease.schema.json": "f6ba3908d3ea0c34064d9442d1ce423f38a96cdda5bb1628d9d540912ff80f9c",
+  "openapi.json": "699fe0ebb3cf15399fbfdecd58799e6ddd7adb7c8bf7d86aeb4ff31cb747e652",
+  "Part.schema.json": "db65505f94d845f60288d9c157535976ec47689f5e3af10390eda197f88b010d",
+  "Receipt.schema.json": "fb62de3f468219d9782574fbc7f6d214124ab0770d3565ded402f357e1fa79eb",
+  "SnapshotCreateWithDerived.schema.json": "5ea1f72fd400148a40361648f9026ce1b6cb2bbfda08ed78bdeebb7055a0936b"
+}

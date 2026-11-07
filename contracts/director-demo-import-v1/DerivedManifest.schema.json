@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "format": {
+      "const": "director-derived-v1"
+    },
+    "parserVersion": {
+      "const": "demo-v2-live.1"
+    },
+    "featureVersion": {
+      "const": "pov-v1"
+    },
+    "rawHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "rows": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 19999
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8388608
+          },
+          "rows": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          }
+        },
+        "required": [
+          "index",
+          "sha256",
+          "bytes",
+          "rows"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 20000
+    }
+  },
+  "required": [
+    "version",
+    "format",
+    "parserVersion",
+    "featureVersion",
+    "rawHash",
+    "rows",
+    "parts"
+  ],
+  "additionalProperties": false
+}

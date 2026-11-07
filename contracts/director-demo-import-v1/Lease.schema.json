@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "fileId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "batchId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "batchVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "fence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "leaseToken": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "kind": {
+      "enum": [
+        "dem",
+        "zip",
+        "rar",
+        "7z"
+      ]
+    },
+    "bytes": {
+      "type": "integer",
+      "minimum": 16,
+      "maximum": 49999999999
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5960
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8388608
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "index",
+          "bytes",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 5961
+    },
+    "maxEntries": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "maxExpandedBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "maxDerivedBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "maxSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "maxMemoryMb": {
+      "type": "integer",
+      "minimum": 256,
+      "maximum": 4096
+    }
+  },
+  "required": [
+    "fileId",
+    "batchId",
+    "batchVersion",
+    "fence",
+    "leaseToken",
+    "kind",
+    "bytes",
+    "sha256",
+    "parts",
+    "maxEntries",
+    "maxExpandedBytes",
+    "maxDerivedBytes",
+    "maxSeconds",
+    "maxMemoryMb"
+  ],
+  "additionalProperties": false
+}

@@ -3,7 +3,7 @@ WORKDIR /opt/director
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 COPY requirements-worker.lock ./
 RUN pip install --no-cache-dir -r requirements-worker.lock && useradd --uid 10001 --create-home worker && mkdir /work && chown worker:worker /work
-COPY cloud_worker.py worker_limits.py demo_live_dataset.py train_from_demos.py train_decision_model.py training_splits.py model_submission.py device_identity.py upload_worker.py upload_outbox.py upload_protocol.py model_runtime.py client_version.py offline_runtime.py decision_model.py decision_calibration.py .ref/
+COPY cloud_worker.py derived_training_input.py worker_limits.py demo_live_dataset.py train_from_demos.py train_decision_model.py training_splits.py model_submission.py device_identity.py upload_worker.py upload_outbox.py upload_protocol.py model_runtime.py client_version.py offline_runtime.py decision_model.py decision_calibration.py .ref/
 COPY director_core/ director_core/
 RUN cp .ref/*.py . && rm -r .ref
 USER worker

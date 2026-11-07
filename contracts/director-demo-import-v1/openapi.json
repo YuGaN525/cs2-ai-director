@@ -1,0 +1,968 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Director Demo Import",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/admin/director-imports/capabilities": {
+      "get": {
+        "summary": "capabilities",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        }
+      }
+    },
+    "/api/admin/director-imports/batches": {
+      "get": {
+        "summary": "batches",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        }
+      },
+      "post": {
+        "summary": "Idempotent begin, aggregate bytes <=100 GB",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "Begin.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/director-imports/batches/{id}": {
+      "get": {
+        "summary": "batches/{id}",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-imports/files/{id}": {
+      "get": {
+        "summary": "files/{id}",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-imports/files/{id}/entries": {
+      "get": {
+        "summary": "files/{id}/entries",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-imports/batches/{id}/takeover": {
+      "post": {
+        "summary": "Takeover increments batch generation and fences old receivers",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "Command.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/director-imports/files/{id}/parts/{index}": {
+      "put": {
+        "summary": "Exact Content-Length and SHA-256; 8 MiB maximum",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "generation",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-imports/files/{id}/complete": {
+      "post": {
+        "summary": "complete",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "Command.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/director-imports/files/{id}/cancel": {
+      "post": {
+        "summary": "cancel",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "Command.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/director-imports/files/{id}/retry": {
+      "post": {
+        "summary": "retry",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "Command.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/director-imports/files/{id}/finish": {
+      "post": {
+        "summary": "Immutable fenced receipt, same payload replay only",
+        "security": [
+          {
+            "ImportWorker": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "Receipt.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/director-imports/claim": {
+      "post": {
+        "summary": "Returns ApiResponse.data Lease or null",
+        "security": [
+          {
+            "ImportWorker": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "Claim.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/director-imports/files/{id}/heartbeat": {
+      "post": {
+        "summary": "Renews current lease; false means stop",
+        "security": [
+          {
+            "ImportWorker": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "Heartbeat.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/director-imports/files/{id}/parts/{index}": {
+      "get": {
+        "summary": "Raw octet stream; current fence and lease required",
+        "security": [
+          {
+            "ImportWorker": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Raw part",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "X-Director-Import-Lease",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fence",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        ]
+      }
+    },
+    "/api/internal/director-imports/files/{id}/results/{hash}": {
+      "put": {
+        "summary": "Immutable result part",
+        "security": [
+          {
+            "ImportWorker": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "hash",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          {
+            "name": "fence",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "X-Director-Import-Lease",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/director-training/snapshots": {
+      "post": {
+        "summary": "Freeze derived inputs without rewriting old schema1 snapshots",
+        "security": [
+          {
+            "WebsiteBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ApiResponse data; accepted analysis is asynchronous"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Current database permission denied"
+          },
+          "409": {
+            "description": "Version, lease or content conflict"
+          },
+          "413": {
+            "description": "Declared resource limit"
+          },
+          "422": {
+            "description": "SHA mismatch"
+          },
+          "429": {
+            "description": "Capacity/concurrency backpressure"
+          },
+          "503": {
+            "description": "Disabled or storage unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "SnapshotCreateWithDerived.schema.json"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "WebsiteBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "ImportWorker": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Director-Import-Key"
+      }
+    }
+  }
+}

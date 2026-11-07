@@ -14,9 +14,10 @@ class WorkerClient:
             if len(raw)>1048576:raise ValueError('worker_response_budget')
             return json.loads(raw)['data']
     def download(self,lease,item,path,keepalive=lambda:None):
+        if item['kind'] not in ('demo','csv','derived'):raise ValueError('worker_input_kind')
         route=f"jobs/{lease['jobId']}/inputs/{item['kind']}/{item['id']}?fence={lease['fence']}"
         req=urllib.request.Request(self.origin+'/api/internal/director-training/'+route,headers={'X-Director-Worker-Key':self.key,'X-Director-Job-Lease':lease['leaseToken']})
-        limit=512*1024*1024 if item['kind']=='demo' else 32*1024*1024
+        limit=512*1024*1024 if item['kind']=='demo' else 4*1024*1024 if item['kind']=='derived' else 32*1024*1024
         with self.opener.open(req,timeout=60) as response,path.open('wb') as output:
             total=0
             while True:
@@ -26,9 +27,24 @@ class WorkerClient:
                 total+=len(chunk)
                 if total>limit:raise ValueError('worker_input_budget')
                 output.write(chunk)
-        with (path.open('rb') if item['kind']=='demo' else gzip.open(path,'rb')) as verified:
+        with (path.open('rb') if item['kind'] in ('demo','derived') else gzip.open(path,'rb')) as verified:
             digest=hashlib.file_digest(verified,'sha256').hexdigest()
         if digest!=item['artifactHash']:raise ValueError('worker_input_hash')
+        if item['kind']=='derived':
+            from derived_training_input import manifest
+            for part in manifest(path,item['artifactHash'])['parts']:
+                keepalive()
+                route=f"jobs/{lease['jobId']}/derived/{item['id']}/{part['sha256']}?fence={lease['fence']}"
+                request=urllib.request.Request(self.origin+'/api/internal/director-training/'+route,headers={'X-Director-Worker-Key':self.key,'X-Director-Job-Lease':lease['leaseToken']})
+                target=path.parent/(item['id']+'-'+part['sha256']+'.csv.gz');size=0;checksum=hashlib.sha256()
+                with self.opener.open(request,timeout=60) as response,target.open('wb') as output:
+                    while True:
+                        keepalive();chunk=response.read(65536)
+                        if not chunk:break
+                        size+=len(chunk)
+                        if size>part['bytes']:raise ValueError('derived_part_length')
+                        checksum.update(chunk);output.write(chunk)
+                if size!=part['bytes'] or checksum.hexdigest()!=part['sha256']:raise ValueError('derived_part_hash')
     def complete(self,lease,result,model=None):
         boundary='worker_'+uuid.uuid4().hex;body=f'--{boundary}\r\nContent-Disposition: form-data; name="metadata"\r\n\r\n'.encode()+canonical(dict(result,fence=lease['fence'],leaseToken=lease['leaseToken']))+b'\r\n'
         if model is not None:body+=f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="candidate.json.gz"\r\nContent-Type: application/gzip\r\n\r\n'.encode()+Path(model).read_bytes()+b'\r\n'
@@ -43,22 +59,30 @@ def train_child(folder):
         resource.setrlimit(resource.RLIMIT_AS,(limit,limit));resource.setrlimit(resource.RLIMIT_CPU,(budget['maxSeconds'],budget['maxSeconds']+2))
     from upload_protocol import COLUMNS
     output=folder/'dataset.csv';stats=[];seen=set();count=0
+    if spec['snapshot']['manifest'].get('schema',1) not in (1,2):raise ValueError('snapshot_schema')
     with output.open('w',newline='',encoding='utf-8') as stream:
         writer=csv.DictWriter(stream,fieldnames=COLUMNS+['match_source_id']);writer.writeheader()
         for item in spec['snapshot']['manifest']['items']:
             path=folder/(item['id']+('.dem' if item['kind']=='demo' else '.csv.gz'))
-            if item['kind']=='demo':
+            if item['kind']=='derived':
+                from derived_training_input import rows
+                incoming=None;source_rows=rows(path,item,COLUMNS)
+                stats.append({'source':item['id'],'parser':'demo-v2-live.1','input':'derived-v1'})
+            elif item['kind']=='demo':
                 from demo_live_dataset import build_live_csv
                 derived=folder/(item['id']+'.csv');stats.append(build_live_csv(path,derived));incoming=derived.open('rt',encoding='utf-8-sig',newline='')
-            else:incoming=gzip.open(path,'rt',encoding='utf-8-sig',newline='')
-            with incoming:
-                for row in csv.DictReader(incoming):
+            elif item['kind']=='csv':incoming=gzip.open(path,'rt',encoding='utf-8-sig',newline='')
+            else:raise ValueError('worker_input_kind')
+            try:
+                for row in source_rows if incoming is None else csv.DictReader(incoming):
                     row={k:row.get(k,'') for k in COLUMNS};row['match_source_id']=item['matchHash']
                     # The canonical match identity is independent of uploader/account and all windows stay together.
                     key=hashlib.sha256(canonical(row)).hexdigest()
                     if key in seen:continue
                     seen.add(key);writer.writerow(row);count+=1
                     if count>200000:raise ValueError('worker_row_budget')
+            finally:
+                if incoming is not None:incoming.close()
     from train_decision_model import train_from_csv
     metrics=train_from_csv(output,folder/'candidate.pkl',folder/'metrics.json',min_samples=100,trees=budget['trees'],max_depth=budget['maxDepth'])
     candidate=json.loads((folder/'candidate.submission.json').read_text());candidate['name']='Cloud candidate '+spec['jobId'][:8]

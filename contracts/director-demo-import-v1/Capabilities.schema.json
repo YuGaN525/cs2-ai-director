@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean"
+    },
+    "maxFileBytesExclusive": {
+      "const": 50000000000
+    },
+    "maxBatchBytes": {
+      "const": 100000000000
+    },
+    "maxFiles": {
+      "const": 200
+    },
+    "partBytes": {
+      "const": 8388608
+    },
+    "uploadConcurrency": {
+      "const": 3
+    },
+    "maxEntries": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "maxExpandedBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "maxDerivedBytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "reservedBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "freeBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "idleDays": {
+      "const": 7
+    },
+    "failedRetentionDays": {
+      "const": 7
+    },
+    "formats": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "dem",
+          "zip",
+          "rar",
+          "7z"
+        ]
+      },
+      "minItems": 4,
+      "maxItems": 4
+    }
+  },
+  "required": [
+    "enabled",
+    "maxFileBytesExclusive",
+    "maxBatchBytes",
+    "maxFiles",
+    "partBytes",
+    "uploadConcurrency",
+    "maxEntries",
+    "maxExpandedBytes",
+    "maxDerivedBytes",
+    "reservedBytes",
+    "freeBytes",
+    "idleDays",
+    "failedRetentionDays",
+    "formats"
+  ],
+  "additionalProperties": false
+}
