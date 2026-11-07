@@ -1,0 +1,177 @@
+{
+  "parser": "demo-v2-live.1",
+  "environment": {
+    "python": "3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "demoparser2": "0.42.0"
+  },
+  "tests": [
+    {
+      "source_name": "2026-10-03_Aurora_vs_9z_Mirage.dem",
+      "source_sha256": "e793d85fb69538c198335a4355f657614e700fa30334e23d2f8a3b1c176884cf",
+      "csv_sha256": "fd8aa7cdd1fb1a418b8dc8aaac9224745247552c4101fa8cbdcacc888dc75540",
+      "rows": 2563,
+      "parser_stats": {
+        "parser": "demo-v2-live.1",
+        "sampling_method": "periodic-live",
+        "source_sha256": "e793d85fb69538c198335a4355f657614e700fa30334e23d2f8a3b1c176884cf",
+        "sample_windows": 626,
+        "rows": 2563,
+        "positive": 232,
+        "negative": 2331,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "tickrate_assumption": 64,
+        "label_definition": "damage_or_kill_in_(tick,tick+horizon]",
+        "features": [
+          "aim_self",
+          "aim_enemy",
+          "win",
+          "enemy_low_hp",
+          "self_low_hp",
+          "proximity",
+          "enemy_damaged",
+          "hp_advantage"
+        ],
+        "missing_fields": "armor_helmet_flash_defuse_bomb_ammo_approx",
+        "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence"
+      },
+      "desktop_stats": {
+        "parser": "demo-v2-live.1",
+        "sampling_method": "periodic-live",
+        "demos": 1,
+        "duplicate_demos": 0,
+        "rows": 2563,
+        "positive": 232,
+        "negative": 2331,
+        "sample_windows": 626,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "csv": "D:\\Yuzibei\\local-data\\director-cli02-20261107\\real-demo\\1\\desktop.csv",
+        "csv_sha256": "fd8aa7cdd1fb1a418b8dc8aaac9224745247552c4101fa8cbdcacc888dc75540",
+        "manifest": "D:\\Yuzibei\\local-data\\director-cli02-20261107\\real-demo\\1\\desktop.csv.manifest.json",
+        "sources": [
+          {
+            "parser": "demo-v2-live.1",
+            "sampling_method": "periodic-live",
+            "source_sha256": "e793d85fb69538c198335a4355f657614e700fa30334e23d2f8a3b1c176884cf",
+            "sample_windows": 626,
+            "rows": 2563,
+            "positive": 232,
+            "negative": 2331,
+            "missing_windows": 0,
+            "horizon_ticks": 192,
+            "step_ticks": 128,
+            "tickrate_assumption": 64,
+            "label_definition": "damage_or_kill_in_(tick,tick+horizon]",
+            "features": [
+              "aim_self",
+              "aim_enemy",
+              "win",
+              "enemy_low_hp",
+              "self_low_hp",
+              "proximity",
+              "enemy_damaged",
+              "hp_advantage"
+            ],
+            "missing_fields": "armor_helmet_flash_defuse_bomb_ammo_approx",
+            "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+            "source_name": "2026-10-03_Aurora_vs_9z_Mirage.dem"
+          }
+        ]
+      },
+      "identical_csv_bytes": true,
+      "identical_training_input": true,
+      "compatibility_rows_validated": 2563,
+      "seconds_three_parses": 7.597
+    },
+    {
+      "source_name": "2026-10-04_9z_vs_TYLOO_Mirage.dem",
+      "source_sha256": "a3a1a9146588c9d236ddbecf59f97e1c9efedf466c3ce4c3f3ae14ce36ee3cae",
+      "csv_sha256": "acc1337793e94f67f480f3bfaa889500ff982a4ec0cafcec4d82e65a6dfa1ff2",
+      "rows": 2046,
+      "parser_stats": {
+        "parser": "demo-v2-live.1",
+        "sampling_method": "periodic-live",
+        "source_sha256": "a3a1a9146588c9d236ddbecf59f97e1c9efedf466c3ce4c3f3ae14ce36ee3cae",
+        "sample_windows": 546,
+        "rows": 2046,
+        "positive": 158,
+        "negative": 1888,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "tickrate_assumption": 64,
+        "label_definition": "damage_or_kill_in_(tick,tick+horizon]",
+        "features": [
+          "aim_self",
+          "aim_enemy",
+          "win",
+          "enemy_low_hp",
+          "self_low_hp",
+          "proximity",
+          "enemy_damaged",
+          "hp_advantage"
+        ],
+        "missing_fields": "armor_helmet_flash_defuse_bomb_ammo_approx",
+        "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence"
+      },
+      "desktop_stats": {
+        "parser": "demo-v2-live.1",
+        "sampling_method": "periodic-live",
+        "demos": 1,
+        "duplicate_demos": 0,
+        "rows": 2046,
+        "positive": 158,
+        "negative": 1888,
+        "sample_windows": 546,
+        "missing_windows": 0,
+        "horizon_ticks": 192,
+        "step_ticks": 128,
+        "csv": "D:\\Yuzibei\\local-data\\director-cli02-20261107\\real-demo\\2\\desktop.csv",
+        "csv_sha256": "acc1337793e94f67f480f3bfaa889500ff982a4ec0cafcec4d82e65a6dfa1ff2",
+        "manifest": "D:\\Yuzibei\\local-data\\director-cli02-20261107\\real-demo\\2\\desktop.csv.manifest.json",
+        "sources": [
+          {
+            "parser": "demo-v2-live.1",
+            "sampling_method": "periodic-live",
+            "source_sha256": "a3a1a9146588c9d236ddbecf59f97e1c9efedf466c3ce4c3f3ae14ce36ee3cae",
+            "sample_windows": 546,
+            "rows": 2046,
+            "positive": 158,
+            "negative": 1888,
+            "missing_windows": 0,
+            "horizon_ticks": 192,
+            "step_ticks": 128,
+            "tickrate_assumption": 64,
+            "label_definition": "damage_or_kill_in_(tick,tick+horizon]",
+            "features": [
+              "aim_self",
+              "aim_enemy",
+              "win",
+              "enemy_low_hp",
+              "self_low_hp",
+              "proximity",
+              "enemy_damaged",
+              "hp_advantage"
+            ],
+            "missing_fields": "armor_helmet_flash_defuse_bomb_ammo_approx",
+            "limitations": "unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence",
+            "source_name": "2026-10-04_9z_vs_TYLOO_Mirage.dem"
+          }
+        ]
+      },
+      "identical_csv_bytes": true,
+      "identical_training_input": true,
+      "compatibility_rows_validated": 2046,
+      "seconds_three_parses": 5.883
+    }
+  ],
+  "model_training_performed": false,
+  "split_hash": null,
+  "reason": "parser parity only; no model selection or final-test evaluation",
+  "gsi_alignment_verified": false,
+  "programme_coverage_verified": false
+}

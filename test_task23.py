@@ -136,15 +136,17 @@ class CoreReplayTests(unittest.TestCase):
             root=Path(temp); a=root/'a'/'same.dem';b=root/'b'/'same.dem'
             for path, data in ((a,b'first'),(b,b'second')):
                 path.parent.mkdir();path.write_bytes(data)
-            parsed=([[.5]*8,[.2]*8],[1,0],1,[2],[{'map':'de_mirage','source_tick':100}])
-            with mock.patch('train_from_demos.collect_training_demo_rows',return_value=parsed):
+            from test_demo_live_dataset import parser_fixture
+            with mock.patch('demoparser2.DemoParser',return_value=parser_fixture()):
                 demo_dataset.build_demo_csv([a,b],root/'out.csv',log=lambda s:None)
             import csv
             with (root/'out.csv').open(encoding='utf-8-sig',newline='') as stream:
                 rows=list(csv.DictReader(stream))
-            self.assertNotEqual(rows[0]['source_id'],rows[2]['source_id'])
-            self.assertEqual(rows[0]['map'],'de_mirage')
-            self.assertEqual(rows[0]['source_tick'],'100')
+            self.assertEqual(len(rows),8)
+            self.assertEqual({row['match_source_id'] for row in rows},
+                             {hashlib.sha256(path.read_bytes()).hexdigest() for path in (a,b)})
+            self.assertTrue(all(row['map']=='de_dust2' for row in rows))
+            self.assertEqual({row['source_tick'] for row in rows},{'128','256'})
 
     def test_moved_rules_equal_pre_migration_baseline(self):
         # The baseline is a local evidence file, never copied into the core package.

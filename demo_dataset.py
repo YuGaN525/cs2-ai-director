@@ -1,119 +1,118 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""Desktop/CLI adapter for the periodic live Demo parser used by the worker.
+
+Existing decisions.csv files remain readable by train_decision_model.load_dataset.
+New imports never choose sample times from future kill events.
 """
-从 CS2 .dem 生成决策模型训练 CSV。
-
-输出列与导播的 decisions.csv 完全一致；训练器读取后走同一个随机森林流程。
-每个击杀回看 tick_offset（默认 160 tick ≈ 2.5s @64tick），
-标签与 decisions.csv 对齐：在“回看点之后的同一窗口”内造成过伤害/击杀的候选 label=1；
-同时写入 group/group_size，训练器可按事件分组切分并计算 top-1。
-
-用法：
-    python demo_dataset.py --demos "D:/demos" --out demo_decisions.csv
-"""
-
 from __future__ import annotations
 
 import argparse
 import csv
 import hashlib
+import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
 
-from decision_model import CSV_COLUMNS, DECISION_FEATURES
+from demo_live_dataset import (
+    DEFAULT_HORIZON, DEFAULT_STEP, LIVE_COLUMNS, PARSER_VERSION,
+    SAMPLING_METHOD, build_live_csv, validate_sampling,
+)
 
 
 def build_demo_csv(
     demos: Iterable[str | Path],
     out_csv: Path,
-    tick_offset: int = 160,
+    tick_offset: Optional[int] = None,
     log: Optional[Callable[[str], None]] = None,
+    *,
+    horizon: int = DEFAULT_HORIZON,
+    step: int = DEFAULT_STEP,
 ) -> dict[str, Any]:
-    """解析 demo 并写出可训练 CSV；返回统计。"""
-    emit = log or print
-    try:
-        import director_core as d
-        from train_from_demos import collect_training_demo_rows, expand_demo_paths
-    except Exception as e:  # noqa: BLE001
-        raise RuntimeError(f"demo 解析依赖不可用：{e}") from e
+    """Build a complete import; preserve existing output on parse errors.
 
+    tick_offset is a deprecated alias for the future label horizon, and no
+    longer selects samples by looking backwards from kills.
+    """
+    from train_from_demos import expand_demo_paths
+
+    emit = log or print
+    if tick_offset is not None:
+        if horizon != DEFAULT_HORIZON:
+            raise ValueError("tick_offset 与 horizon 不能同时指定")
+        horizon = tick_offset
+        emit("旧 tick_offset 参数仅作为未来标签窗口；采样已改为 live 阶段定时采样。")
+    validate_sampling(horizon, step)
     paths = expand_demo_paths([str(p) for p in demos])
     if not paths:
         raise RuntimeError("没有找到 .dem 文件")
-    cfg = d.DEFAULT_CONFIG
-    records: list[tuple[str, int, list[float], int, dict[str, Any]]] = []
-    total_events = 0
-    for i, demo in enumerate(paths, 1):
-        emit(f"[{i}/{len(paths)}] {demo}")
-        try:
-            rows, labels, events, groups, metas = collect_training_demo_rows(
-                demo, cfg, max(1, int(tick_offset)), label_mode="damage")
-        except Exception as e:  # noqa: BLE001
-            emit(f"  跳过（{type(e).__name__}: {e}）")
-            continue
-        emit(f"  有效击杀事件 {events}，候选行 {len(rows)}")
-        with Path(demo).open("rb") as source:
-            source_id = hashlib.file_digest(source, "sha256").hexdigest()
-        offset = 0
-        for gi, size in enumerate(groups):
-            gid = f"{source_id}#{gi}"
-            meta = metas[gi] if gi < len(metas) else {}
-            for features, label in zip(
-                    rows[offset:offset + size], labels[offset:offset + size]):
-                records.append((gid, size, features, label, meta))
-            offset += size
-        total_events += events
-
-    if not records:
-        raise RuntimeError("没有生成任何训练样本")
-
+    out_csv = Path(out_csv)
     out_csv.parent.mkdir(parents=True, exist_ok=True)
-    with out_csv.open("w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS + ["source_id", "source_tick"])
-        writer.writeheader()
-        for gid, size, features, label, meta in records:
-            row = {name: "" for name in CSV_COLUMNS}
-            row.update({
-                "action": "demo",
-                "source_id": gid.split("#", 1)[0],
-                "source_tick": meta.get("source_tick", ""),
-                "map": meta.get("map", "unknown"),
-                "target_slot": 1,
-                "label": int(label),
-                "label_damage": int(label),
-                "label_kill": "",
-                "group": gid,
-                "group_size": size,
-                "is_ambiguous": int(meta.get("is_ambiguous", 0)),
-                "rule_gap": f"{float(meta.get('rule_gap', 0.0)):.6f}",
-            })
-            for name, value in zip(DECISION_FEATURES, features):
-                row[name] = f"{float(value):.6f}"
-            writer.writerow(row)
-    stats = {
-        "demos": len(paths),
-        "events": total_events,
-        "rows": len(records),
-        "positive": int(sum(r[3] for r in records)),
-        "csv": str(out_csv),
-    }
-    emit(f"已生成 {out_csv}：{stats['rows']} 行，"
-         f"正样本 {stats['positive']}，击杀事件 {stats['events']}")
+    reports = []
+    seen = set()
+    duplicates = 0
+    with tempfile.TemporaryDirectory(prefix=".demo_import_", dir=out_csv.parent) as directory:
+        folder = Path(directory)
+        combined = folder / "combined.csv"
+        with combined.open("w", newline="", encoding="utf-8") as output:
+            writer = csv.DictWriter(output, fieldnames=LIVE_COLUMNS)
+            writer.writeheader()
+            for index, path in enumerate(paths, 1):
+                emit(f"[{index}/{len(paths)}] {path}")
+                derived = folder / "parsed.csv"
+                try:
+                    report = build_live_csv(path, derived, horizon=horizon, step=step)
+                except Exception as error:
+                    raise RuntimeError(f"Demo 解析失败，未替换已有 CSV：{path.name}: {error}") from error
+                if report["source_sha256"] in seen:
+                    duplicates += 1
+                    emit("  重复 Demo 内容，已忽略")
+                    continue
+                seen.add(report["source_sha256"])
+                reports.append(dict(report, source_name=path.name))
+                with derived.open("r", newline="", encoding="utf-8") as incoming:
+                    writer.writerows(csv.DictReader(incoming))
+                emit(f"  live 窗口 {report['sample_windows']}，候选行 {report['rows']}")
+        with combined.open("rb") as stream:
+            output_hash = hashlib.file_digest(stream, "sha256").hexdigest()
+        report_path = out_csv.with_suffix(out_csv.suffix + ".manifest.json")
+        stats = {
+            "parser": PARSER_VERSION, "sampling_method": SAMPLING_METHOD,
+            "demos": len(reports), "duplicate_demos": duplicates,
+            **{key: sum(item[key] for item in reports) for key in
+               ("rows", "positive", "negative", "sample_windows", "missing_windows")},
+            "horizon_ticks": horizon, "step_ticks": step,
+            "csv": str(out_csv), "csv_sha256": output_hash,
+            "manifest": str(report_path), "sources": reports,
+        }
+        manifest = folder / "manifest.json"
+        manifest.write_text(json.dumps(stats, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        # Readers can verify csv_sha256 after an interruption between replacements.
+        os.replace(combined, out_csv)
+        os.replace(manifest, report_path)
+    emit(f"已生成 {out_csv}：{stats['rows']} 行，正样本 {stats['positive']}；解析清单：{report_path}")
     return stats
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="从 CS2 demo 生成训练 CSV")
-    parser.add_argument("--demos", nargs="+", required=True,
-                        help="demo 文件、目录或通配符")
+    parser = argparse.ArgumentParser(description="从 CS2 Demo 的 live 阶段定时采样生成训练 CSV")
+    parser.add_argument("--demos", nargs="+", required=True, help="Demo 文件、目录或通配符")
     parser.add_argument("--out", default="demo_decisions.csv")
-    parser.add_argument("--tick-offset", type=int, default=160)
+    window = parser.add_mutually_exclusive_group()
+    window.add_argument("--horizon-ticks", type=int, default=DEFAULT_HORIZON,
+                        help="未来伤害/击杀标签窗口（默认 192 tick）")
+    window.add_argument("--tick-offset", type=int, help="弃用别名：仅设置未来标签窗口，不再按击杀回看")
+    parser.add_argument("--step-ticks", type=int, default=DEFAULT_STEP,
+                        help="live 阶段定时采样间隔（默认 128 tick）")
     args = parser.parse_args(argv)
     try:
-        build_demo_csv(args.demos, Path(args.out), args.tick_offset)
-    except Exception as e:  # noqa: BLE001
-        print(f"失败：{e}", file=sys.stderr)
+        build_demo_csv(args.demos, Path(args.out), args.tick_offset,
+                       horizon=args.horizon_ticks, step=args.step_ticks)
+    except Exception as error:
+        print(f"失败：{error}", file=sys.stderr)
         return 1
     return 0
 

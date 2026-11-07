@@ -5,23 +5,53 @@ import director_core as core
 from train_from_demos import build_snapshot
 from upload_protocol import COLUMNS
 
+PARSER_VERSION = 'demo-v2-live.1'
+SAMPLING_METHOD = 'periodic-live'
+DEFAULT_HORIZON = 192
+DEFAULT_STEP = 128
+LIVE_COLUMNS = COLUMNS + ['match_source_id', 'source_tick', 'label_horizon_ticks',
+                          'sampling_weight', 'missing_fields', 'parser_version',
+                          'sampling_method', 'sample_step_ticks', 'tickrate_assumption',
+                          'label_definition']
 
-def live_windows(starts,ends,horizon=192,step=128,max_samples=12000):
+
+def validate_sampling(horizon, step):
+    if any(type(value) is not int or value <= 0 for value in (horizon, step)):
+        raise ValueError('demo_sampling_ticks_must_be_positive_integers')
+
+
+def live_windows(starts,ends,horizon=DEFAULT_HORIZON,step=DEFAULT_STEP,max_samples=12000):
+    validate_sampling(horizon, step)
+    if type(max_samples) is not int or max_samples <= 0:raise ValueError('demo_sample_budget')
     starts=sorted(set(int(x) for x in starts));ends=sorted(set(int(x) for x in ends));samples=[]
     for number,start in enumerate(starts):
         stop=next((e for e in ends if e>start),None)
         if stop is None or number+1<len(starts) and stop>=starts[number+1]:continue
-        for tick in range(start+step,stop-horizon+1,step):samples.append((number+1,tick,stop))
-    if len(samples)>max_samples:raise ValueError('demo_sample_budget')
+        for tick in range(start+step,stop-horizon+1,step):
+            if len(samples)>=max_samples:raise ValueError('demo_sample_budget')
+            samples.append((number+1,tick,stop))
     return samples
 
 
-def build_live_csv(path,out,horizon=192,step=128):
+def build_live_csv(path,out,horizon=DEFAULT_HORIZON,step=DEFAULT_STEP):
+    validate_sampling(horizon, step)
+    try:
+        return _build_live_csv(path, out, horizon, step)
+    except BaseException as error:
+        # PyO3 parser panics derive directly from BaseException. Convert only
+        # those failures so the GUI reports an error and resets its busy state.
+        if type(error).__module__ == 'pyo3_runtime' and type(error).__name__ == 'PanicException':
+            raise ValueError('demo_parser_panic: invalid or unsupported Demo') from error
+        raise
+
+
+def _build_live_csv(path,out,horizon,step):
     from demoparser2 import DemoParser
     parser=DemoParser(str(path));header=parser.parse_header();map_name=str(header.get('map_name') or 'unknown')
     starts=parser.parse_event('round_freeze_end');ends=parser.parse_event('round_end')
     if starts is None or ends is None:raise ValueError('demo_round_boundaries_missing')
     samples=live_windows(starts['tick'],ends['tick'],horizon,step)
+    round_starts=sorted(set(int(tick) for tick in starts['tick']))
     if not samples:raise ValueError('demo_no_complete_live_windows')
     hurts=parser.parse_event('player_hurt');deaths=parser.parse_event('player_death');attacks={};victims={}
     if hurts is None:raise ValueError('demo_damage_events_missing')
@@ -50,7 +80,7 @@ def build_live_csv(path,out,horizon=192,step=128):
         snap.round_num=round_no
         for sid,p in snap.players.items():p.slot=slots[sid]
         def recent(sid):
-            values=victims.get(str(sid),[]);i=bisect.bisect_left(values,tick-102)
+            values=victims.get(str(sid),[]);i=bisect.bisect_left(values,max(tick-102,round_starts[round_no-1]))
             return i<len(values) and values[i]<=tick
         candidates=core.score_candidates(snap,core.DEFAULT_CONFIG,recent,0.)
         for c in candidates:
@@ -58,8 +88,11 @@ def build_live_csv(path,out,horizon=192,step=128):
             row={key:'' for key in COLUMNS};row.update(timestamp=str(tick/64),map=map_name,round=str(round_no),action='demo',target_slot=str(c.slot),group=source+'#'+str(tick),group_size=str(len(candidates)),rule_score=str(c.score),label=str(label),label_damage=str(label))
             row.update({key:str(float(v)) for key,v in zip(core.DECISION_FEATURES,core._candidate_features(c))})
             row.update(match_source_id=source,source_tick=tick,label_horizon_ticks=horizon,sampling_weight='1',missing_fields='armor_helmet_flash_defuse_bomb_ammo_approx')
+            row.update(parser_version=PARSER_VERSION,sampling_method=SAMPLING_METHOD,
+                       sample_step_ticks=step,tickrate_assumption=64,
+                       label_definition='damage_or_kill_in_(tick,tick+horizon]')
             rows.append(row);counts[label]+=1
     if not rows:raise ValueError('demo_no_samples')
     with Path(out).open('w',newline='',encoding='utf-8') as output:
-        writer=csv.DictWriter(output,fieldnames=COLUMNS+['match_source_id','source_tick','label_horizon_ticks','sampling_weight','missing_fields']);writer.writeheader();writer.writerows(rows)
-    return {'parser':'demo-v2-live','sample_windows':len(samples),'rows':len(rows),'positive':counts[1],'negative':counts[0],'missing_windows':missing,'horizon_ticks':horizon,'step_ticks':step,'tickrate_assumption':64,'limitations':'unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence'}
+        writer=csv.DictWriter(output,fieldnames=LIVE_COLUMNS);writer.writeheader();writer.writerows(rows)
+    return {'parser':PARSER_VERSION,'sampling_method':SAMPLING_METHOD,'source_sha256':source,'sample_windows':len(samples),'rows':len(rows),'positive':counts[1],'negative':counts[0],'missing_windows':missing,'horizon_ticks':horizon,'step_ticks':step,'tickrate_assumption':64,'label_definition':'damage_or_kill_in_(tick,tick+horizon]','features':list(core.DECISION_FEATURES),'missing_fields':'armor_helmet_flash_defuse_bomb_ammo_approx','limitations':'unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence'}

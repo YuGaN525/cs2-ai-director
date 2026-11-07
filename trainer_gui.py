@@ -18,6 +18,7 @@ from decision_calibration import calibrate_csv
 from decision_model import decision_csv_path, decision_model_path
 from train_decision_model import TrainingError, train_from_csv
 import ai_trainer as ai_assist
+from demo_live_dataset import DEFAULT_HORIZON, DEFAULT_STEP, validate_sampling
 
 APP_TITLE = "Yuzi_CS2_AIDirector · 训练工作台"
 APP_SUBTITLE = "CS2 AI 决策模型训练器"
@@ -53,7 +54,8 @@ class TrainerApp:
         self.var_csv = tk.StringVar(value=str(decision_csv_path()))
         self.var_out_dir = tk.StringVar(value=str(decision_model_path().parent))
         self.var_demos = tk.StringVar()
-        self.var_tick = tk.StringVar(value="160")
+        self.var_horizon = tk.StringVar(value=str(DEFAULT_HORIZON))
+        self.var_step = tk.StringVar(value=str(DEFAULT_STEP))
         self.var_min = tk.StringVar(value="1000")
         self.var_trees = tk.StringVar(value="300")
         self.var_depth = tk.StringVar(value="8")
@@ -216,13 +218,15 @@ class TrainerApp:
             row=0, column=3, padx=(4, 0))
         row = ttk.Frame(demo)
         row.grid(row=1, column=0, columnspan=4, sticky="w", pady=(6, 0))
-        ttk.Label(row, text="回看 tick").pack(side="left")
-        ttk.Entry(row, textvariable=self.var_tick, width=8).pack(side="left", padx=4)
+        ttk.Label(row, text="预测窗口 tick").pack(side="left")
+        ttk.Entry(row, textvariable=self.var_horizon, width=8).pack(side="left", padx=4)
+        ttk.Label(row, text="采样间隔 tick").pack(side="left")
+        ttk.Entry(row, textvariable=self.var_step, width=8).pack(side="left", padx=4)
         self.btn_demo = ttk.Button(row, text="解析 demo 并训练",
                                    command=self._start_demo)
         self.btn_demo.pack(side="left", padx=8)
-        ttk.Label(row, text="64tick 下 160≈2.5 秒", foreground="#777777").pack(
-            side="left")
+        ttk.Label(demo, text="live 阶段定时采样；按 64tick 估算：默认每 2 秒采样，预测未来 3 秒伤害/击杀。",
+                  foreground="#777777").grid(row=2, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
         actions = ttk.Frame(outer)
         actions.grid(row=5, column=0, columnspan=3, sticky="ew", pady=(4, 6))
@@ -374,7 +378,8 @@ class TrainerApp:
     def _run_worker(self, csv_path: Path, out: Path, metrics: Path,
                     params: tuple[int, int, int, float],
                     demo_paths: Optional[list[str]] = None,
-                    tick_offset: int = 160) -> None:
+                    horizon: int = DEFAULT_HORIZON,
+                    step: int = DEFAULT_STEP) -> None:
         min_samples, trees, depth, test_size = params
 
         def worker() -> None:
@@ -382,8 +387,8 @@ class TrainerApp:
                 if demo_paths:
                     from demo_dataset import build_demo_csv
                     self._worker_log("开始解析 demo …")
-                    build_demo_csv(demo_paths, csv_path, tick_offset,
-                                   log=self._worker_log)
+                    build_demo_csv(demo_paths, csv_path, horizon=horizon,
+                                   step=step, log=self._worker_log)
                 self.training_data.capture_training_file(csv_path, "offline" if demo_paths else "online")
                 result = train_from_csv(
                     csv_path, out, metrics,
@@ -429,9 +434,11 @@ class TrainerApp:
                                    parent=self.root)
             return
         try:
-            tick_offset = max(1, int(self.var_tick.get().strip()))
+            horizon = int(self.var_horizon.get().strip())
+            step = int(self.var_step.get().strip())
+            validate_sampling(horizon, step)
         except ValueError:
-            messagebox.showwarning("参数错误", "回看 tick 必须是正整数。",
+            messagebox.showwarning("参数错误", "预测窗口和采样间隔 tick 必须是正整数。",
                                    parent=self.root)
             return
         out_dir = Path(self.var_out_dir.get().strip())
@@ -441,7 +448,7 @@ class TrainerApp:
             out_dir / "demo_decisions.csv",
             out_dir / "decision_model.pkl",
             out_dir / "decision_model_metrics.json",
-            params, demo_paths=demos, tick_offset=tick_offset,
+            params, demo_paths=demos, horizon=horizon, step=step,
         )
 
     def _start_ai(self) -> None:
@@ -622,10 +629,17 @@ def _demo_cli(args: list[str], runtime=None) -> int:
     parser.add_argument("--test-size", type=float, default=0.25)
     parser.add_argument("--trees", type=int, default=300)
     parser.add_argument("--max-depth", type=int, default=8)
-    parser.add_argument("--tick-offset", type=int, default=160)
+    window = parser.add_mutually_exclusive_group()
+    window.add_argument("--horizon-ticks", type=int, default=DEFAULT_HORIZON,
+                        help="未来伤害/击杀标签窗口，默认 192 tick")
+    window.add_argument("--tick-offset", type=int,
+                        help="弃用别名：仅设置未来标签窗口，不再按击杀回看")
+    parser.add_argument("--step-ticks", type=int, default=DEFAULT_STEP,
+                        help="live 阶段采样间隔，默认 128 tick")
     ns = parser.parse_args(args)
     try:
-        build_demo_csv(ns.demos, Path(ns.demo_csv), ns.tick_offset)
+        build_demo_csv(ns.demos, Path(ns.demo_csv), ns.tick_offset,
+                       horizon=ns.horizon_ticks, step=ns.step_ticks)
         if runtime is not None:
             runtime.capture_training_file(Path(ns.demo_csv), "offline")
 

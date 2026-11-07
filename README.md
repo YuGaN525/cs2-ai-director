@@ -1,5 +1,18 @@
 # Yuzi_CS2_AIDirector
 
+## 2026-11-07 CLI-02：统一 Demo live 采样（源码开发状态）
+
+训练工作台、内置 Demo CLI 和 worker 共用 `demo_live_dataset.build_live_csv`，解析版本为 `demo-v2-live.1`。默认 live 阶段每 128 tick 采样，标签为未来 192 tick 内发生伤害或击杀；按 64tick 假设约为每 2 秒采样、预测未来 3 秒。缺少完整未来窗口的回合尾部不生成样本，近期伤害不跨 live 阶段起点。
+
+```powershell
+python demo_dataset.py --demos "D:/demo" --out "demo_decisions.csv" --horizon-ticks 192 --step-ticks 128
+python cs2_ai_director.py --trainer --cli --demos "D:/demo" --demo-csv "demo_decisions.csv" --horizon-ticks 192 --step-ticks 128
+```
+
+新 CSV 每行带解析版本、采样方式、窗口、tickrate 假设和缺失字段；相邻 `.csv.manifest.json` 保存源 Demo/CSV SHA256 与统计。解析失败保留已有 CSV，同内容 Demo 不重复计权。旧 CSV 仍可直接训练；旧 `--tick-offset` 仅作为未来标签窗口的弃用别名，并提示语义变化。`train_from_demos.py` 是历史静态 `learner.json` 兼容工具，不属于正式决策模型训练入口。
+
+此轮只修改程序仓库，网站和上传 v1 契约保持兼容；扩展逐行元数据目前保存在本地 CSV/清单，旧上传投影不会保留这些新增列。比赛的权威身份、多录制归组和 Demo/GSI 对齐留待 CLI-03/WEB-05；文件 hash 不代表真实比赛身份。默认调度仍为原策略。验收与后续边界见 [CLI-02 交付记录](docs/CLI-02_2026-11-07.md)。本节为源码状态，既有 1.11.0 exe 尚未重新打包。
+
 ## 2026-11-07 任务7～12本地交付与发布准备（最新）
 
 导播/内置训练器统一1.11.0。任务7正式模型签名下载与官网发行、任务8范围分片上传/手工导入、任务9实际exe断网重启/自动补传、任务10质检/冻结快照/独立worker已本地验收。任务11审批/账号灰度/回滚与调度候选已实现，真实镜头收益G4尚未通过，保持原调度默认。任务12按用户“先完成发布准备”，不部署生产或开启灰度；主仓库97157ae8已上传并与本地提交/文件树一致；用户最新指令改为旧训练器仓库存档保留、无需删除；GitHub isArchived=true已核验，本地备份和原目录保留。详情见独立迁移JSON。
