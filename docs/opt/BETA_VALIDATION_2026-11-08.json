@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-08",
+  "timezone": "Asia/Shanghai",
+  "status": "candidate_code_delivered_real_pilot_pending",
+  "program": {
+    "repository": "https://github.com/YuGaN525/cs2-ai-director",
+    "branch": "main",
+    "codeCommit": "9f0e34a19bf077f30cc17a65afb08815b543525b",
+    "version": "1.13.0",
+    "exeSha256": "98abd5f0349e877f9f3bc38a1368bddc1537b7deb08b8e6761124f97a9cfb1d9",
+    "exeBytes": 187606618
+  },
+  "website": {
+    "repository": "https://github.com/YuGaN525/Yuzibei",
+    "branch": "feature/chatbot-v3.11-release",
+    "codeCommit": "d71585db0566c8ee3274251c49cb08f4c2827b84",
+    "mirrorRepository": "https://github.com/bilibili-CLY/Yuzibei",
+    "mirrorBranch": "Yugan",
+    "mirrorCodeCommit": "a97882e8facbae626ed5f81307536eb1b0d12765",
+    "dualPushVerified": true
+  },
+  "validation": {
+    "dotnetPassed": 502,
+    "postgresPassed": 74,
+    "programPassed": 318,
+    "programSkipped": 1,
+    "programSkipReason": "Independent candidate lacks historical build/task23 pre-migration evidence source",
+    "contractCasesPassed": 15,
+    "contractPeerEqual": true,
+    "browserPassed": 165,
+    "screenshots": 36,
+    "browserHttp": "synthetic",
+    "apiBuild": true,
+    "webAndAdminTypesBuild": true,
+    "exeDiagnostic": true,
+    "tkMatrix": true,
+    "physicalDpi": false
+  },
+  "gates": {
+    "platformApiConfigured": false,
+    "realPaidProviderVerified": false,
+    "realGameVerified": false,
+    "soak4h24hVerified": false,
+    "G4Verified": false,
+    "newPublicBetaEnabled": false,
+    "productionDeployed": false
+  },
+  "pilot": {
+    "uids": [
+      100009
+    ],
+    "unlimitedBudgetExplicitOnly": true
+  },
+  "preservation": {
+    "originalWebsiteIndexUnchanged": true,
+    "originalProgramIndexUnchanged": true,
+    "universityVisualSha256": "463b289a4258fda549339c3ff1d438f2bc7cdc332bdca4570c28468d01da004f",
+    "privateDataAndOutputsExcluded": true
+  },
+  "knownDependencyWarning": "Existing MySqlConnector 2.2.5 NU1902; dependency upgrade outside this candidate; no claim of clean vulnerability audit",
+  "workerSourceUnchanged": "c6a3bf3261a1f0ef3d6e04e44bc722aaf1d8f6a6"
+}
