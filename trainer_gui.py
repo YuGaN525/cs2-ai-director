@@ -86,6 +86,8 @@ class TrainerApp:
         self.account.start()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         schedule(self.root,100, self._poll_events)
+        from client_update_ui import install as install_updates
+        install_updates(self)
 
     def _apply_preferences(self):
         from desktop_ui import theme

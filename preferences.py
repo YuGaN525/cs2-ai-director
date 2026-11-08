@@ -6,10 +6,13 @@ from contextlib import contextmanager
 from pathlib import Path
 
 DEFAULTS = {'theme': 'dark', 'developer_mode': False, 'follow_logs': True,
-            'font_size': 10, 'remember_window': True, 'director_size': '', 'trainer_size': ''}
+            'font_size': 10, 'remember_window': True, 'director_size': '', 'trainer_size': '',
+            'auto_check_updates': True, 'update_channel': 'stable'}
 
 
 def valid(key, value):
+    if key == 'update_channel':
+        return isinstance(value, str) and value in ('stable', 'beta')
     if key == 'theme':
         return isinstance(value, str) and value in ('dark', 'light')
     if key == 'font_size':

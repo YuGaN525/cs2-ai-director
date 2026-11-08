@@ -292,6 +292,8 @@ def settings(app):
     ttk.Button(frame, text='应用外观与模式', command=apply).pack(anchor='w')
     from account_ui import mount_account
     mount_account(frame, app.account)
+    from client_update_ui import mount as mount_updates
+    mount_updates(frame, app)
     status = scrolledtext.ScrolledText(frame, height=16, wrap='word', state='disabled')
     status.pack(fill='both', expand=True, pady=10)
     last_queue_read = [0.]

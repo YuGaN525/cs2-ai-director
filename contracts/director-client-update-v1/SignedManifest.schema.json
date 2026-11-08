@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "key_id",
+    "payload",
+    "signature"
+  ],
+  "properties": {
+    "key_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]{86}==$"
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "bytes",
+        "channel",
+        "expires_at",
+        "issued_at",
+        "minimum_updater",
+        "notes",
+        "origin",
+        "platform",
+        "product",
+        "release_id",
+        "schema",
+        "sequence",
+        "sha256",
+        "version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "issued_at": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "expires_at": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "minimum_updater": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9223372036854775807
+        },
+        "schema": {
+          "const": "director-client-update-v1"
+        },
+        "product": {
+          "const": "yuzi-cs2-director"
+        },
+        "origin": {
+          "type": "string",
+          "format": "uri"
+        },
+        "channel": {
+          "enum": [
+            "stable",
+            "beta"
+          ]
+        },
+        "release_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]{1,4}\\.[0-9]{1,4}\\.[0-9]{1,4}$"
+        },
+        "platform": {
+          "const": "windows-x86_64"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    }
+  }
+}

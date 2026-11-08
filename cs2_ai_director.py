@@ -293,7 +293,8 @@ DEPENDENCY_SPECS = (
     ("pydirectinput", "pydirectinput", "向 DirectX 游戏模拟数字键", True),
     ("keyboard", "keyboard", "全局热键监听 / MulNX 组合键", True),
     ("pygetwindow", "pygetwindow", "查找并激活 CS2 窗口", True),
-    ("openai", "openai", "DeepSeek 仲裁（可选）", False),
+    ("obsws_python", "obsws-python", "OBS 场景与媒体控制（可选）", False),
+    ("cryptography", "cryptography", "设备许可与签名模型验证", True),
 )
 
 
@@ -346,6 +347,10 @@ def install_dependencies(log_cb: Optional[Callable[[str], None]] = None) -> bool
         if log_cb:
             log_cb("所有依赖已安装，无需操作。")
         return True
+    if getattr(sys, 'frozen', False):
+        if log_cb:
+            log_cb('发行包组件缺失，请从设置中的官网入口重新下载完整程序。')
+        return False
     cmd = [sys.executable, "-m", "pip", "install", "--upgrade", *missing]
     if log_cb:
         log_cb("执行：" + " ".join(cmd))
@@ -2936,6 +2941,8 @@ class DirectorApp:
         self.bus.info("使用步骤：选择 cs2.exe → 一键安装 GSI → 重启 CS2 → 填写 MulNX 快捷键 → 启动导播。")
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         schedule(self.root,200, self._poll)
+        from client_update_ui import install as install_updates
+        install_updates(self)
 
     def _apply_preferences(self):
         from desktop_ui import theme
@@ -3781,6 +3788,9 @@ class DirectorApp:
     def _install_deps_async(self) -> None:
         if self._detecting:
             return
+        if getattr(sys, 'frozen', False):
+            messagebox.showinfo('发行包组件', '发行包已包含所需组件。若自检显示缺失，请在设置中前往官网重新下载完整程序。', parent=self.root)
+            return
         self._detecting = True
         self.bus.info("开始安装缺失依赖…")
 
@@ -3797,7 +3807,7 @@ class DirectorApp:
             messagebox.showinfo("依赖安装", "依赖安装完成。\n如果刚安装了 pydirectinput/keyboard，建议重启本程序。")
         else:
             messagebox.showerror("依赖安装", "安装失败，请查看日志或手动执行：\n"
-                                 "python -m pip install pydirectinput keyboard pygetwindow openai")
+                                 "python -m pip install pydirectinput keyboard pygetwindow obsws-python cryptography")
 
     # ---- 路径 ----
     def _auto_detect(self) -> None:
@@ -4534,6 +4544,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     import multiprocessing
     multiprocessing.freeze_support()
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ['--client-update-fetch']:
+        from client_update_transport import worker_main
+        return worker_main(arguments[1:])
     if "--account-check" in arguments:
         from account_client import main as account_main
         return account_main([a for a in arguments if a != "--account-check"])
@@ -4552,8 +4565,14 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=f"{APP_TITLE} v{VERSION}")
     parser.add_argument("--check", action="store_true", help="打印环境自检表后退出")
     parser.add_argument('--check-report', type=Path, help='将环境自检写入 JSON，供无控制台 exe 验证')
+    parser.add_argument('--check-updates-report', type=Path, help='主动联网检查程序发行并写入 JSON，不安装')
+    parser.add_argument('--update-channel', choices=('stable','beta'), default='stable', help='主动检查更新的通道')
     parser.add_argument("--install-deps", action="store_true", help="安装缺失依赖后退出")
     args = parser.parse_args(argv)
+
+    if args.check_updates_report:
+        from client_update_transport import report
+        return report(args.check_updates_report,args.update_channel)
 
     if args.check or args.check_report:
         print_env_report()

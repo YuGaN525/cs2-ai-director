@@ -1,0 +1,138 @@
+{
+  "version": "1.14.0",
+  "status": "candidate-not-website-published",
+  "base_commit": "dfb286ae31c1cb1d8747d1b9585197a99528b62b",
+  "artifact": {
+    "sha256": "8b6812bbe44bde1088e4dc54239e9c2cf69a1bed5d9e262d18c782e463e739d7",
+    "bytes": 187633420
+  },
+  "regression": {
+    "total": 368,
+    "passed": 366,
+    "skipped": 2,
+    "seconds": 81.694,
+    "skips": [
+      "jsonschema QA dependency unavailable",
+      "historical pre-migration evidence unavailable"
+    ]
+  },
+  "frozen_environment": {
+    "client_version": "1.14.0",
+    "core_version": "0.1.0",
+    "feature_version": "pov-v1",
+    "demo_parser": "demo-v2-live.1",
+    "python": "3.14.0",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "frozen": true,
+    "dependencies": [
+      {
+        "module": "pydirectinput",
+        "package": "pydirectinput",
+        "purpose": "向 DirectX 游戏模拟数字键",
+        "required": true,
+        "installed": true,
+        "version": null
+      },
+      {
+        "module": "keyboard",
+        "package": "keyboard",
+        "purpose": "全局热键监听 / MulNX 组合键",
+        "required": true,
+        "installed": true,
+        "version": null
+      },
+      {
+        "module": "pygetwindow",
+        "package": "pygetwindow",
+        "purpose": "查找并激活 CS2 窗口",
+        "required": true,
+        "installed": true,
+        "version": null
+      },
+      {
+        "module": "obsws_python",
+        "package": "obsws-python",
+        "purpose": "OBS 场景与媒体控制（可选）",
+        "required": false,
+        "installed": true,
+        "version": null
+      },
+      {
+        "module": "cryptography",
+        "package": "cryptography",
+        "purpose": "设备许可与签名模型验证",
+        "required": true,
+        "installed": true,
+        "version": "50.0.2"
+      },
+      {
+        "module": "tkinter",
+        "package": "（Python 自带）",
+        "purpose": "GUI",
+        "required": true,
+        "installed": true,
+        "version": "Tk 8.6"
+      }
+    ],
+    "public_trust": {
+      "state": "configured",
+      "server_origin": "https://www.yuzibei.cn",
+      "configuration_sha256": "e87a123189ad00b3dd195d092609af0c4eb09c2bdc7e699c4362f862c6f0943e",
+      "identity_key_ids": [
+        "identity-web-20261107"
+      ],
+      "model_key_ids": [
+        "model-web-20261107"
+      ],
+      "formal_model_approval_verified": false
+    }
+  },
+  "frozen_official_check": {
+    "state": "ahead_of_channel",
+    "release": {
+      "id": "65fbd977-f793-4956-8079-9f01a659cf0d",
+      "version": "1.11.0",
+      "channel": "stable",
+      "artifact_hash": "1088b66cddf42d281fbaca919d2e3bc38678c62ed4d8cbfd512d12ce4367e02b",
+      "artifact_bytes": 193199246,
+      "revision": 1,
+      "notes": "正式网站账号与设备、模型下载和训练数据接入。自动导播仍需已批准模型与有效许可；真实镜头收益待独立验收。"
+    },
+    "client_version": "1.14.0",
+    "channel": "stable",
+    "checked_at": 1794158340.7082558,
+    "frozen": true
+  },
+  "frozen_slow_stream": {
+    "scope": "isolated synthetic TLS slow-stream proxy; no upstream traffic; CA trusted only by candidate subprocess environment",
+    "total_seconds": 23.182364299951587,
+    "stream_to_exit_seconds": 11.511435499996878,
+    "state": "check_failed",
+    "error": "timeout",
+    "observed_child_count": 2,
+    "surviving_children": [],
+    "authorization_absent": true
+  },
+  "source_sha256": {
+    "client_version.py": "ab88347a98392227b8eea87c330daa6628fc863bc8aed3575181396580ab1f0d",
+    "cs2_ai_director.py": "02423451ebbff0f46fc0899aaade2a3552899ad55bce6183758a10ea4152f39f",
+    "trainer_gui.py": "04bfbea9f6fe1aca9aa7c5af220ff06a5a48c66fcef806c0ca6dba304a57afb6",
+    "desktop_ui.py": "e8e40c3e7dca827f88b1d3b347d2e69b884d3c1b0385e8dc71a7547e6ab6c5d8",
+    "preferences.py": "b786c4d31474d36ffb4c500d1768f18160af8017e56d10fb49fb1f4024b1c5a1",
+    "requirements.txt": "4e4ef463ff5278e770e022126f99545def8f2fc8344bc3feafe4f835ffa988e2",
+    "client_update.py": "c7ad6e6f5785a172ecb0c85f5b02a4504da2a2d489a8a1aaf70db8ce97f3eb18",
+    "client_update_state.py": "ada25ec270c20d9fc0a1125d1687d34f23cb5e987ace0fd7047272f917f6adea",
+    "client_update_transport.py": "6e67b2353b5c7aa93f413d481121c5fe91360de0d00133aca656c29d077f07a9",
+    "client_update_ui.py": "25952fa496088259c3376fc610d84cbc4cf2cf621a4f175d1459ed53bd407721",
+    "client_update_manifest.py": "493a816a936904bbacba7451ebf4035a680a875a1073ccd088cc3ddc49c1fc4a",
+    "Yuzi_CS2_AIDirector.spec": "dc0aca3e6cb119702f1094a3d8c28bf0af84e2cce021f6acbbca7f0b4b99e60c"
+  },
+  "not_accepted": [
+    "GUI newer-version interaction in actual exe",
+    "physical DPI",
+    "real CS2/MulNX/OBS and G4",
+    "4h+24h soak",
+    "signed download and installation/rollback",
+    "website deployment"
+  ]
+}

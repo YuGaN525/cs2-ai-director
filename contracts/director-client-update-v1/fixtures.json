@@ -1,0 +1,343 @@
+{
+  "now": 1804700000,
+  "channel": "stable",
+  "platform": "windows-x86_64",
+  "fixtures": [
+    {
+      "name": "valid-unicode",
+      "valid": true,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "SybTXVBA6pCmKlN3M5JZ7g4ZbO4PYhT5zg26mHB0eiVq9TIjbqI38+SYCPbsR2IDfmyhlE2oRkcop/W1e3TUCQ=="
+      }
+    },
+    {
+      "name": "signed-wrong-schema",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "wrong",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "PdAD9O5MGyy35GqdQ7BOkwPmGLk/3oIQSyxPTQ8rzwliBACEIghxzqNiawlIQ1w3HyQY6iy7OQyHeesoipUlBA=="
+      }
+    },
+    {
+      "name": "signed-wrong-product",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "identity",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "htycGlhhb68YRJNWN2q/G7kFbntRsEdezxhB8YHdt3znBwtnuVGFSa5KrOLcwqvmo9Xp6km2/8KAELq9jpMEBQ=="
+      }
+    },
+    {
+      "name": "signed-wrong-origin",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://elsewhere.invalid",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "91wRPrswJGvdFaMzowOvxKe/QD+N/9PoRIw8o0kdbPsW0dbhEBaYFri3uWUVec8l8+6FFX7JK9sCQcWkcqmdBg=="
+      }
+    },
+    {
+      "name": "signed-wrong-channel",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "beta",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "363TfavO70sUZ+1JOrY2bL3wJaXhVg0bKtilL0nTQM0MILnwfovg5qpUYEqdq449/H2ODfVW8kCeYFvrAx8XDw=="
+      }
+    },
+    {
+      "name": "signed-wrong-platform",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "linux-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "juD9Htfis4owZbR5rLR3Xpbxi0uMqSc//pqef4d+Sjyje7qnSJLZ3ipgbXDxWGlSnvaQLOldblZvVj+L80iWDg=="
+      }
+    },
+    {
+      "name": "signed-wrong-version",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0-beta",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "xUMcBsXFeEbbD7T0JU12Nc66nnGUrMZ8CEfEnX1wPysSU0ibayg5sQI44XLUHQz/QaM6fJc/Ani/xn8UZlCIAQ=="
+      }
+    },
+    {
+      "name": "signed-wrong-bytes",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": true,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "bl0PKOi0AHss7sxPG2MAuDW5fhBM/ZZ/cG0NqqQUDk6Uf3/08PEqJH6a38GUjutKNwcN7JLVetM2qozcItsRDw=="
+      }
+    },
+    {
+      "name": "signed-wrong-sequence",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": false,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "Sg+ydc2N6rBVpn5+S6SlsPKQxHGinmqSF/IPJfcP2EypKfdm7sv5x9Y85twzJupIMtJdrJBTyYoP/nMl8fBoBQ=="
+      }
+    },
+    {
+      "name": "signed-wrong-issued_at",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804700001,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "oqNOtLCC4Hm/aqed4+xL1lSlN934FzSFA2xTIDlt6dlcsa86JW6FRFnh+q49dFBnzUK9iuh3tbmEAzeg9wxrAQ=="
+      }
+    },
+    {
+      "name": "signed-wrong-expires_at",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804700000,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "07hM5xseE6L5b4o6/o/nZgb3TnF1DI5k64LrAIYEz0hfRoWu71ihsqaaeNkFIeDU94K0dqu3zyCt3xD6YYYzBg=="
+      }
+    },
+    {
+      "name": "signed-wrong-minimum_updater",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 2,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "7mXw3wIfonB//DeCIhBXhRGWjQO6iqKvHF17T70un/o+O7gVuqRg1svSrOa2mb2vwRzXGtzgveCPHllDVZ/5Cg=="
+      }
+    },
+    {
+      "name": "tampered-hash",
+      "valid": false,
+      "envelope": {
+        "key_id": "update-fixture-only",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "SybTXVBA6pCmKlN3M5JZ7g4ZbO4PYhT5zg26mHB0eiVq9TIjbqI38+SYCPbsR2IDfmyhlE2oRkcop/W1e3TUCQ=="
+      }
+    },
+    {
+      "name": "unknown-purpose-key",
+      "valid": false,
+      "envelope": {
+        "key_id": "model-key",
+        "payload": {
+          "schema": "director-client-update-v1",
+          "product": "yuzi-cs2-director",
+          "origin": "https://example.org",
+          "channel": "stable",
+          "release_id": "10000000-0000-0000-0000-000000000001",
+          "version": "1.14.0",
+          "platform": "windows-x86_64",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bytes": 200000000,
+          "sequence": 2,
+          "issued_at": 1804699940,
+          "expires_at": 1804786400,
+          "minimum_updater": 1,
+          "notes": "更新说明\n引号\" 反斜杠\\ <>&/ 🎥"
+        },
+        "signature": "SybTXVBA6pCmKlN3M5JZ7g4ZbO4PYhT5zg26mHB0eiVq9TIjbqI38+SYCPbsR2IDfmyhlE2oRkcop/W1e3TUCQ=="
+      }
+    }
+  ]
+}

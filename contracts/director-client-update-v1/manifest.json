@@ -1,0 +1,6 @@
+{
+  "fixtures.json": "ba9d44d1f8f5e5771eae7c94a94d167860ea5271c7325ac6e6da8c93e1cd6e1d",
+  "payload.canonical.txt": "32559eca519e187e476845f2472497b7f97882900c7737eb10e93474225ae7f5",
+  "SignedManifest.schema.json": "bd8c2b42b3605a275813813548ff0e0bb9c7807a55182ba88c0400e5cc352c1f",
+  "test-public-trust.json": "e7c0b9a2a79d9494e4ccb43e84e2f558584194eaf8f0c689f4608dffa665107a"
+}
