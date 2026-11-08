@@ -48,5 +48,7 @@
   "production_update_source_enabled": false,
   "desktop_control_stopped_by_user": true,
   "real_director_started": false,
-  "long_observation_started": false
+  "long_observation_started": false,
+  "source_commit": "a7ebb1dfcc594af1140143973f40430c3843cdf5",
+  "github_remote_verified": true
 }
