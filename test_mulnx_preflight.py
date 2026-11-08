@@ -43,6 +43,38 @@ class MulNXPreflightTests(unittest.TestCase):
             self.assertFalse(inspect(root,pack,config)['matched'])
             self.assertFalse(inspect(root,pack,config)['shortcut_enabled'])
 
+    def test_custom_pack_names_and_single_double_bindings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, pack, config = self.fixture(directory)
+            for old, new, prefix, key, clicks in (
+                    ('CT','CTSPAWN','hlae_spawn_ct','0',2),
+                    ('T','TSPAWN','hlae_spawn_t','0',1),
+                    ('ASIDE','ASITE','hlae_bomb_a','1',2),
+                    ('BSIDE','BSITE','hlae_bomb_b','3',1)):
+                old_path = pack/'CamMacros'/f'{old}.yaml'
+                new_path = old_path.with_name(new+'.yaml')
+                text = old_path.read_text()
+                import re
+                text = re.sub(r'vkCode: \d+', f'vkCode: {ord(key)}', text)
+                new_path.write_text(text.replace('comboClick: 2', f'comboClick: {clicks}'))
+                old_path.unlink()
+                config[prefix+'_key'] = 'alt+'+key
+                config[prefix+'_mode'] = 'single' if clicks == 1 else 'double'
+            before = {p:p.read_bytes() for p in pack.rglob('*.yaml')}
+            result = inspect(root, pack, config)
+            self.assertTrue(result['matched'])
+            self.assertFalse(result['real_game_confirmed'])
+            self.assertEqual(result['scenes']['CT']['file'], 'CTSPAWN.yaml')
+            self.assertEqual(before, {p:p.read_bytes() for p in before})
+
+    def test_ambiguous_macro_names_never_pass_even_with_same_binding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, pack, config = self.fixture(directory)
+            (pack/'CamMacros'/'CTSPAWN.yaml').write_bytes((pack/'CamMacros'/'CT.yaml').read_bytes())
+            result = inspect(root, pack, config)
+            self.assertFalse(result['matched'])
+            self.assertEqual(result['scenes']['CT']['state'], 'unknown')
+
     def test_other_installation_and_ambiguous_yaml_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root, pack, config=self.fixture(directory)

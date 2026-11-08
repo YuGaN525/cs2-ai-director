@@ -1,5 +1,9 @@
 # OPT-00～14 实施与验收台账
 
+## 2026-11-09验收范围变更
+
+用户取消24小时观察测试项，P-04/OPT-14仅保留固定候选的4小时真实负载要求；不能用短时运行冒充4小时通过。历史24小时记录保留为历史，不再列为待办或发行门槛。真实Demo验收见[本轮实机记录](LIVE_P_ACCEPTANCE_2026-11-09.md)。
+
 ## 2026-11-08 BETA候选验收更新
 
 本轮双模式、平台账本与代理、网站后台及候选构建已实现。候选318项程序测试通过、1项旧本地证据检查跳过，实际EXE为1.13.0。以[统一进度](AI_DIRECTOR_PROGRESS_2026-11-08.md)和[使用与验收](BETA_CANDIDATE_2026-11-08.md)为准；下方未开发描述为历史。真实灰度及公开开放仍待17/18门禁。
@@ -17,7 +21,7 @@
 
 日期：2026-11-07。候选版本：1.12.0。仅修改程序仓库，网站代码未改动。
 
-**当前是候选实现，不是全部验收完成或正式发布。** 4 小时负载和之后至少 24 小时观察必须使用实际经过的时间；短时回归不计为长时通过。正式公钥文件现已由网站交接，程序接入见 [DEP-WEB-01](DEP-WEB-01.md)；限定账号的签名模型及真实身份接口联调已补验，详见11月8日记录；其余实机/生命周期条件仍待完成。真实 CS2 + MulNX + OBS、物理分辨率/DPI 全矩阵尚未通过。
+**当前是候选实现，不是全部验收完成或正式发布。** 4小时负载必须使用实际经过的时间；24小时观察已按2026-11-09用户要求删除。短时回归不计为长时通过。正式公钥文件现已由网站交接，程序接入见 [DEP-WEB-01](DEP-WEB-01.md)；限定账号的签名模型及真实身份接口联调已补验，详见11月8日记录；其余实机/生命周期条件仍待完成。真实 CS2 + MulNX + OBS、物理分辨率/DPI 全矩阵尚未通过。
 
 ## 实施映射
 
@@ -37,7 +41,7 @@
 | OPT-11 | 开发者模式默认关闭、持久化；隐藏详细模型/指标/日志/高级训练配置，保留变量和运行对象 | 模式只控制可见性，不授予执行资格 |
 | OPT-12 | 共享主题/设置/滚动；普通 CSV/Demo 训练与高级面板；长训练结果滚动；同 exe 独立训练进程 | 本地产物是候选；不替代服务端批准的正式模型 |
 | OPT-13 | 相同输入/配置，交替三对每次 10,000 循环，决策与动作 hash 全相同；详见 behavior-paired.json | 合成夹具不包含真实网络/写盘/按键等待；上传下载训练并发、真实节目端到端与 OS 冷启动仍待测 |
-| OPT-14 | 统一 1.12.0 候选打包、源码回归、exe 自检与训练入口验证；稳定性采集工具已具备 | 4h + 24h 完整时长、真实游戏/OBS、目标物理 DPI 与正式发行依赖未通过；未声明全项完成 |
+| OPT-14 | 统一 1.12.0 候选打包、源码回归、exe 自检与训练入口验证；稳定性采集工具已具备 | 4h负载、真实游戏/OBS、目标物理DPI与正式发行依赖待验；24h观察已取消，历史候选不代表最新状态 |
 
 ## 已登记的行为修正
 
@@ -71,7 +75,7 @@
 python -m unittest discover -q
 python tools/ui_matrix.py
 python tools/behavior_benchmark.py --repo . --out build/behavior.json --samples 10000
-python tools/opt_soak.py --repo . --out build/soak-final --load-seconds 14400 --observe-seconds 86400
+python tools/opt_soak.py --repo . --out build/soak-final --load-seconds 14400 --observe-seconds 0
 python -m pip wheel . --no-deps --no-build-isolation --no-index --wheel-dir dist/core
 python -m PyInstaller --noconfirm Yuzi_CS2_AIDirector.spec
 .\dist\Yuzi_CS2_AIDirector.exe --check-report build/exe-check.json

@@ -9,6 +9,8 @@ from pathlib import Path
 
 SCENES = {'CT': 'hlae_spawn_ct', 'T': 'hlae_spawn_t',
           'ASIDE': 'hlae_bomb_a', 'BSIDE': 'hlae_bomb_b'}
+MACRO_NAMES = {'CT': ('CT', 'CTSPAWN'), 'T': ('T', 'TSPAWN'),
+               'ASIDE': ('ASIDE', 'ASITE'), 'BSIDE': ('BSIDE', 'BSITE')}
 UPGRADE_HELP = ('CS2 更新后，按 MulNX 发布说明重新下载兼容版本。更新前备份已验证的整个运镜包；'
                 '退出 MulNX 后，将原运镜包覆盖到新版本对应的 CamPacks 目录以恢复自定义快捷键。'
                 '保留新下载的原始副本以便回退。重新选择安装目录和运镜包，核对快捷键后再进游戏确认镜头。'
@@ -91,12 +93,22 @@ def inspect(root, pack, config):
         pass
     for name, prefix in SCENES.items():
         try:
-            actual, digest = read_binding(pack/'CamMacros'/f'{name}.yaml')
+            # Both naming schemes exist in real packs. Never guess when a pack
+            # contains multiple candidates for the same scene.
+            candidates = [pack/'CamMacros'/f'{alias}.yaml' for alias in MACRO_NAMES[name]
+                          if (pack/'CamMacros'/f'{alias}.yaml').is_file()]
+            if len(candidates) != 1:
+                raise ValueError('场景宏缺失或名称有歧义')
+            macro = candidates[0]
+            if not macro.resolve().is_relative_to(pack.resolve()):
+                raise ValueError('场景宏不在所选运镜包内')
+            actual, digest = read_binding(macro)
             expected = expected_binding(config.get(prefix+'_key', ''), config.get(prefix+'_mode', 'double'))
             result['scenes'][name] = {'state': 'matched' if actual == expected else 'mismatch',
-                                     'actual': actual, 'expected': expected, 'sha256': digest}
+                                     'actual': actual, 'expected': expected, 'sha256': digest,
+                                     'file': macro.name}
         except (OSError, ValueError):
-            result['scenes'][name] = {'state': 'unknown', 'reason': '文件缺失、结构变化或快捷键不支持；请人工核对'}
+            result['scenes'][name] = {'state': 'unknown', 'reason': '文件缺失、名称有歧义、结构变化或快捷键不支持；请人工核对'}
     result['matched'] = (result['launcher_found'] and result['shortcut_enabled'] is True
                          and all(v['state'] == 'matched' for v in result['scenes'].values()))
     return result
@@ -108,6 +120,8 @@ def describe(result):
     names = {'CT': 'CT 出生点', 'T': 'T 出生点', 'ASIDE': 'A 包点', 'BSIDE': 'B 包点'}
     for scene, item in result['scenes'].items():
         lines.append(names[scene] + '：' + {'matched': '文件绑定一致', 'mismatch': '绑定不一致', 'unknown': '需要人工核对'}[item['state']])
+        if item.get('file'):
+            lines.append('  运镜宏文件：' + item['file'])
         if item['state'] == 'mismatch':
             for label, binding in [('程序', item['expected']), ('运镜包', item['actual'])]:
                 modifiers = '+'.join(k for k in ('ctrl', 'shift', 'alt') if binding[k])
