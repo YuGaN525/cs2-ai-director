@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 import webbrowser
+import queue
 from uuid import uuid4
 from tkinter import ttk, scrolledtext
 from client_version import VERSION
@@ -34,18 +35,31 @@ class Updates:
         self.last_manual=-float('inf')
         self.window=uuid4().hex
         self.artifact_hash=None
+        self.transfer={'state':'idle'}
+        self.transfer_cancel=threading.Event()
+        self.transfer_events=queue.SimpleQueue()
+        self.ready=None
+        self.install_result=None
         self.options=app.preferences.read()
         self.root.bind('<Destroy>',self._destroy,add='+')
         schedule(self.root,10000+random.randrange(20001),self.tick)
+        schedule(self.root,200,self.transfer_tick)
+        if getattr(sys,'frozen',False):
+            from client_update_install import last_result
+            def received(value,error):
+                if not self.closed and not error:self.install_result=value
+            self.app.tasks.submit('update-last-result',lambda:last_result(self.app.preferences.path.parent/'client-install',sys.executable),received)
 
     def _destroy(self,event):
         if event.widget is self.root:
             self.closed=True
             self.cancel.set()
+            self.transfer_cancel.set()
             self.generation+=1
 
     def reconfigure(self, options=None):
         self.options=self.app.preferences.read() if options is None else options
+        self.transfer_cancel.set();self.ready=None;self.transfer={'state':'idle'}
         self.cancel.set()
         self.cancel=threading.Event()
         self.generation+=1
@@ -172,6 +186,72 @@ class Updates:
         from client_update import public_origin
         webbrowser.open(public_origin(origin)+'/tools/ai-director')
 
+    def transfer_tick(self):
+        if self.closed:return
+        if getattr(self.app,'_closing',False):self.transfer_cancel.set();self.cancel.set()
+        for _ in range(50):
+            try:generation,value=self.transfer_events.get_nowait()
+            except queue.Empty:break
+            if generation==self.generation and self.transfer['state']=='downloading' and not self.transfer_cancel.is_set():
+                self.transfer={'state':'downloading',**value}
+        schedule(self.root,200,self.transfer_tick)
+
+    def shutdown(self):
+        self.cancel.set();self.transfer_cancel.set()
+        self.app.tasks.wait_workers(('client-update','update-download','update-prepare'),20)
+
+    def download(self):
+        if self.closed or getattr(self.app,'_closing',False):return
+        from client_update_download import download,runtime_trust_path
+        cancel=threading.Event();generation=self.generation
+        channel=self.options['update_channel'];root=self.app.preferences.path.parent/'client-install'
+        def work():
+            return download(root,runtime_trust_path(),channel,VERSION,cancel,
+                lambda value:self.transfer_events.put((generation,value)))
+        def done(value,error):
+            if self.closed or generation!=self.generation:return
+            if cancel.is_set():self.transfer={'state':'cancelled'};self.ready=None;return
+            self.transfer=value if not error else {'state':'failed','error':'transfer_unavailable'}
+            self.ready=value if not error and value.get('state')=='ready' else None
+        if self.app.tasks.submit('update-download',work,done):
+            self.transfer_cancel=cancel;self.transfer={'state':'downloading'};self.ready=None
+
+    def cancel_download(self):
+        self.transfer_cancel.set();self.transfer={'state':'cancelled'};self.ready=None
+
+    def apply_update(self):
+        from tkinter import messagebox
+        if not getattr(sys,'frozen',False):
+            messagebox.showinfo('使用发行程序','源码运行不替换文件，请使用正式打包的程序。',parent=self.root);return
+        if self.closed or getattr(self.app,'_closing',False) or not self.ready:return
+        if getattr(self.app,'_training',False) or getattr(self.app,'_calibrating',False):
+            messagebox.showinfo('任务运行中','请等待训练或校准完成后再更新。',parent=self.root);return
+        if not messagebox.askyesno('退出并更新','将停止导播、保存记录并关闭此窗口。请先关闭其他导播和训练器窗口。更新失败将保留原程序备份，账号与采集数据保持。现在继续？',parent=self.root):return
+        from client_update_install import prepare
+        generation=self.generation;ready=self.ready;root=self.app.preferences.path.parent/'client-install'
+        def done(path,error):
+            if self.closed or getattr(self.app,'_closing',False) or generation!=self.generation:return
+            if error:
+                self.transfer={'state':'failed','error':'install_preparation_failed'};return
+            if getattr(self.app,'_training',False) or getattr(self.app,'_calibrating',False):
+                self.transfer={'state':'failed','error':'training_started'};return
+            self.app._update_job=path
+            self.app._on_close()
+        role='trainer' if '--trainer' in getattr(self.app,'_launch_arguments',sys.argv[1:]) or self.app.__class__.__name__=='TrainerApp' else 'director'
+        self.app.tasks.submit('update-prepare',lambda:prepare(root,ready,sys.executable,role=role),done)
+
+    def recover_update(self):
+        if not getattr(sys,'frozen',False):return
+        from client_update_install import pending_job
+        from tkinter import messagebox
+        def done(path,error):
+            if self.closed:return
+            if error or path is None:
+                messagebox.showinfo('更新恢复','没有需要恢复的中断更新。',parent=self.root);return
+            if messagebox.askyesno('恢复旧程序','将保存记录并退出此窗口，恢复本次更新保留的旧程序文件。请先关闭其他程序窗口。是否继续？',parent=self.root):
+                self.app._update_job=path;self.app._update_recovery=True;self.app._on_close()
+        self.app.tasks.submit('update-recovery',lambda:pending_job(self.app.preferences.path.parent/'client-install',sys.executable),done)
+
     def text(self):
         value=self.result
         lines=[f'当前版本：{VERSION} · 通道：{self.options["update_channel"]}',MESSAGES.get(value['state'],'检查未完成')]
@@ -180,6 +260,22 @@ class Updates:
         if value.get('ignored'):lines.append('已忽略本次发行的自动提醒')
         release=value.get('release')
         if release:lines.extend([f'发行版本：{release["version"]} · {release["artifact_bytes"]/1024/1024:.1f} MiB',release['notes']])
+        transfer=self.transfer
+        states={'idle':'尚未下载','downloading':'正在获取并验证签名更新','ready':'更新包已验证，可选择退出并安装',
+                'cancelled':'下载已取消，已保存的部分可续传','failed':'下载或安装准备未完成；请检查更新签名配置、网络、磁盘和当前发行'}
+        lines.append('安装更新：'+states.get(transfer['state'],'处理中'))
+        reasons={'update_trust_or_file_missing':'此发行未配置应用更新公钥，或所需文件已丢失。可先前往官网下载。',
+                 'transfer_timeout':'下载连接长时间无进展，稍后重试可续传。',
+                 'update_not_newer':'所选通道没有更高版本。',
+                 'release_changed':'发行已变更或撤回，请重新检查并下载。',
+                 'package_integrity':'更新包摘要或大小不符，请重新下载。',
+                 'major_upgrade_requires_manual_install':'跨主版本升级需从官网手动安装。'}
+        if transfer.get('error') in reasons:lines.append(reasons[transfer['error']])
+        if transfer.get('total'):lines.append(f'已下载 {transfer.get("bytes",0)/1048576:.1f} / {transfer["total"]/1048576:.1f} MiB')
+        previous={'complete':'上次更新已完成','rolled_back':'上次更新未通过启动检查，已恢复旧程序',
+                  'rollback_pending':'上次更新等待恢复，请先关闭其他窗口再选择恢复中断更新',
+                  'failed':'上次更新未完成，请检查窗口占用、磁盘和网络；中断时可选择恢复'}
+        if self.install_result in previous:lines.append(previous[self.install_result])
         return '\n'.join(lines)
 
 
@@ -200,8 +296,11 @@ def mount(parent,app):
     selector=ttk.Combobox(box,textvariable=channel,values=('stable','beta'),state='readonly',width=12)
     selector.pack(anchor='w');selector.bind('<<ComboboxSelected>>',lambda _:apply())
     details=scrolledtext.ScrolledText(box,height=6,wrap='word',state='disabled');details.pack(fill='x')
-    for label,command in [('检查更新',app.updates.request),('前往官网下载',app.updates.website),('一小时后提醒',app.updates.later),('忽略此版本',app.updates.ignore)]:
-        ttk.Button(box,text=label,command=command).pack(side='left',padx=3,pady=5)
+    actions=ttk.Frame(box);actions.pack(fill='x')
+    buttons=[('检查更新',app.updates.request),('前往官网下载',app.updates.website),('一小时后提醒',app.updates.later),('忽略此版本',app.updates.ignore),
+             ('下载签名更新',app.updates.download),('取消下载',app.updates.cancel_download),('退出并安装',app.updates.apply_update),('恢复中断更新',app.updates.recover_update)]
+    for index,(label,command) in enumerate(buttons):
+        ttk.Button(actions,text=label,command=command).grid(row=index//2,column=index%2,sticky='w',padx=3,pady=5)
     def refresh():
         content=app.updates.text()
         if details.get('1.0','end-1c')!=content:

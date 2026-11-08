@@ -112,5 +112,22 @@ class UpdateUITests(unittest.TestCase):
         self.assertEqual(Preferences(self.temp.name).read()['update_channel'],'beta')
         with self.assertRaises(ValueError):self.app.preferences.update(update_channel='nightly')
 
+    def test_cancel_or_channel_change_never_restores_late_download(self):
+        with patch('client_update_download.download',return_value={'state':'ready','payload':{}}):
+            self.updates.download();self.updates.cancel_download()
+            self.app.tasks.finish('update-download')
+            self.assertEqual(self.updates.transfer['state'],'cancelled')
+            self.assertIsNone(self.updates.ready)
+            self.updates.download();self.updates.reconfigure()
+            self.app.tasks.finish('update-download')
+            self.assertEqual(self.updates.transfer['state'],'idle')
+            self.assertIsNone(self.updates.ready)
+
+    def test_queued_progress_cannot_overwrite_ready(self):
+        self.updates.transfer={'state':'ready'}
+        self.updates.transfer_events.put((self.updates.generation,{'bytes':10,'total':20}))
+        self.updates.transfer_tick()
+        self.assertEqual(self.updates.transfer['state'],'ready')
+
 
 if __name__=='__main__':unittest.main()

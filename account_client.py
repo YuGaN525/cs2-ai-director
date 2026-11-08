@@ -12,7 +12,7 @@ import uuid
 import sys
 import webbrowser
 
-from device_identity import DeviceSession, WindowsProtector, server_origin, atomic_write, canonical, unb64
+from device_identity import DeviceSession, WindowsProtector, IdentityError, server_origin, atomic_write, canonical, unb64
 from offline_runtime import CachedModel
 from model_runtime import ModelNetworkError
 from upload_outbox import Binding
@@ -212,6 +212,11 @@ class DesktopAccount:
                 if not self.tokens or self.tokens.get('access_token')!=token:return
                 self.session._install_verified_lease_locked(envelope,self.tokens['account_id'])
             self.status='登录与设备绑定有效，离线凭据已续签168小时'+('；'+self.model_manager.status if self.model_manager else '');self.last_renew=self.clock();self.check_local()
+        except IdentityError:
+            # A rejected signed response cannot replace the last valid lease or
+            # crash the diagnostic/GUI entry. Existing offline rules still apply.
+            self.check_local()
+            self.status='离线许可续签未通过验证，请核对系统时间或重新登录；当前执行资格以本机有效凭据为准'
         except (AccountError,ModelNetworkError) as error:
             self.status='等待服务端批准正式模型' if error.code=='DIRECTOR_MODEL_REQUIRED' else '续签未完成：'+error.code
             if error.status in (401,403) or error.code=='DIRECTOR_MODEL_REQUIRED':

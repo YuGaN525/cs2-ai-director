@@ -199,7 +199,7 @@ class DeviceSession:
         # The verified payload is checked again after a bounded wait; larger skew
         # and a stationary/rolled-back clock still fail closed.
         ahead = payload['verified_at'] - now
-        if 0 < ahead <= 2:
+        if 0 < ahead <= 5:
             time.sleep(ahead + 0.01)
             now = self.clock()
         if not payload['verified_at'] <= now < payload['offline_expires_at']:

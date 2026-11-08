@@ -43,6 +43,7 @@ class IntegrationTests(unittest.TestCase):
     def test_training_close_preserves_running_work(self):
         from trainer_gui import TrainerApp
         app = mock.Mock()
+        app._update_job = None
         app._training, app._calibrating = True, False
         with mock.patch("trainer_gui.messagebox.showinfo"):
             TrainerApp._on_close(app)

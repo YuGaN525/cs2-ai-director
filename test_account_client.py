@@ -133,6 +133,24 @@ class AccountClientTests(unittest.TestCase):
         self.account.sync_once()
         self.assertFalse(self.account.allowed())
 
+    def test_invalid_renewal_keeps_old_lease_without_crashing_or_extending_it(self):
+        self.install()
+        original=self.account.session._read(self.account.session.path)['envelope']
+        payload=dict(original['payload'])
+        payload.update(verified_at=self.now+3600,offline_expires_at=self.now+3600+604800)
+        invalid={'payload':payload,'signature':b64(self.signer.sign(PURPOSE+canonical(payload)))}
+        self.client.call.side_effect=lambda path,*args,**kwargs: {'enabled':True} if path=='me/entitlement' else invalid
+        self.account.sync_once()
+        self.assertTrue(self.account.allowed())
+        self.assertEqual(self.account.session._read(self.account.session.path)['envelope'],original)
+        self.assertIn('续签未通过验证',self.account.status)
+        self.now+=604800+3601
+        # Keep a valid access token so this specifically exercises lease expiry.
+        with self.account.session._transaction():self.account._save_tokens(self.tokens())
+        self.account.sync_once()
+        self.assertFalse(self.account.allowed())
+        self.assertTrue(self.account.tokens)
+
     def test_device_login_backs_off_on_http_throttle(self):
         self.account.begin_login=mock.Mock(return_value={'expires_in':600,'interval':5})
         self.account.complete_login=mock.Mock(side_effect=[AccountError('RATE_LIMITED',429),True])

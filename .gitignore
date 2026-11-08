@@ -26,3 +26,4 @@ lookahead_eval_deaths.csv
 identity.lock
 *.tokens
 identity-server.json
+client-update-trust.json

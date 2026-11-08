@@ -1,5 +1,11 @@
 # Yuzi_CS2_AIDirector
 
+## 2026-11-09 自动更新1.15.0候选
+
+已实现自动检查、独立签名清单验证、程序内续传下载、退出替换、启动确认与失败恢复，完成隔离实际exe升级和回退。正式应用更新公钥已由网站侧交付；官网签名源尚未部署启用，源码交付不代表官网已可自动安装。构建时使用`DIRECTOR_PUBLIC_TRUST_CONFIG`指定原账号公开配置，并使用`DIRECTOR_UPDATE_TRUST_CONFIG=config/client-update-trust.public.json`固定应用更新公钥；绝不装入QA信任配置。
+
+本轮还修复小幅许可时差导致诊断崩溃，已开始P-01～14验收。详细包摘要、测试边界、恢复方法与未完成项见[1.15.0验收记录](docs/opt/UPD_1.15.0_VALIDATION_2026-11-09.md)和[统一进度](docs/opt/AI_DIRECTOR_PROGRESS_2026-11-08.md)。下方旧版本状态为历史。
+
 ## 2026-11-08 BETA 1.13.0候选
 
 已实现平台代理金额预算、Off/Platform/Personal、按账号DPAPI密钥及beta发行配套；独立候选全量测试与实际EXE自检通过。使用步骤与限制见[候选说明](docs/opt/BETA_CANDIDATE_2026-11-08.md)，版本交付以[统一进度](docs/opt/AI_DIRECTOR_PROGRESS_2026-11-08.md)为准。平台API按用户要求暂空，真实游戏、4h+24h、物理DPI/G4及公开上线未验收；以下旧日期段落为历史记录。

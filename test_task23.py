@@ -224,7 +224,7 @@ class IdentityTests(unittest.TestCase):
         self.advance(1); self.assertFalse(self.check().allowed)
 
     def test_small_verified_server_clock_lead_waits_without_extending_expiry(self):
-        envelope=self.lease(verified_at=self.now+0.9,offline_expires_at=self.now+604800)
+        envelope=self.lease(verified_at=self.now+3.0,offline_expires_at=self.now+604800)
         def advance_sleep(seconds):self.now+=seconds
         with mock.patch.object(identity.time,'sleep',side_effect=advance_sleep) as sleep:
             self.session.install_verified_lease(envelope,'account-a')

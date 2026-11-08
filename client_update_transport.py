@@ -52,12 +52,15 @@ def retry_delay(value, now=None):
         return None
 
 
-def fetch_once(origin, channel):
+def fetch_once(origin, channel, kind='list'):
     origin = public_origin(origin)
     if channel not in CHANNELS:
         raise ValueError('Invalid channel')
+    if kind not in ('list','manifest'):raise ValueError('Invalid update resource')
+    resource=('/api/director/client-releases?channel='+channel if kind=='list' else
+              '/api/director/client-updates/manifest?channel='+channel+'&platform=windows-x86_64')
     opener = urllib.request.build_opener(NoRedirect())
-    request = urllib.request.Request(origin+'/api/director/client-releases?channel='+channel,
+    request = urllib.request.Request(origin+resource,
                                     headers={'Accept':'application/json', 'User-Agent':'YuziDirector-Update/1'})
     try:
         with opener.open(request, timeout=3) as response:
@@ -78,9 +81,9 @@ def fetch_once(origin, channel):
         return {'error':'network_or_protocol_error'}
 
 
-def check(origin, channel, cancel, timeout=10):
+def check(origin, channel, cancel, timeout=10, kind='list'):
     origin = public_origin(origin)
-    if channel not in CHANNELS or not 0 < timeout <= 10:
+    if channel not in CHANNELS or kind not in ('list','manifest') or not 0 < timeout <= 10:
         raise ValueError('Invalid update request')
     if cancel.is_set():
         return {'error':'cancelled'}
@@ -88,7 +91,7 @@ def check(origin, channel, cancel, timeout=10):
         output = Path(temporary)/'result.json'
         command = ([sys.executable,'--client-update-fetch'] if getattr(sys,'frozen',False)
                    else [sys.executable,str(Path(__file__).resolve()),'--fetch'])
-        command += [origin,channel,str(output)]
+        command += [origin,channel,str(output),kind]
         flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
         started = time.monotonic()
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -109,10 +112,10 @@ def check(origin, channel, cancel, timeout=10):
 
 
 def worker_main(arguments):
-    if len(arguments) != 3:
+    if len(arguments) not in (3,4):
         return 2
-    origin, channel, output = arguments
-    value = fetch_once(origin, channel)
+    origin, channel, output = arguments[:3]
+    value = fetch_once(origin, channel, arguments[3] if len(arguments)==4 else 'list')
     Path(output).write_text(json.dumps(value), encoding='utf-8')
     return 0
 

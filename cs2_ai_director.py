@@ -4454,6 +4454,9 @@ class DirectorApp:
 
     # ---- 关闭 ----
     def _on_close(self) -> None:
+        if getattr(self,'_training',False) or getattr(self,'_calibrating',False):
+            messagebox.showinfo('任务运行中','请等待训练或校准完成后再关闭程序。',parent=self.root)
+            return
         if self._closing:
             return
         if "stop" in self.tasks.running:
@@ -4473,6 +4476,7 @@ class DirectorApp:
         from desktop_ui import window_preferences
         window_changes = window_preferences(self, 'director')
         def work():
+            self.updates.shutdown()
             if window_changes:
                 self.preferences.update(**window_changes)
             if engine is not None:
@@ -4499,6 +4503,8 @@ class DirectorApp:
                 schedule(self.root, 200, self._poll)
                 messagebox.showerror('关闭未完成', str(error) if error else self.training_data.status_text(), parent=self.root)
                 return
+            from client_update_install import before_destroy
+            before_destroy(self)
             self.root.destroy()
         self.tasks.submit('close', work, done)
 
@@ -4544,9 +4550,21 @@ def main(argv: Optional[list[str]] = None) -> int:
     import multiprocessing
     multiprocessing.freeze_support()
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if getattr(sys,'frozen',False) and not arguments and Path(sys.executable).name=='update-helper.exe':
+        from client_update_install import helper_main
+        confirm_root=tk.Tk();confirm_root.withdraw()
+        confirmed=messagebox.askyesno('恢复中断更新','是否恢复本次更新保留的旧程序？请先关闭导播和训练器窗口。账号及采集数据保持。',parent=confirm_root)
+        confirm_root.destroy()
+        return helper_main([str(Path(sys.executable).parent/'job.json'),'recover']) if confirmed else 0
     if arguments[:1] == ['--client-update-fetch']:
         from client_update_transport import worker_main
         return worker_main(arguments[1:])
+    if arguments[:1] == ['--client-update-download']:
+        from client_update_download import worker_main
+        return worker_main(arguments[1:])
+    if arguments[:1] == ['--client-update-install']:
+        from client_update_install import helper_main
+        return helper_main(arguments[1:])
     if "--account-check" in arguments:
         from account_client import main as account_main
         return account_main([a for a in arguments if a != "--account-check"])
@@ -4567,6 +4585,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument('--check-report', type=Path, help='将环境自检写入 JSON，供无控制台 exe 验证')
     parser.add_argument('--check-updates-report', type=Path, help='主动联网检查程序发行并写入 JSON，不安装')
     parser.add_argument('--update-channel', choices=('stable','beta'), default='stable', help='主动检查更新的通道')
+    parser.add_argument('--client-update-health',type=Path,help=argparse.SUPPRESS)
     parser.add_argument("--install-deps", action="store_true", help="安装缺失依赖后退出")
     args = parser.parse_args(argv)
 
@@ -4581,12 +4600,14 @@ def main(argv: Optional[list[str]] = None) -> int:
             from director_core import __version__ as core_version
             from demo_live_dataset import PARSER_VERSION
             from public_trust import public_trust_status
+            from client_update_download import trust_status
             report = {'client_version': VERSION, 'core_version': core_version,
                       'feature_version': 'pov-v1', 'demo_parser': PARSER_VERSION,
                       'python': sys.version.split()[0], 'platform': platform.platform(),
                       'frozen': bool(getattr(sys, 'frozen', False)),
                       'dependencies': check_dependencies(),
-                      'public_trust': public_trust_status()}
+                      'public_trust': public_trust_status(),
+                      'application_update_trust': trust_status()}
             args.check_report.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
         return 0
     if args.install_deps:
@@ -4605,10 +4626,16 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     cfg = load_config()
     app = DirectorApp(cfg)
+    if args.client_update_health:
+        from client_update_install import health_ready
+        try:health_ready(app,args.client_update_health)
+        except (OSError,ValueError):app._on_close()
     app.run()
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from client_update_install import application_guard
+    with application_guard(sys.argv[1:]):
+        sys.exit(main())
 

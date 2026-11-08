@@ -1,0 +1,52 @@
+{
+  "version": "1.15.0",
+  "artifact": {
+    "path": "D:\\Yuzibei\\local-data\\upd-1.15.0-20261109\\candidate-release\\Yuzi_CS2_AIDirector.exe",
+    "bytes": 187672113,
+    "sha256": "c0365a08540e4ea56ba02eb12f778d0e8b2a0692225db6db52962cc6ec3e9ff8"
+  },
+  "regression": {
+    "total": 388,
+    "passed": 386,
+    "skipped": 2,
+    "seconds": 101.294
+  },
+  "application_update_trust": {
+    "state": "configured",
+    "installation_available": true,
+    "origin": "https://www.yuzibei.cn",
+    "key_ids": [
+      "yuzibei-app-20261109"
+    ],
+    "configuration_sha256": "373a9042c43f8b9eb6905dfbea4c91431209dc80596d56ba45c2df2f43a0e248"
+  },
+  "public_key_fingerprint": "cbc0454aff843e83befa4129e548517986ac0ef17948603f56570a09ad42fc7d",
+  "tk_layout": {
+    "cases": 24,
+    "callback_errors": [],
+    "physical_dpi_matrix": false
+  },
+  "actual_exe_transactions": [
+    "director_upgrade_complete",
+    "trainer_upgrade_complete",
+    "startup_failure_rolled_back"
+  ],
+  "transaction_evidence": "D:/Yuzibei/local-data/upd-1.15-qa-20261109-a/verification.json",
+  "transaction_scope": "isolated QA builds, separate from website TLS test and formal-key package",
+  "gui_two_process_requests": 1,
+  "real_account_model_ready": true,
+  "personal_api": {
+    "calls": 1,
+    "provider": "DeepSeek",
+    "seconds": 0.889,
+    "prompt_tokens": 208,
+    "completion_tokens": 6,
+    "valid_candidate": true,
+    "queried_platform_budget_unchanged": true,
+    "key_in_report": false
+  },
+  "production_update_source_enabled": false,
+  "desktop_control_stopped_by_user": true,
+  "real_director_started": false,
+  "long_observation_started": false
+}

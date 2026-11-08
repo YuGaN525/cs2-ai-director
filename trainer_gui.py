@@ -638,6 +638,7 @@ class TrainerApp:
         from desktop_ui import window_preferences
         window_changes = window_preferences(self, 'trainer')
         def work():
+            self.updates.shutdown()
             if window_changes:
                 self.preferences.update(**window_changes)
             if not self.training_data.close():
@@ -649,6 +650,8 @@ class TrainerApp:
                 self._closing = False
                 messagebox.showerror('关闭未完成', str(error) if error else self.training_data.status_text(), parent=self.root)
                 return
+            from client_update_install import before_destroy
+            before_destroy(self)
             self.root.destroy()
         self.tasks.submit('close', work, done)
 
@@ -726,7 +729,12 @@ def main() -> None:
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
         pass
-    TrainerApp().run()
+    app=TrainerApp()
+    if '--client-update-health' in sys.argv:
+        from client_update_install import health_ready
+        try:health_ready(app,Path(sys.argv[sys.argv.index('--client-update-health')+1]))
+        except (OSError,ValueError,IndexError,KeyError):app._on_close()
+    app.run()
 
 
 if __name__ == "__main__":

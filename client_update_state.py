@@ -5,6 +5,7 @@ from pathlib import Path
 import sqlite3
 import time
 from uuid import uuid4
+from client_update_lock import FileLock
 
 
 class UpdateState:
@@ -23,12 +24,32 @@ class UpdateState:
 
     @contextmanager
     def connect(self):
-        db = sqlite3.connect(self.path, timeout=2)
-        try:
-            with db:
-                yield db
-        finally:
-            db.close()
+        # All readers/writers share the recovery lock, so a corrupt file is
+        # never renamed underneath another process's open SQLite connection.
+        with FileLock(self.path.with_suffix('.lock')):
+            db=None
+            try:
+                db=sqlite3.connect(self.path,timeout=2)
+                healthy=db.execute('PRAGMA quick_check(1)').fetchone()==('ok',)
+            except sqlite3.DatabaseError as error:
+                if getattr(error,'sqlite_errorcode',None) not in (sqlite3.SQLITE_CORRUPT,sqlite3.SQLITE_NOTADB):
+                    if db:db.close()
+                    raise
+                healthy=False
+            if not healthy:
+                if db:db.close()
+                quarantine=self.path.with_name('client-updates.corrupt-'+uuid4().hex+'.sqlite3')
+                self.path.replace(quarantine)
+                for suffix in ('-journal','-wal','-shm'):
+                    sidecar=Path(str(self.path)+suffix)
+                    if sidecar.exists():sidecar.replace(Path(str(quarantine)+suffix))
+                db=sqlite3.connect(self.path,timeout=2)
+                db.execute('CREATE TABLE states (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+                db.execute('CREATE TABLE claims (key TEXT PRIMARY KEY, owner TEXT NOT NULL, started REAL NOT NULL, expires REAL NOT NULL)')
+                db.execute('PRAGMA user_version=1');db.commit()
+            try:
+                with db:yield db
+            finally:db.close()
 
     @staticmethod
     def key(origin, channel):
