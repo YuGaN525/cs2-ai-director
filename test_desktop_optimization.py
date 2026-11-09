@@ -22,7 +22,7 @@ class PreferencesTests(unittest.TestCase):
     def test_font_and_independent_window_sizes_preserve_other_process_fields(self):
         with tempfile.TemporaryDirectory() as directory:
             a,b=Preferences(directory),Preferences(directory)
-            a.update(font_size=12,director_size='1000x700')
+            a.update(font_size=12,director_size='1000x700',theme='dark')
             b.update(trainer_size='800x600')
             self.assertEqual(a.read()['trainer_size'],'800x600')
             self.assertEqual(b.read()['font_size'],12)
@@ -35,6 +35,7 @@ class PreferencesTests(unittest.TestCase):
     def test_defaults_do_not_enable_developer_tools(self):
         with tempfile.TemporaryDirectory() as directory:
             self.assertFalse(Preferences(directory).read()['developer_mode'])
+            self.assertEqual(Preferences(directory).read()['theme'],'light')
 
 
 class ActionShutdownTests(unittest.TestCase):

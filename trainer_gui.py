@@ -59,6 +59,7 @@ class TrainerApp:
         self._set_window_icon()
         self._training = False
         self._calibrating = False
+        self._submitting = False
 
         self.var_csv = tk.StringVar(value=str(decision_csv_path()))
         self.var_out_dir = tk.StringVar(value=str(decision_model_path().parent))
@@ -100,7 +101,7 @@ class TrainerApp:
         for widget in self._developer_widgets:
             widget.grid() if prefs['developer_mode'] else widget.grid_remove()
         if prefs['developer_mode']:
-            self.btn_calibrate.pack(side='left', before=self.progress)
+            self.btn_calibrate.pack(side='left')
         else:
             self.btn_calibrate.pack_forget()
 
@@ -249,26 +250,68 @@ class TrainerApp:
             actions, text="校准线上模型", command=self._calibrate)
         self.btn_calibrate.pack(side="left")
         ttk.Button(actions, text="训练数据状态", command=lambda: __import__("desktop_ui").settings(self)).pack(side="left", padx=4)
-        self.progress = ttk.Progressbar(actions, mode="indeterminate", length=200)
-        self.progress.pack(side="left", padx=10)
-        self.lbl_status = ttk.Label(actions, text="就绪", foreground="#555555")
-        self.lbl_status.pack(side="left", padx=6)
+        submission = ttk.LabelFrame(outer, text=" 训练结果提交 ", padding=10)
+        submission.grid(row=6,column=0,columnspan=3,sticky='ew',pady=(4,8))
+        submission.columnconfigure(1,weight=1)
+        self.btn_submit = ttk.Button(submission,text='上传训练结果…',command=self._submit_result)
+        self.btn_submit.grid(row=0,column=0,sticky='nw',padx=(0,12))
+        self.submission_status = ttk.Label(submission,style='Muted.TLabel',justify='left',wraplength=620,
+            text='选择本地模型和配套评估文件，直接提交到网站待审区。需要训练管理员权限；提交后可继续本地训练。')
+        self.submission_status.grid(row=0,column=1,sticky='ew')
+        progress_row = ttk.Frame(outer)
+        progress_row.grid(row=7,column=0,columnspan=3,sticky='ew',pady=(0,8))
+        progress_row.columnconfigure(1,weight=1)
+        self.progress = ttk.Progressbar(progress_row, mode="indeterminate", length=160)
+        self.progress.grid(row=0,column=0,sticky='w',padx=(0,10))
+        self.lbl_status = ttk.Label(progress_row, text="就绪",style='Muted.TLabel',wraplength=620)
+        self.lbl_status.grid(row=0,column=1,sticky='ew')
+        for label in (self.submission_status,self.lbl_status):
+            label._own_wrap = True
+            label.bind('<Configure>',lambda event: event.widget.configure(wraplength=max(1,event.width)))
 
         ttk.Label(
             outer,
             text="本地训练产物保存在输出目录；正式导播使用服务端批准并校验的模型。"
                  "样本少于最少样本时不会训练。",
             foreground="#555555", wraplength=800, justify="left",
-        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        ).grid(row=8, column=0, columnspan=3, sticky="w", pady=(0, 6))
 
-        self.log = scrolledtext.ScrolledText(
+        from desktop_ui import ThemedScrolledText
+        self.log = ThemedScrolledText(
             outer, height=13, wrap="word", font=("Consolas", 9),
             background="#111418", foreground="#d6d6d6",
             insertbackground="#d6d6d6", relief="flat")
-        self.log.grid(row=7, column=0, columnspan=3, sticky="nsew")
-        ttk.Button(outer, text="回到最新日志", command=lambda: self.log.see("end")).grid(row=8, column=0, columnspan=3, sticky="e")
+        self.log.grid(row=9, column=0, columnspan=3, sticky="nsew")
+        ttk.Button(outer, text="回到最新日志", command=lambda: self.log.see("end")).grid(row=10, column=0, columnspan=3, sticky="e")
         self.log.configure(state="disabled")
-        outer.rowconfigure(7, weight=1)
+        outer.rowconfigure(9, weight=1)
+
+    def _submit_result(self):
+        if self._closing or self._training or self._calibrating or self._submitting:
+            return
+        path = filedialog.askopenfilename(parent=self.root,title='选择要上传的训练结果',
+            initialdir=self.var_out_dir.get().strip(),initialfile='decision_model.json.gz',
+            filetypes=[('训练模型','*.json.gz')])
+        if not path:
+            return
+        from training_submission import SubmissionClient, explain_error
+        self._submitting = True
+        for button in (self.btn_submit,self.btn_train,self.btn_demo,self.btn_ai,self.btn_calibrate):
+            button.configure(state='disabled')
+        self.submission_status.configure(text='正在校验结果并核对服务器回执…',foreground=self._colors['accent'])
+        def done(receipt,error):
+            self._submitting = False
+            for button in (self.btn_submit,self.btn_train,self.btn_demo,self.btn_ai,self.btn_calibrate):
+                button.configure(state='normal')
+            if error:
+                text = explain_error(error)
+                self.submission_status.configure(text=text,foreground=self._colors['error'])
+                self._append('训练结果提交未完成：'+text)
+                return
+            text = ('服务器已核对已有模型，原状态保持。' if receipt['existingModel'] else '服务器已接收，等待审核。')+'提交编号：'+receipt['requestId']
+            self.submission_status.configure(text=text,foreground=self._colors['success'])
+            self._append(text+'；正式导播模型保持。')
+        self.tasks.submit('model-submission',lambda: SubmissionClient(self.account).submit(path),done)
 
     def _browse_csv(self) -> None:
         path = filedialog.askopenfilename(
@@ -290,7 +333,7 @@ class TrainerApp:
     def _calibrate(self) -> None:
         if self._closing:
             return
-        if self._training or self._calibrating:
+        if self._training or self._calibrating or self._submitting:
             return
         csv_path = decision_csv_path()
         out_dir = Path(self.var_out_dir.get().strip())
@@ -386,6 +429,7 @@ class TrainerApp:
         self.btn_train.configure(state="disabled")
         self.btn_demo.configure(state="disabled")
         self.btn_ai.configure(state="disabled")
+        self.btn_submit.configure(state="disabled")
         self.progress.start(10)
         self.lbl_status.configure(text=message, foreground=self._colors['accent'])
         self.log.configure(state="normal")
@@ -424,7 +468,7 @@ class TrainerApp:
     def _start(self) -> None:
         if self._closing:
             return
-        if self._training:
+        if self._training or self._calibrating or self._submitting:
             return
         params = self._read_params()
         if params is None:
@@ -443,7 +487,7 @@ class TrainerApp:
     def _start_demo(self) -> None:
         if self._closing:
             return
-        if self._training:
+        if self._training or self._calibrating or self._submitting:
             return
         params = self._read_params()
         if params is None:
@@ -475,7 +519,7 @@ class TrainerApp:
     def _start_ai(self) -> None:
         if self._closing:
             return
-        if self._training or self._calibrating:
+        if self._training or self._calibrating or self._submitting:
             return
         params = self._read_params()
         if params is None:
@@ -513,6 +557,7 @@ class TrainerApp:
         self.btn_train.configure(state="normal")
         self.btn_demo.configure(state="normal")
         self.btn_ai.configure(state="normal")
+        self.btn_submit.configure(state="normal")
         self.progress.stop()
         decision = report.get("decision")
         final = (report.get("candidate") if decision == "candidate"
@@ -584,6 +629,7 @@ class TrainerApp:
         self.btn_train.configure(state="normal")
         self.btn_demo.configure(state="normal")
         self.btn_ai.configure(state="normal")
+        self.btn_submit.configure(state="normal")
         self.progress.stop()
         if error:
             self.lbl_status.configure(text="训练失败", foreground=self._colors['error'])
@@ -628,8 +674,8 @@ class TrainerApp:
         )
 
     def _on_close(self) -> None:
-        if self._training or self._calibrating:
-            messagebox.showinfo("任务运行中", "请等待训练或校准完成后关闭工作台。", parent=self.root)
+        if self._training or self._calibrating or self._submitting:
+            messagebox.showinfo("任务运行中", "请等待训练、校准或结果提交完成后关闭工作台。", parent=self.root)
             return
         if self._closing:
             return

@@ -44,6 +44,23 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.store.get('another-account'),'')
         self.assertNotIn(b'synthetic-personal-key',self.store._path(self.owner).read_bytes())
         self.store.clear(self.owner);self.assertEqual(self.store.get(self.owner),'')
+
+    def test_daily_and_legacy_budget_display_and_read_without_enabling_provider(self):
+        from arbitration_runtime import describe_budget
+        from unittest import mock
+        budget={'unlimited':False,'dailyEnabled':True,'dailyLimit':'0.50000000',
+                'dailyConsumed':'0.20000000','available':'0.30000000','nextResetAt':'2026-11-09T16:00:00Z'}
+        text=describe_budget(budget)
+        for part in ('0.3 元','每日 0.5 元','已用 0.2 元','11-10 00:00','北京时间'):
+            self.assertIn(part,text)
+        self.assertIn('无限',describe_budget(dict(budget,unlimited=True,available=None)))
+        self.assertNotIn('每日',describe_budget({'unlimited':False,'available':'2.00000000'}))
+        client=mock.Mock()
+        client.call.return_value=budget
+        provider=PlatformProvider(self.account,client)
+        self.assertEqual(provider.read_budget(),budget)
+        client.call.assert_called_once_with('arbitration/device-budget',token=self.account.identity.access_token)
+        self.assertIsNone(provider.policy)
     def test_wrong_cipher_fails_closed(self):
         self.store._path(self.owner).write_bytes(b'invalid')
         with self.assertRaises(ArbitrationError):self.store.get(self.owner)

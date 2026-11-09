@@ -224,8 +224,8 @@ class Updates:
         if not getattr(sys,'frozen',False):
             messagebox.showinfo('使用发行程序','源码运行不替换文件，请使用正式打包的程序。',parent=self.root);return
         if self.closed or getattr(self.app,'_closing',False) or not self.ready:return
-        if getattr(self.app,'_training',False) or getattr(self.app,'_calibrating',False):
-            messagebox.showinfo('任务运行中','请等待训练或校准完成后再更新。',parent=self.root);return
+        if any(getattr(self.app,key,False) for key in ('_training','_calibrating','_submitting')):
+            messagebox.showinfo('任务运行中','请等待训练、校准或结果提交完成后再更新。',parent=self.root);return
         if not messagebox.askyesno('退出并更新','将停止导播、保存记录并关闭此窗口。请先关闭其他导播和训练器窗口。更新失败将保留原程序备份，账号与采集数据保持。现在继续？',parent=self.root):return
         from client_update_install import prepare
         generation=self.generation;ready=self.ready;root=self.app.preferences.path.parent/'client-install'
@@ -233,7 +233,7 @@ class Updates:
             if self.closed or getattr(self.app,'_closing',False) or generation!=self.generation:return
             if error:
                 self.transfer={'state':'failed','error':'install_preparation_failed'};return
-            if getattr(self.app,'_training',False) or getattr(self.app,'_calibrating',False):
+            if any(getattr(self.app,key,False) for key in ('_training','_calibrating','_submitting')):
                 self.transfer={'state':'failed','error':'training_started'};return
             self.app._update_job=path
             self.app._on_close()
@@ -295,7 +295,8 @@ def mount(parent,app):
     ttk.Checkbutton(box,text='启动后自动检查更新（不自动安装）',variable=enabled,command=apply).pack(anchor='w')
     selector=ttk.Combobox(box,textvariable=channel,values=('stable','beta'),state='readonly',width=12)
     selector.pack(anchor='w');selector.bind('<<ComboboxSelected>>',lambda _:apply())
-    details=scrolledtext.ScrolledText(box,height=6,wrap='word',state='disabled');details.pack(fill='x')
+    from desktop_ui import ThemedScrolledText
+    details=ThemedScrolledText(box,height=6,wrap='word',state='disabled');details.pack(fill='x')
     actions=ttk.Frame(box);actions.pack(fill='x')
     buttons=[('检查更新',app.updates.request),('前往官网下载',app.updates.website),('一小时后提醒',app.updates.later),('忽略此版本',app.updates.ignore),
              ('下载签名更新',app.updates.download),('取消下载',app.updates.cancel_download),('退出并安装',app.updates.apply_update),('恢复中断更新',app.updates.recover_update)]

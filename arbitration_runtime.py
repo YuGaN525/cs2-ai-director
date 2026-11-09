@@ -109,6 +109,15 @@ class PlatformProvider:
             raise ArbitrationError('平台额度已用尽')
         self.policy, self.summary = policy, budget
 
+    def read_budget(self):
+        """Reading allowance does not enable a provider or require its API key."""
+        identity = self._identity()
+        budget = self.client.call('arbitration/device-budget',token=identity.access_token)
+        if self._identity().binding != identity.binding:
+            raise ArbitrationError('账号已切换')
+        self.summary = budget
+        return budget
+
     def ask(self, request):
         identity = self._identity()
         if self.policy is None:
@@ -129,6 +138,33 @@ class PlatformProvider:
         identity = self._identity()
         self.client.call('arbitration/requests/'+str(uuid.UUID(request_id))+'/observation',
                          {'state':state,'elapsedMs':min(120000,max(0,int(elapsed_ms)))},token=identity.access_token)
+
+
+def describe_budget(budget):
+    from datetime import datetime, timedelta, timezone
+    from decimal import Decimal, InvalidOperation
+    def amount(key):
+        try:
+            value=Decimal(str(budget.get(key)))
+            if not value.is_finite() or value<0:raise ValueError()
+            return format(value,'.8f').rstrip('0').rstrip('.') or '0'
+        except (InvalidOperation,ValueError,TypeError):
+            return '未知'
+    if budget.get('unlimited') is True:
+        text='平台额度：无限'
+    elif budget.get('dailyEnabled') is True:
+        text=f"平台今日可用 {amount('available')} 元 / 每日 {amount('dailyLimit')} 元；今日已用 {amount('dailyConsumed')} 元"
+        try:
+            when=datetime.fromisoformat(budget['nextResetAt'].replace('Z','+00:00'))
+            if when.tzinfo is None:raise ValueError()
+            text+='；下次重算 '+when.astimezone(timezone(timedelta(hours=8))).strftime('%m-%d %H:%M')+'（北京时间）'
+        except (KeyError,ValueError,TypeError,AttributeError):
+            pass
+    else:
+        text=f"平台可用额度 {amount('available')} 元"
+    if budget.get('paused'):text+='；平台仲裁已暂停'
+    if budget.get('eligible') is False:text+='；当前资格不可用'
+    return text+'。仅查询，不发起付费调用；额度耗尽只停止平台仲裁。'
 
 
 class PersonalProvider:

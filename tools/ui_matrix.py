@@ -40,10 +40,18 @@ with tempfile.TemporaryDirectory() as temp:
                             from desktop_ui import PALETTES
                             assert style.lookup('TCheckbutton','foreground',('active',))==PALETTES[mode]['text']
                             assert style.lookup('TCheckbutton','background',('active',))==PALETTES[mode]['card']
+                            for name in ('TButton','Accent.TButton','Stop.TButton'):
+                                for states in ((),('active',),('pressed',),('focus',),('disabled',)):
+                                    for edge in ('bordercolor','lightcolor','darkcolor'):
+                                        expected=PALETTES[mode]['accent' if states==('focus',) else 'border']
+                                        assert style.lookup(name,edge,states)==expected,(name,edge,states)
                             if hasattr(app,'btn_stop'):
                                 for button in (app.btn_start,app.btn_stop):
                                     y=button.winfo_rooty()-app.root.winfo_rooty()
                                     assert 0<=y and y+button.winfo_height()<=app.root.winfo_height()
+                            if hasattr(app,'submission_status'):
+                                for label in (app.submission_status,app.lbl_status):
+                                    assert int(label.cget('wraplength'))<=label.winfo_width()
                             settings(app)
                             app.root.update()
                             app._settings_window.destroy()

@@ -7,9 +7,19 @@ import queue
 import threading
 
 PALETTES = {
-    'dark': dict(bg='#090909', card='#151512', text='#f2f0e9', muted='#b7bdc8', accent='#d4af37', field='#1b1b17', border='#35352e', success='#80d69e', error='#ff9696'),
-    'light': dict(bg='#f5f3ed', card='#ffffff', text='#242319', muted='#55564e', accent='#85620e', field='#faf8f2', border='#d8d6ce', success='#226c38', error='#ad2234'),
+    'dark': dict(bg='#101210', card='#191c18', header='#141712', text='#efeee7', muted='#b4b9ad', accent='#d4b66a', field='#23271f', border='#414639', hover='#30372a', pressed='#3e4734', success='#8bd6a0', error='#ff9d9d'),
+    'light': dict(bg='#f4f1e8', card='#fffdf7', header='#eee8d9', text='#25291f', muted='#62695b', accent='#795a17', field='#f7f4eb', border='#c9cbbd', hover='#e9e8db', pressed='#dedfcf', success='#27663b', error='#a72d3c'),
 }
+
+
+class ThemedScrolledText(scrolledtext.ScrolledText):
+    """Windows' native Tk scrollbar ignores dark colors; use the shared ttk bar."""
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self.vbar.destroy()
+        self.vbar=ttk.Scrollbar(self.frame,orient='vertical',command=self.yview)
+        self.vbar.pack(side='right',fill='y',before=self._w)
+        self.configure(yscrollcommand=self.vbar.set)
 
 
 def schedule(widget, delay, callback):
@@ -64,32 +74,57 @@ def theme(root, mode, font_size=None):
         style.map('TCheckbutton', background=[('active', p['card'])], foreground=[('disabled', p['muted']), ('active', p['text'])])
         style.configure('TLabelframe', bordercolor=p['border'], lightcolor=p['border'], darkcolor=p['border'], relief='solid', borderwidth=1)
         style.configure('TLabelframe.Label', background=p['card'], foreground=p['accent'])
-        style.configure('TButton', background=p['field'], foreground=p['text'], padding=(10, 6))
-        style.map('TButton', background=[('active', p['accent'])], foreground=[('active', accent_foreground), ('disabled', p['muted'])])
+        style.configure('TButton', background=p['field'], foreground=p['text'], padding=(12, 7),
+                        relief='flat', borderwidth=1, focuscolor=p['accent'], focusthickness=1)
+        style.map('TButton', background=[('disabled', p['card']), ('pressed', p['pressed']), ('active', p['hover'])],
+                  foreground=[('disabled', p['muted']), ('active', p['text'])], relief=[('pressed','flat'),('active','flat')])
         for name in ('Card.TFrame', 'Header.TFrame', 'Footer.TFrame'):
             style.configure(name, background=p['card'])
         for name in ('Title.TLabel', 'Subtitle.TLabel', 'Header.TLabel', 'Muted.TLabel'):
             style.configure(name, background=p['card'], foreground=p['text'])
+        style.configure('Muted.TLabel', foreground=p['muted'])
         style.configure('Accent.TButton', background=p['accent'], foreground=accent_foreground)
         style.configure('Stop.TButton', background=p['field'], foreground=p['text'])
-        style.configure('TNotebook', background=p['bg'])
+        style.configure('TNotebook', background=p['bg'],bordercolor=p['border'],
+                        lightcolor=p['border'],darkcolor=p['border'],borderwidth=1)
         style.configure('TNotebook.Tab', background=p['field'], foreground=p['muted'], padding=(12, 7))
         style.map('TNotebook.Tab', foreground=[('selected', p['accent']), ('active', p['text'])], background=[('selected', p['card']), ('active', p['field'])])
         for name in ('TEntry', 'TCombobox', 'Treeview'):
             style.configure(name, fieldbackground=p['field'], background=p['field'], foreground=p['text'])
         for name in ('TButton', 'TEntry', 'TCombobox', 'TNotebook.Tab', 'Treeview'):
             style.configure(name, bordercolor=p['border'], lightcolor=p['border'], darkcolor=p['border'])
+            # clam has inherited active/pressed bevel maps. configure() alone
+            # does not replace them, leaving a white rim in dark mode.
+            edges = [('disabled', p['border']), ('focus', p['accent']), ('pressed', p['border']), ('active', p['border'])]
+            style.map(name, bordercolor=edges, lightcolor=edges, darkcolor=edges)
         style.map('TCombobox', fieldbackground=[('readonly', p['field'])], foreground=[('readonly', p['text'])], selectbackground=[('readonly', p['field'])], selectforeground=[('readonly', p['text'])])
-        style.map('Accent.TButton', background=[('disabled', p['field']), ('active', p['accent'])], foreground=[('disabled', p['muted'])])
-        style.map('Stop.TButton', background=[('disabled', p['field']), ('active', p['accent'])], foreground=[('disabled', p['muted'])])
+        style.map('Accent.TButton', background=[('disabled', p['card']), ('pressed', p['accent']), ('active', p['accent'])], foreground=[('disabled', p['muted']), ('active', accent_foreground)])
+        style.map('Stop.TButton', background=[('disabled', p['card']), ('pressed', p['pressed']), ('active', p['hover'])], foreground=[('disabled', p['muted']), ('active', p['text'])])
         style.configure('Vertical.TScrollbar', background=p['field'], troughcolor=p['card'], bordercolor=p['border'], arrowcolor=p['text'])
         style.configure('Treeview.Heading', background=p['field'], foreground=p['accent'])
+        style.map('Treeview.Heading', background=[('active', p['hover'])], lightcolor=[('active',p['border'])], darkcolor=[('active',p['border'])])
+        style.configure('Horizontal.TProgressbar', background=p['accent'], troughcolor=p['field'], bordercolor=p['border'], lightcolor=p['accent'], darkcolor=p['accent'])
         style.map('Treeview', background=[('selected', p['accent'])], foreground=[('selected', accent_foreground)])
         root.option_add('*TCombobox*Listbox.background', p['field'])
         root.option_add('*TCombobox*Listbox.foreground', p['text'])
+        root.option_add('*TCombobox*Listbox.selectBackground', p['accent'])
+        root.option_add('*TCombobox*Listbox.selectForeground', accent_foreground)
+        style.configure('TCombobox',arrowcolor=p['text'])
+        style.map('TCombobox',arrowcolor=[('disabled',p['muted']),('active',p['text'])])
+        for name in ('Vertical.TScrollbar','Horizontal.TScrollbar'):
+            style.configure(name,background=p['field'],troughcolor=p['card'],arrowcolor=p['muted'],
+                            lightcolor=p['border'],darkcolor=p['border'],bordercolor=p['border'],relief='flat')
+            style.map(name,background=[('pressed',p['pressed']),('active',p['hover'])],
+                      lightcolor=[('active',p['border']),('pressed',p['border'])],
+                      darkcolor=[('active',p['border']),('pressed',p['border'])],
+                      bordercolor=[('active',p['border']),('pressed',p['border'])])
         owner._shared_theme_key = (mode, font_size)
     root.configure(bg=p['bg'])
-    def visit(widget):
+    def visit(widget, surface='card'):
+        if not hasattr(widget, '_theme_surface'):
+            original = str(widget.cget('background')) if isinstance(widget,(tk.Frame,tk.Label)) and not isinstance(widget,ttk.Widget) else ''
+            widget._theme_surface = 'header' if original == '#171a20' else surface
+        surface = widget._theme_surface
         if getattr(widget, '_applied_font_size', 10) != font_size and 'font' in widget.keys() and str(widget.cget('font')):
             from tkinter import font as tkfont
             if not hasattr(widget, '_base_font'):
@@ -104,6 +139,17 @@ def theme(root, mode, font_size=None):
                 widget.configure(foreground=p['text'])
             elif isinstance(widget, (tk.Text, tk.Listbox)):
                 widget.configure(bg=p['field'], fg=p['text'], insertbackground=p['text']) if isinstance(widget, tk.Text) else widget.configure(bg=p['field'], fg=p['text'])
+                widget.configure(selectbackground=p['accent'], selectforeground=accent_foreground,
+                                 highlightbackground=p['border'], highlightcolor=p['accent'], borderwidth=0)
+            elif isinstance(widget, tk.Frame) and not isinstance(widget,ttk.Widget):
+                widget.configure(bg=p[surface], highlightbackground=p['border'])
+            elif isinstance(widget, tk.Label) and not isinstance(widget,ttk.Widget):
+                if not hasattr(widget, '_theme_ink'):
+                    widget._theme_ink = 'accent' if str(widget.cget('fg')) == '#f0c46a' else ('muted' if surface == 'header' else 'text')
+                widget.configure(bg=p[surface], fg=p[widget._theme_ink])
+            elif isinstance(widget, tk.Scrollbar) and not isinstance(widget,ttk.Widget):
+                widget.configure(bg=p['field'], activebackground=p['hover'], troughcolor=p['card'],
+                                 highlightbackground=p['border'], relief='flat', borderwidth=0)
             if isinstance(widget, tk.Text):
                 for tag, color in (('INFO', p['text']), ('WARN', p['accent']), ('ERROR', p['error'])):
                     if tag in widget.tag_names():
@@ -114,7 +160,7 @@ def theme(root, mode, font_size=None):
                 widget.configure(bg=p['card'], fg=p['text'], selectcolor=p['field'], activebackground=p['card'], activeforeground=p['text'])
             widget._applied_palette = mode
         for child in widget.winfo_children():
-            visit(child)
+            visit(child, surface)
     visit(root)
 
 
@@ -181,7 +227,7 @@ class ScrollableFrame(ttk.Frame):
         self._last_wrap_width = event.width
         self.canvas.itemconfigure(self.window, width=event.width)
         def wrap(widget):
-            if isinstance(widget, ttk.Label) and int(float(widget.cget('wraplength') or 0)):
+            if isinstance(widget, ttk.Label) and not getattr(widget,'_own_wrap',False) and int(float(widget.cget('wraplength') or 0)):
                 widget.configure(wraplength=max(180, event.width-60))
             for child in widget.winfo_children():
                 wrap(child)
@@ -294,7 +340,7 @@ def settings(app):
     mount_account(frame, app.account)
     from client_update_ui import mount as mount_updates
     mount_updates(frame, app)
-    status = scrolledtext.ScrolledText(frame, height=16, wrap='word', state='disabled')
+    status = ThemedScrolledText(frame, height=16, wrap='word', state='disabled')
     status.pack(fill='both', expand=True, pady=10)
     last_queue_read = [0.]
     def refresh():
@@ -393,10 +439,10 @@ def text_dialog(parent, title, text):
     top = tk.Toplevel(parent)
     top.title(title)
     fit_window(top, 760, 600)
-    content = scrolledtext.ScrolledText(top, wrap='word', padx=14, pady=14)
+    content = ThemedScrolledText(top, wrap='word', padx=14, pady=14)
     content.pack(fill='both', expand=True)
     content.insert('1.0', text)
     content.configure(state='disabled')
     ttk.Button(top, text='关闭', command=top.destroy).pack(anchor='e', padx=12, pady=8)
-    theme(top, getattr(parent, '_theme_mode', 'dark'), getattr(parent, '_font_size', 10))
+    theme(top, getattr(parent, '_theme_mode', 'light'), getattr(parent, '_font_size', 10))
     return top

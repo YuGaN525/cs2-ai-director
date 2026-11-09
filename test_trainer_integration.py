@@ -16,6 +16,13 @@ class IntegrationTests(unittest.TestCase):
         with mock.patch.object(launcher.sys, "frozen", True, create=True):
             self.assertEqual(launcher.trainer_command(), [launcher.sys.executable, "--trainer"])
 
+    def test_internal_asset_defaults_to_trainer_without_hiding_maintenance_commands(self):
+        with mock.patch.object(launcher.sys,'frozen',True,create=True), \
+                mock.patch.object(launcher.sys,'executable','C:/内部/Yuzi_CS2_AIDecisionTrainer.exe'):
+            self.assertEqual(launcher.default_entry_arguments([]),['--trainer'])
+            for args in (['--check-report','report.json'],['--client-update-install','job'],['--trainer']):
+                self.assertEqual(launcher.default_entry_arguments(args),args)
+
     def test_repeated_open_does_not_start_second_training_process(self):
         current = mock.Mock()
         current.poll.return_value = None
@@ -44,7 +51,7 @@ class IntegrationTests(unittest.TestCase):
         from trainer_gui import TrainerApp
         app = mock.Mock()
         app._update_job = None
-        app._training, app._calibrating = True, False
+        app._training, app._calibrating, app._submitting = True, False, False
         with mock.patch("trainer_gui.messagebox.showinfo"):
             TrainerApp._on_close(app)
         app.root.destroy.assert_not_called()
@@ -59,7 +66,7 @@ class IntegrationTests(unittest.TestCase):
 
     def test_close_failure_retains_window_and_allows_retry(self):
         from trainer_gui import TrainerApp
-        app = mock.Mock(_training=False, _calibrating=False, _closing=False)
+        app = mock.Mock(_training=False, _calibrating=False, _submitting=False, _closing=False)
         app.training_data.close.return_value = False
         TrainerApp._on_close(app)
         _, work, done = app.tasks.submit.call_args.args

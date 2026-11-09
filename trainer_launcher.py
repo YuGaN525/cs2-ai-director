@@ -4,6 +4,14 @@ import subprocess
 import sys
 
 
+def default_entry_arguments(arguments):
+    """The internal trainer asset shares the exact director binary and updater."""
+    if (not arguments and getattr(sys, 'frozen', False)
+            and Path(sys.executable).name.casefold() == 'yuzi_cs2_aidecisiontrainer.exe'):
+        return ['--trainer']
+    return arguments
+
+
 def trainer_command():
     if getattr(sys, "frozen", False):
         return [sys.executable, "--trainer"]

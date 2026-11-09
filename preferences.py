@@ -5,7 +5,7 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-DEFAULTS = {'theme': 'dark', 'developer_mode': False, 'follow_logs': True,
+DEFAULTS = {'theme': 'light', 'developer_mode': False, 'follow_logs': True,
             'font_size': 10, 'remember_window': True, 'director_size': '', 'trainer_size': '',
             'auto_check_updates': True, 'update_channel': 'stable'}
 

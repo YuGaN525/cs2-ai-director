@@ -3193,7 +3193,8 @@ class DirectorApp:
         self.var_log_kw = tk.StringVar()
         ttk.Entry(bar, textvariable=self.var_log_kw, width=22).pack(side="left", padx=4)
         ttk.Button(bar, text="刷新", command=self._refresh_pro_logs).pack(side="left", padx=6)
-        self.pro_log_text = scrolledtext.ScrolledText(
+        from desktop_ui import ThemedScrolledText
+        self.pro_log_text = ThemedScrolledText(
             parent, height=20, wrap="word", font=("Consolas", 9))
         self.pro_log_text.grid(row=1, column=0, sticky="nsew")
         self.pro_log_text.configure(state="disabled")
@@ -3732,7 +3733,8 @@ class DirectorApp:
         logs.rowconfigure(0, weight=1)
         logs.columnconfigure(0, weight=1)
         ttk.Button(logs, text='回到最新日志', command=lambda: self.txt.see('end')).grid(row=1, column=0, sticky='e')
-        self.txt = scrolledtext.ScrolledText(
+        from desktop_ui import ThemedScrolledText
+        self.txt = ThemedScrolledText(
             logs, height=10, state="disabled", wrap="word",
             font=("Consolas", 9), background="#111418", foreground="#d6d6d6",
             insertbackground="#d6d6d6",
@@ -4234,9 +4236,8 @@ class DirectorApp:
                 raise ValueError('账号已切换')
             if action == 'budget':
                 provider = PlatformProvider(self.account)
-                provider.prepare()
-                budget = provider.summary
-                return ('无限额度' if budget['unlimited'] else budget['available']+' 元') + '；当前仅查询，未发起付费调用。'
+                from arbitration_runtime import describe_budget
+                return describe_budget(provider.read_budget())
             if action == 'save':self.personal_keys.set(owner,key)
             elif action == 'clear':self.personal_keys.clear(owner)
             elif action == 'adopt':self.personal_keys.adopt_legacy(owner)
@@ -4587,6 +4588,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     import multiprocessing
     multiprocessing.freeze_support()
     arguments = list(sys.argv[1:] if argv is None else argv)
+    from trainer_launcher import default_entry_arguments
+    arguments = default_entry_arguments(arguments)
     if getattr(sys,'frozen',False) and not arguments and Path(sys.executable).name=='update-helper.exe':
         from client_update_install import helper_main
         confirm_root=tk.Tk();confirm_root.withdraw()
