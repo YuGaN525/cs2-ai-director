@@ -3067,8 +3067,14 @@ class DirectorApp:
     def _build_pro(self, parent: Any) -> None:
         parent.columnconfigure(0, weight=1)
 
-        lf = ttk.LabelFrame(parent, text=" OBS WebSocket ", padding=8)
-        lf.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+        heading = ttk.Frame(parent)
+        heading.grid(row=0, column=0, sticky="ew", pady=(2, 10))
+        ttk.Label(heading, text="专业导播", style='H2.TLabel').pack(anchor="w")
+        ttk.Label(heading, text="OBS、事件动作、回合叙事与镜头指标。",
+                  style='Caption.TLabel').pack(anchor="w", pady=(2, 0))
+
+        lf = ttk.LabelFrame(parent, text="OBS WebSocket", padding=10)
+        lf.grid(row=1, column=0, sticky="ew", pady=(0, 8))
         ttk.Label(lf, text="地址").grid(row=0, column=0, sticky="w")
         ttk.Entry(lf, textvariable=self.var_obs_host, width=16).grid(
             row=0, column=1, sticky="w", padx=4)
@@ -3096,8 +3102,8 @@ class DirectorApp:
         ttk.Label(narr, text="（OBS 文本源名，可留空只显示在应用内）",
                   foreground=UI_MUTED).pack(side="left")
 
-        lf3 = ttk.LabelFrame(parent, text=" 事件动作（独立于 AI 决策） ", padding=8)
-        lf3.grid(row=1, column=0, sticky="ew", pady=(0, 6))
+        lf3 = ttk.LabelFrame(parent, text="事件动作（独立于 AI 决策）", padding=10)
+        lf3.grid(row=2, column=0, sticky="ew", pady=(0, 8))
         lf3.columnconfigure(0, weight=1)
         top = ttk.Frame(lf3)
         top.grid(row=0, column=0, sticky="ew")
@@ -3137,8 +3143,8 @@ class DirectorApp:
             self.rule_tree.column(col, width=width, anchor="w")
         self.rule_tree.grid(row=2, column=0, sticky="ew", pady=(6, 0))
 
-        lf5 = ttk.LabelFrame(parent, text=" 决策模型（内置训练工作台） ", padding=8)
-        lf5.grid(row=2, column=0, sticky="ew", pady=(6, 0))
+        lf5 = ttk.LabelFrame(parent, text="决策模型（内置训练工作台）", padding=10)
+        lf5.grid(row=3, column=0, sticky="ew", pady=(0, 8))
         ttk.Button(lf5, text="训练数据状态", command=lambda: __import__("desktop_ui").settings(self)).pack(side="right")
         ttk.Button(lf5, text="打开训练工作台…", command=self._open_trainer).pack(side="left")
         ttk.Button(lf5, text="重新加载模型", command=self._reload_model).pack(
@@ -3148,8 +3154,8 @@ class DirectorApp:
         self.lbl_model = ttk.Label(lf5, text="随机森林：检查中…", foreground="#555555")
         self.lbl_model.pack(side="left", padx=6)
 
-        lf6 = ttk.LabelFrame(parent, text=" 镜头时间线 / 专业指标（Phase 1） ", padding=8)
-        lf6.grid(row=3, column=0, sticky="ew", pady=(6, 0))
+        lf6 = ttk.LabelFrame(parent, text="镜头时间线 / 专业指标（Phase 1）", padding=10)
+        lf6.grid(row=4, column=0, sticky="ew", pady=(0, 8))
         lf6.columnconfigure(0, weight=1)
         self.lbl_pro_shot = ttk.Label(
             lf6, text="当前镜头：-    故事：-", foreground="#444444",
@@ -3487,28 +3493,40 @@ class DirectorApp:
         outer.columnconfigure(0, weight=1)
         outer.rowconfigure(1, weight=1)
 
-        header = tk.Frame(outer, bg=UI_HEADER, height=98)
+        header = tk.Frame(outer, bg=self._colors['header'], height=100)
+        header._theme_surface = 'header'
         header.grid(row=0, column=0, sticky="ew")
         header.grid_propagate(False)
-        header_inner = tk.Frame(header, bg=UI_HEADER)
-        header_inner.pack(fill="both", expand=True, padx=18, pady=10)
+        header_inner = tk.Frame(header, bg=self._colors['header'])
+        header_inner._theme_surface = 'header'
+        header_inner.pack(fill="both", expand=True, padx=22, pady=(13, 11))
         try:
             self._logo_img = tk.PhotoImage(file=str(asset_path("yuzi_logo_76.png")))
-            tk.Label(header_inner, image=self._logo_img, bg=UI_HEADER).pack(
-                side="left", padx=(0, 14))
+            tk.Label(header_inner, image=self._logo_img,
+                     bg=self._colors['header']).pack(side="left", padx=(0, 16))
         except Exception:
             self._logo_img = None
-        title_box = tk.Frame(header_inner, bg=UI_HEADER)
+        title_box = tk.Frame(header_inner, bg=self._colors['header'])
+        title_box._theme_surface = 'header'
         title_box.pack(side="left", fill="y")
-        tk.Label(title_box, text=APP_TITLE, bg=UI_HEADER, fg="#f0c46a",
-                 font=("Microsoft YaHei UI", 18, "bold")).pack(
-            side="top", anchor="w", pady=(4, 0))
+        tk.Label(title_box, text=APP_TITLE.replace("_", " ").replace("AIDirector", "AI Director"),
+                 bg=self._colors['header'], fg=self._colors['accent'],
+                 font=("Microsoft YaHei UI", 21, "bold")).pack(
+            side="top", anchor="w", pady=(1, 0))
         tk.Label(title_box, text=f"{APP_SUBTITLE}  ·  v{VERSION}",
-                 bg=UI_HEADER, fg="#b9b2a5",
+                 bg=self._colors['header'], fg=self._colors['muted'],
                  font=("Microsoft YaHei UI", 9)).pack(side="top", anchor="w", pady=(2, 0))
-        tk.Label(header_inner, text="YUZI CUP  ·  DIRECTOR", bg=UI_HEADER,
-                 fg="#7f7769", font=("Segoe UI", 9, "bold")).pack(
-            side="right", anchor="e", padx=(0, 4))
+        mark = tk.Frame(header_inner, bg=self._colors['header'])
+        mark._theme_surface = 'header'
+        mark.pack(side="right", anchor="e", padx=(0, 2))
+        tk.Label(mark, text="YUZI CUP", bg=self._colors['header'],
+                 fg=self._colors['accent'], font=("Segoe UI", 9, "bold")).pack(anchor="e")
+        tk.Label(mark, text="DIRECTOR CONSOLE", bg=self._colors['header'],
+                 fg=self._colors['muted'], font=("Segoe UI", 8)).pack(anchor="e", pady=(2, 0))
+        rule = tk.Frame(header, bg=self._colors['accent'], height=2,
+                        bd=0, highlightthickness=0)
+        rule._theme_surface = 'accent'
+        rule.place(relx=0, rely=1.0, relwidth=1.0, anchor="sw")
 
         from account_ui import mount_account
         account_host = ttk.Frame(outer)
@@ -3516,7 +3534,7 @@ class DirectorApp:
         mount_account(account_host,self.account)
         outer.rowconfigure(1,weight=0)
         outer.rowconfigure(2,weight=1)
-        body = ttk.Frame(outer, padding=10)
+        body = ttk.Frame(outer, padding=(22, 14, 22, 12))
         body.grid(row=2, column=0, sticky="nsew")
         body.columnconfigure(0, weight=1)
         body.rowconfigure(0, weight=1)
@@ -3525,34 +3543,144 @@ class DirectorApp:
         notebook = ttk.Notebook(body)
         self.notebook = notebook
         notebook.grid(row=0, column=0, sticky="nsew")
-        workspace = _ScrollableFrame(notebook)
-        notebook.add(workspace, text=" 导播工作台 ")
-        ttk.Label(workspace.inner, text="把注意力留给比赛。", font=("Microsoft YaHei UI", 20, "bold")).pack(anchor="w", pady=(8, 16))
-        ttk.Label(workspace.inner, text="先完成账号与正式模型初始化，再检查游戏连接。收到有效观战数据后，程序按现有策略自动导播。", wraplength=760).pack(anchor="w", pady=8)
-        self.workspace_status = ttk.Label(workspace.inner, text="导播尚未启动", wraplength=760, justify="left")
-        self.workspace_status.pack(anchor="w", pady=16)
-        ttk.Button(workspace.inner, text="打开训练工作台", command=self._open_trainer).pack(anchor="w", pady=8)
         from desktop_ui import settings as open_settings
-        ttk.Button(workspace.inner, text="账号、模型与程序状态", command=lambda: open_settings(self)).pack(anchor="w", pady=8)
-        ttk.Button(workspace.inner, text="配置游戏与运镜", command=lambda: notebook.select(settings_scroll)).pack(anchor="w", pady=8)
+        workspace = _ScrollableFrame(notebook)
         settings_scroll = _ScrollableFrame(notebook)
         pro_scroll = _ScrollableFrame(notebook)
         settings = settings_scroll.inner
         pro_page = pro_scroll.inner
         pro_logs = ttk.Frame(notebook, padding=8)
         logs = ttk.Frame(notebook, padding=8)
-        notebook.add(settings_scroll, text=" 设置 ")
-        notebook.add(pro_scroll, text=" 专业导播 ")
-        notebook.add(pro_logs, text=" 导播日志 ")
-        notebook.add(logs, text=" 日志 ")
+        notebook.add(workspace, text="导播工作台")
+        notebook.add(settings_scroll, text="设置")
+        notebook.add(pro_scroll, text="专业导播")
+        notebook.add(pro_logs, text="导播日志")
+        notebook.add(logs, text="日志")
         self._developer_tabs = (pro_logs, logs)
         settings.columnconfigure(0, weight=1)
         self._build_pro(pro_page)
         self._build_pro_logs(pro_logs)
 
+        def _card(parent: Any, padding: int = 18) -> tuple[tk.Frame, ttk.Frame]:
+            shell = tk.Frame(parent, bg=self._colors['card'],
+                             highlightbackground=self._colors['border'],
+                             highlightthickness=1, bd=0)
+            shell._theme_surface = 'card'
+            inner = ttk.Frame(shell)
+            inner.pack(fill="both", expand=True, padx=padding, pady=padding)
+            return shell, inner
+
+        dash = ttk.Frame(workspace.inner)
+        dash.pack(fill="both", expand=True)
+        dash.columnconfigure(0, weight=3)
+        dash.columnconfigure(1, weight=2)
+        dash.rowconfigure(0, weight=1)
+
+        hero_shell, hero = _card(dash, 20)
+        hero_shell.grid(row=0, column=0, sticky="nsew", padx=(0, 14))
+        rail = ttk.Frame(dash)
+        rail.grid(row=0, column=1, sticky="nsew")
+        quick_shell, quick = _card(rail, 18)
+        quick_shell.pack(fill="both", expand=True)
+
+        ttk.Label(hero, text="DIRECTOR CONSOLE  /  导播控制台",
+                  style='Eyebrow.TLabel').pack(anchor="w")
+        ttk.Label(hero, text="把注意力留给比赛。",
+                  style='H1.TLabel').pack(anchor="w", pady=(8, 8))
+        hero_copy = ttk.Label(
+            hero,
+            text="先完成账号与正式模型初始化，再检查游戏连接。"
+                 "收到有效观战数据后，程序按现有策略自动导播。",
+            style='Body.TLabel', wraplength=560, justify="left")
+        hero_copy._own_wrap = True
+        hero_copy.pack(anchor="w")
+        hero.bind('<Configure>',
+                  lambda e: hero_copy.configure(
+                      wraplength=max(180, e.width - 8)), add='+')
+
+        actions = ttk.Frame(hero)
+        actions.pack(anchor="w", pady=(2, 0))
+        ttk.Button(actions, text="打开训练工作台", style='Accent.TButton',
+                   command=self._open_trainer).pack(side="left")
+        ttk.Button(actions, text="账号与模型状态", style='Link.TButton',
+                   command=lambda: open_settings(self)).pack(
+            side="left", padx=(10, 0))
+        ttk.Button(actions, text="配置游戏与运镜", style='Link.TButton',
+                   command=lambda: notebook.select(settings_scroll)).pack(
+            side="left", padx=(2, 0))
+
+        status_panel = tk.Frame(hero, bg=self._colors['field'],
+                                highlightbackground=self._colors['border'],
+                                highlightthickness=1, bd=0)
+        status_panel._theme_surface = 'field'
+        status_panel.pack(fill="x", pady=(12, 0))
+        status_inner = tk.Frame(status_panel, bg=self._colors['field'])
+        status_inner._theme_surface = 'field'
+        status_inner.pack(fill="x", padx=14, pady=12)
+        tk.Label(status_inner, text="DIRECTOR STATUS  /  LIVE",
+                 bg=self._colors['field'], fg=self._colors['accent'],
+                 font=("Segoe UI", 8, "bold")).pack(anchor="w")
+        self.workspace_status = ttk.Label(
+            status_inner, text="导播尚未启动", style='Status.TLabel',
+            wraplength=480, justify="left")
+        self.workspace_status._own_wrap = True
+        self.workspace_status.pack(anchor="w", pady=(6, 0))
+        status_panel.bind('<Configure>',
+                          lambda e: self.workspace_status.configure(
+                              wraplength=max(180, e.width - 30)), add='+')
+
+        ttk.Label(quick, text="QUICK START  /  首次使用",
+                  style='Eyebrow.TLabel').pack(anchor="w")
+        ttk.Label(quick, text="三步开始导播",
+                  style='H2.TLabel').pack(anchor="w", pady=(8, 4))
+        steps = (
+            ("01", "登录并绑定设备", "登录账号，确认设备与模型授权。"),
+            ("02", "连接游戏与运镜", "选择 cs2.exe，安装 GSI 后重启游戏。"),
+            ("03", "启动并观察状态", "打开训练工作台，或直接启动导播。"),
+        )
+        for number, title, description in steps:
+            step = ttk.Frame(quick)
+            step.pack(fill="x", pady=(12, 0))
+            ttk.Label(step, text=number, style='StepNum.TLabel').pack(
+                side="left", anchor="n")
+            text_box = ttk.Frame(step)
+            text_box.pack(side="left", fill="x", expand=True, padx=(10, 0))
+            ttk.Label(text_box, text=title, style='StepTitle.TLabel').pack(anchor="w")
+            desc = ttk.Label(text_box, text=description, style='Muted.TLabel',
+                             wraplength=300, justify="left")
+            desc._own_wrap = True
+            desc.pack(anchor="w", pady=(2, 0))
+        ttk.Label(quick, text=f"v{VERSION}  ·  鱼籽杯导播控制台",
+                  style='Caption.TLabel').pack(anchor="w", pady=(16, 0))
+
+        layout_state = {'narrow': None}
+        def _reflow(event: Any = None) -> None:
+            width = event.width if event is not None else dash.winfo_width()
+            narrow = width < 860
+            if layout_state['narrow'] == narrow:
+                return
+            layout_state['narrow'] = narrow
+            if narrow:
+                dash.columnconfigure(0, weight=1)
+                dash.columnconfigure(1, weight=0)
+                hero_shell.grid_configure(row=0, column=0, padx=0, pady=(0, 12))
+                rail.grid_configure(row=1, column=0, sticky="ew")
+            else:
+                dash.columnconfigure(0, weight=3)
+                dash.columnconfigure(1, weight=2)
+                hero_shell.grid_configure(row=0, column=0, padx=(0, 14), pady=0)
+                rail.grid_configure(row=0, column=1, sticky="nsew")
+        dash.bind('<Configure>', _reflow, add='+')
+
+        heading = ttk.Frame(settings)
+        heading.grid(row=0, column=0, sticky="ew", pady=(2, 10))
+        ttk.Label(heading, text="设置中心", style='H2.TLabel').pack(anchor="w")
+        ttk.Label(heading, text="账号、游戏连接、运镜与模型。修改后点击底部「保存配置」。",
+                  style='Caption.TLabel').pack(anchor="w", pady=(2, 0))
+
         # 1) 游戏与 GSI
-        lf = ttk.LabelFrame(settings, text=" 1. 游戏与 GSI 配置 ", padding=8)
-        lf.grid(row=0, column=0, sticky="ew", pady=(0, 6))
+        lf = ttk.LabelFrame(settings, text="1. 游戏与 GSI 配置", padding=10)
+        lf.grid(row=1, column=0, sticky="ew", pady=(0, 8))
         lf.columnconfigure(1, weight=1)
         ttk.Label(lf, text="cs2.exe").grid(row=0, column=0, sticky="w")
         ttk.Entry(lf, textvariable=self.var_exe).grid(row=0, column=1, sticky="ew", padx=6)
@@ -3573,8 +3701,8 @@ class DirectorApp:
             side="left", padx=6)
 
         # 2) MulNX
-        lf2 = ttk.LabelFrame(settings, text=" 2. MulNX 运镜快捷键（与 MulNX 内绑定一致） ", padding=8)
-        lf2.grid(row=1, column=0, sticky="ew", pady=(0, 6))
+        lf2 = ttk.LabelFrame(settings, text="2. MulNX 运镜快捷键（与 MulNX 内绑定一致）", padding=10)
+        lf2.grid(row=2, column=0, sticky="ew", pady=(0, 8))
         lf2.columnconfigure(0, weight=1)
 
         def add_pair_row(row: int,
@@ -3627,8 +3755,8 @@ class DirectorApp:
             row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
         # 3) AI
-        lf3 = ttk.LabelFrame(settings, text=" 3. 云端仲裁与本地模型 ", padding=8)
-        lf3.grid(row=2, column=0, sticky="ew", pady=(0, 6))
+        lf3 = ttk.LabelFrame(settings, text="3. 云端仲裁与本地模型", padding=10)
+        lf3.grid(row=3, column=0, sticky="ew", pady=(0, 8))
         lf3.columnconfigure(1, weight=1)
         ttk.Label(lf3, text="个人 API Key").grid(row=0, column=0, sticky="w")
         ttk.Entry(lf3, textvariable=self.var_api, show="*").grid(
@@ -3661,8 +3789,8 @@ class DirectorApp:
             row=4, column=0, columnspan=4, sticky="w", pady=(6, 0))
 
         # 4) 高级
-        lf4 = ttk.LabelFrame(settings, text=" 4. 高级参数 ", padding=8)
-        lf4.grid(row=3, column=0, sticky="ew", pady=(0, 6))
+        lf4 = ttk.LabelFrame(settings, text="4. 高级参数", padding=10)
+        lf4.grid(row=4, column=0, sticky="ew", pady=(0, 8))
         ttk.Label(lf4, text="GSI 端口").grid(row=0, column=0, sticky="w")
         ttk.Entry(lf4, textvariable=self.var_port, width=8).grid(row=0, column=1, sticky="w", padx=(4, 16))
         ttk.Label(lf4, text="切换阈值").grid(row=0, column=2, sticky="w")
@@ -3677,8 +3805,8 @@ class DirectorApp:
             row=2, column=0, columnspan=6, sticky="w", pady=(6, 0))
 
         # 5) 依赖
-        lf5 = ttk.LabelFrame(settings, text=" 5. 依赖状态 ", padding=8)
-        lf5.grid(row=4, column=0, sticky="ew", pady=(0, 6))
+        lf5 = ttk.LabelFrame(settings, text="5. 依赖状态", padding=10)
+        lf5.grid(row=5, column=0, sticky="ew", pady=(0, 8))
         lf5.columnconfigure(0, weight=1)
         self.lbl_deps = ttk.Label(lf5, text="检查中…", wraplength=760, justify="left")
         self.lbl_deps.grid(row=0, column=0, sticky="w")
@@ -3691,7 +3819,7 @@ class DirectorApp:
 
         # 6) 控制条（始终可见）
         ctrl = ttk.Frame(body)
-        ctrl.grid(row=1, column=0, sticky="ew", pady=(10, 6))
+        ctrl.grid(row=1, column=0, sticky="ew", pady=(12, 8))
         self.btn_start = ttk.Button(
             ctrl, text="▶ 启动导播", command=self._start, style="Accent.TButton")
         self.btn_start.pack(side="left")
@@ -3699,35 +3827,54 @@ class DirectorApp:
             ctrl, text="■ 停止", command=self._stop, state="disabled",
             style="Stop.TButton")
         self.btn_stop.pack(side="left", padx=6)
+        ttk.Separator(ctrl, orient="vertical").pack(
+            side="left", fill="y", padx=10, pady=3)
         ttk.Button(ctrl, text="保存配置", command=self._save_only).pack(side="left")
-        from desktop_ui import settings as open_settings
-        ttk.Button(ctrl, text="设置中心", command=lambda: open_settings(self)).pack(side="left", padx=4)
-        self.lbl_conn = ttk.Label(body, text="GSI：未启动", foreground=UI_GOLD_DARK, wraplength=580)
-        self.lbl_conn.grid(row=3, column=0, sticky="w")
+        ttk.Button(ctrl, text="设置中心",
+                   command=lambda: open_settings(self)).pack(side="left", padx=4)
 
         # 7) 运行状态（始终可见）
-        status_box = ttk.LabelFrame(body, text=" 运行状态 ", padding=10)
+        status_box = ttk.LabelFrame(body, text="运行状态", padding=(12, 5))
         status_box.grid(row=2, column=0, sticky="ew")
         status_box.columnconfigure(0, weight=1)
-        self.lbl_play = ttk.Label(status_box, text="阶段：-    当前视角：-    AI 目标：-",
-                                  justify="left", wraplength=940)
+        self.lbl_play = ttk.Label(
+            status_box, text="阶段：-    当前视角：-    AI 目标：-",
+            style='CompactStatus.TLabel', justify="left", wraplength=940)
         self.lbl_play.grid(row=0, column=0, sticky="w")
-        self.lbl_ai = ttk.Label(status_box, text="AI：未启动    运镜：-", foreground="#444444",
-                                justify="left", wraplength=940)
-        self.lbl_ai.grid(row=1, column=0, sticky="w", pady=(3, 0))
-        self.lbl_reason = ttk.Label(status_box, text="决策：-", foreground="#666666",
-                                    justify="left", wraplength=940)
+        self.lbl_ai = ttk.Label(
+            status_box, text="AI：未启动    运镜：-", style='Compact.TLabel',
+            justify="left", wraplength=940)
+        self.lbl_ai.grid(row=1, column=0, sticky="w", pady=(4, 0))
+        self.lbl_reason = ttk.Label(
+            status_box, text="决策：-", style='Compact.TLabel',
+            justify="left", wraplength=940)
         self.lbl_reason.grid(row=2, column=0, sticky="w", pady=(3, 0))
-        self.lbl_story = ttk.Label(status_box, text="故事：-", foreground="#444444",
-                                   justify="left", wraplength=940)
+        self.lbl_story = ttk.Label(
+            status_box, text="故事：-", style='Compact.TLabel',
+            justify="left", wraplength=940)
         self.lbl_story.grid(row=3, column=0, sticky="w", pady=(3, 0))
-        self.lbl_narrative = ttk.Label(status_box, text="叙事：-", foreground=UI_GOLD_DARK,
-                                        justify="left", wraplength=940)
+        self.lbl_narrative = ttk.Label(
+            status_box, text="叙事：-", style='CompactAccent.TLabel',
+            justify="left", wraplength=940)
         self.lbl_narrative.grid(row=4, column=0, sticky="w", pady=(3, 0))
-        self.lbl_metrics = ttk.Label(status_box, text="专业指标：-", foreground="#666666",
-                                     justify="left", wraplength=940)
+        self.lbl_metrics = ttk.Label(
+            status_box, text="专业指标：-", style='Compact.TLabel',
+            justify="left", wraplength=940)
         self.lbl_metrics.grid(row=5, column=0, sticky="w", pady=(3, 0))
+        self.lbl_conn = ttk.Label(
+            status_box, text="GSI：未启动", style='Compact.TLabel',
+            justify="left", wraplength=940)
+        self.lbl_conn.grid(row=6, column=0, sticky="w", pady=(5, 0))
         self._developer_widgets.extend([self.lbl_ai, self.lbl_reason, self.lbl_metrics])
+
+        status_labels = (self.lbl_play, self.lbl_ai, self.lbl_reason,
+                         self.lbl_story, self.lbl_narrative, self.lbl_metrics,
+                         self.lbl_conn)
+        def _wrap_status(event: Any) -> None:
+            width = max(220, event.width - 34)
+            for label in status_labels:
+                label.configure(wraplength=width)
+        status_box.bind('<Configure>', _wrap_status, add='+')
 
         # 8) 日志页
         logs.rowconfigure(0, weight=1)
