@@ -126,7 +126,10 @@
   "source_http_log_sha256": "df9fe7f11f40d0401c3011074fa21c22a14433a647984b2d36bb120dfcd24650",
   "evidence_sha256": {
     "D:\\Yuzibei\\local-data\\live-p-20261109\\session2-redacted.json": "735f3eee26c6aa430d0ce45b7956a9cee96f53d4e240ed223cb27359ebf23f82",
-    "D:\\Yuzibei\\local-data\\wupd-feem-20261109\\evidence\\p10-session2-readonly.json": "7ebfb2f3081a685ee9c969d980ce37041bd9020bbc9f616ce7984d77d0c2e40d"
+    "D:\\Yuzibei\\local-data\\wupd-feem-20261109\\evidence\\p10-session2-readonly.json": "7ebfb2f3081a685ee9c969d980ce37041bd9020bbc9f616ce7984d77d0c2e40d",
+    "D:\\Yuzibei\\local-data\\web-remaining-20261109\\p10-session4-readonly.json": "3d18e401cf83c2ffe608e822c13f966404828ca37965142626a26f040cf1ee47",
+    "D:\\Yuzibei\\local-data\\web-remaining-20261109\\p10-session6-readonly.json": "917956454c7e2f918deba1718557df9e5625fc789a10f1d2039c75f647ee4543",
+    "D:\\Yuzibei\\local-data\\web-remaining-20261109\\p10-session7-readonly.json": "66dbe806030377beb770ebf00dc9499e234dd687ef6fffc1c1c0b6798c0ce9f4"
   },
   "candidate_bytes": 187675244,
   "regression": {
@@ -167,7 +170,16 @@
       "records": 34,
       "batches": 17,
       "client_confirmed": true,
-      "server_readonly": "pending",
+      "server_readonly": {
+        "passed": true,
+        "checkedAtUtc": "2026-11-09T03:33:19.858185+00:00",
+        "batchCount": 17,
+        "rowCount": 34,
+        "acceptedRows": 34,
+        "duplicateRows": 0,
+        "naturalKeyDuplicates": 0,
+        "scope": "Production SELECT only, READ ONLY transactions. No upload replay, permission change or deployment. Not offline/restart recovery or G4 acceptance."
+      },
       "evidence": "session4-redacted.json",
       "sha256": "4a5a8b2ae86ecad70a34639c1407adaa1eebc19fe02ebf24999b8d5871fccf04",
       "errors": 0
@@ -183,7 +195,16 @@
       "records": 15,
       "batches": 8,
       "client_confirmed": true,
-      "server_readonly": "pending",
+      "server_readonly": {
+        "passed": true,
+        "checkedAtUtc": "2026-11-09T03:33:22.399641+00:00",
+        "batchCount": 8,
+        "rowCount": 15,
+        "acceptedRows": 15,
+        "duplicateRows": 0,
+        "naturalKeyDuplicates": 0,
+        "scope": "Production SELECT only, READ ONLY transactions. No upload replay, permission change or deployment. Not offline/restart recovery or G4 acceptance."
+      },
       "evidence": "session6-redacted.json",
       "sha256": "0715bb4eae006c1357724b67ef68ecfd43862eef78c8fde0ae86fb429008932f",
       "errors": 0
@@ -199,7 +220,16 @@
       "records": 10,
       "batches": 10,
       "client_confirmed": true,
-      "server_readonly": "pending",
+      "server_readonly": {
+        "passed": true,
+        "checkedAtUtc": "2026-11-09T03:33:24.985743+00:00",
+        "batchCount": 10,
+        "rowCount": 10,
+        "acceptedRows": 10,
+        "duplicateRows": 0,
+        "naturalKeyDuplicates": 0,
+        "scope": "Production SELECT only, READ ONLY transactions. No upload replay, permission change or deployment. Not offline/restart recovery or G4 acceptance."
+      },
       "evidence": "session7-redacted.json",
       "sha256": "ed29cee93c89eb85a22361a2ebe90b0ee641fb40d6abb918f6417088cde7fcc3",
       "errors": 0

@@ -42,10 +42,11 @@
     "light_and_dark_visually_checked": true,
     "physical_dpi_matrix_passed": false,
     "internal_frozen_trainer_default_entry": true,
-    "formal_model_sequence": 3
+    "formal_model_sequence": 3,
+    "internal_frozen_director_entry": true
   },
   "website_download_scope": "director-only",
-  "production_submission": "pending_website_deployment",
+  "production_submission": "api_deployed_pending_actual_frozen_gui_upload",
   "real_game": {
     "inherited_evidence_version": "1.15.2",
     "g4_passed": false,
@@ -86,6 +87,73 @@
     "director-self-check.json": "2e0df6463de86a35e1df705d826448812017864e35d4fc7f12efca07c5dcd805",
     "trainer-self-check.json": "2e0df6463de86a35e1df705d826448812017864e35d4fc7f12efca07c5dcd805",
     "website-submission-synthetic.json": "e6c169e751ce70bbc1cac2dcd348a9769a62a8d203838f9cc5d70241c260f512",
-    "website-submission-isolated.json": "a05aee80782c38a6fe833c329a63cd40a349021d39fedc06dc915f17ddf689ad"
+    "website-submission-isolated.json": "a05aee80782c38a6fe833c329a63cd40a349021d39fedc06dc915f17ddf689ad",
+    "production-update-install.json": "6390718876fe5107a23143935442e83ad26b6aaca3ebd90ce3e6777a74739af3",
+    "production-update-metadata.json": "ab0ad3996190f11e9a38b4deafbb5a3488ede756d7d5dfebebf7ccceee8c951f"
+  },
+  "production_update": {
+    "scope": "Production HTTPS origin and pinned signing key; actual frozen GUI download/exit/install/restart; isolated C: installation and APPDATA, no account",
+    "old_version": "1.15.2",
+    "new_version": "1.15.3",
+    "phase": "complete",
+    "old_sha256": "a27e3e1cb73cb43e8accfae42a18859bd53ac0d55c776c68b3dfa5c327b18556",
+    "new_sha256": "6d5fdc281974f4c800c5dace3e646454026fa2d0990029dc04ac181d51d19ee4",
+    "bytes": 187692999,
+    "release_id": "f0d4694e-2c4f-4e26-a145-03ca4a037218",
+    "sequence": 5,
+    "original_backup_preserved": true,
+    "profile_sentinel_preserved": true,
+    "first_download_interrupted": true,
+    "partial_bytes_after_first_attempt": 96468992,
+    "second_download_verified": true,
+    "job": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\director-production-update-1.15.3-20261109\\profile\\CS2AIDirector\\client-install\\jobs\\424acdd364dede2913bff66685d1b056\\job.json",
+    "updated_at": 1794195219.0588548
+  },
+  "production_update_metadata": {
+    "scope": "anonymous production HTTPS; shipped independent update public key; no installation",
+    "checked_at": 1794194949,
+    "old_client": {
+      "state": "update_available",
+      "release": {
+        "id": "f0d4694e-2c4f-4e26-a145-03ca4a037218",
+        "version": "1.15.3",
+        "channel": "stable",
+        "artifact_hash": "6d5fdc281974f4c800c5dace3e646454026fa2d0990029dc04ac181d51d19ee4",
+        "artifact_bytes": 187692999,
+        "revision": 1,
+        "notes": "正式客户端1.15.3：界面、快捷键及训练结果主动提交优化。账号、额度和模型资格分别管理。"
+      }
+    },
+    "current_client": {
+      "state": "up_to_date",
+      "release": {
+        "id": "f0d4694e-2c4f-4e26-a145-03ca4a037218",
+        "version": "1.15.3",
+        "channel": "stable",
+        "artifact_hash": "6d5fdc281974f4c800c5dace3e646454026fa2d0990029dc04ac181d51d19ee4",
+        "artifact_bytes": 187692999,
+        "revision": 1,
+        "notes": "正式客户端1.15.3：界面、快捷键及训练结果主动提交优化。账号、额度和模型资格分别管理。"
+      }
+    },
+    "verified_manifest": {
+      "bytes": 187692999,
+      "channel": "stable",
+      "expires_at": 1794281065,
+      "issued_at": 1794194665,
+      "minimum_updater": 1,
+      "notes": "正式客户端1.15.3：界面、快捷键及训练结果主动提交优化。账号、额度和模型资格分别管理。",
+      "origin": "https://www.yuzibei.cn",
+      "platform": "windows-x86_64",
+      "product": "yuzi-cs2-director",
+      "release_id": "f0d4694e-2c4f-4e26-a145-03ca4a037218",
+      "schema": "director-client-update-v1",
+      "sequence": 5,
+      "sha256": "6d5fdc281974f4c800c5dace3e646454026fa2d0990029dc04ac181d51d19ee4",
+      "version": "1.15.3",
+      "payload_digest": "1e88e653caefb0f4a08851af6f23b860e2ca45d08c324443be6ce5153ca6551d",
+      "key_id": "yuzibei-app-20261109"
+    },
+    "trust_sha256": "35f1eebf8643382619ef598ccc4fe908a03e04601e92962dbe9daa573e0d2be0"
   }
 }

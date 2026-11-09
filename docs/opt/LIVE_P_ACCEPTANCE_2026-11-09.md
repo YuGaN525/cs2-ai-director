@@ -100,3 +100,7 @@ CT场景09:37:26.277实际发送Alt+L，读取现场配置确认CT键为L，而�
 新增证据为`session3-redacted.json`、`session4-redacted.json`、`session6-redacted.json`、`session7-redacted.json`与`self-check-1.15.2-final.json`；第三轮网站只读证据为`p10-session3-readonly.json`，第四/六/七轮服务端核对另行补记。
 
 P-01/P-02/P-03/P-10仅按以上具体场景取得真实证据，未整项关闭。完整G4、4小时负载及其余P项目仍未通过。24小时观察已删除，与自动更新24小时检查周期无关。新版仅为基础执行修复候选；官网登记、最终发行和模型灰度由对应授权及网站发布流程另行处理。
+
+## 11:33 生产只读核对补记
+
+网站只读核对session4=17批34条、session6=8批15条、session7=10批10条，全部confirmed，回执/样本身份一致，duplicateRows与naturalKeyDuplicates均0。报告位于web-remaining-20261109/p10-session{4,6,7}-readonly.json，摘要写入同目录机器验收JSON。没有重放上传，不代表断网补传、完整G4或4小时负载完成。
