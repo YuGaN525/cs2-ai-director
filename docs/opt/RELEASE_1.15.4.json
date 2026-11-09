@@ -1,0 +1,40 @@
+{
+  "version": "1.15.4",
+  "source_commit": "7235b5cbd608a35d24e4ef4dfaf3a238cf9cb77c",
+  "ui_branch_commit": "b34aff9",
+  "artifact_bytes": 187704496,
+  "artifact_sha256": "4213424994193cd0d9ff9e38d7a62bb5ff269d0c86abab2eb1e10b2a9eaeac03",
+  "github_url": "https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.15.4",
+  "github_published_at": "2026-11-09T10:40:23Z",
+  "github_assets_verified": true,
+  "regression": {
+    "seconds": 69.703,
+    "skipped": 4,
+    "passed": 411,
+    "total": 415
+  },
+  "ui_matrix_cases": 24,
+  "ui_callback_errors": 0,
+  "frozen_self_checks_passed": true,
+  "website_replacement": "passed",
+  "evidence_sha256": {
+    "trainer-self-check.json": "8e52784ab888b4ba65d1d0902ae6fea4851137102ddacaff4f05d0a5f99ee71e",
+    "ui-matrix.json": "2dbe99f09f8f4d5eeb95fefb1454d9f89d5d8492cbd4c8477ae2d4ea78217ec8",
+    "regression.log": "fa547ffc677bca18642cb680106ab5da04127a6e2affe58fbeca2d3b65a6ebc6",
+    "director-self-check.json": "8e52784ab888b4ba65d1d0902ae6fea4851137102ddacaff4f05d0a5f99ee71e",
+    "production-update-metadata.json": "7a8c252aa2a8fa19bc41de8ae7827242e966b4ccb24fc093d2b44f1507975ab2",
+    "production-file.json": "aa6d7ab39207bf4e3a4d4313bd33a0976a6b66eb4eda8af84a473d77d247147c"
+  },
+  "frozen_director_gui_observed": true,
+  "production": {
+    "release_id": "5e1c752e-a23b-4b42-a581-2c212285355d",
+    "stable_sequence": 6,
+    "download_url": "https://www.yuzibei.cn/api/director/client-releases/5e1c752e-a23b-4b42-a581-2c212285355d/file",
+    "old_client_state": "update_available",
+    "current_client_state": "up_to_date",
+    "independent_signature_verified": true,
+    "full_download_verified": true,
+    "full_download_seconds": 18.451,
+    "fresh_installation_transaction_tested": false
+  }
+}

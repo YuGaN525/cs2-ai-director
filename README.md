@@ -1,5 +1,9 @@
 # Yuzi_CS2_AIDirector
 
+## 1.15.4 · UI 优化版
+
+已将 aesthetics/ui-1.15.4 合入 main，统一导播与内部训练器的卡片布局、状态层级、浅深色主题及窄窗口展示；账号、模型和上传功能保持。发行验证与官网替换状态见 [1.15.4 验收记录](docs/opt/RELEASE_1.15.4.md)。
+
 ## 1.15.3 · 导播与内部训练器
 
 官网下载只提供 `Yuzi_CS2_AIDirector.exe`。私有 GitHub Release 同时提供内部使用的 `Yuzi_CS2_AIDecisionTrainer.exe`；两者共享同一份程序，后者双击直接进入训练工作台。旧训练器仓库继续存档。
