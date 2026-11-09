@@ -193,7 +193,7 @@ class InputControllerAdapter:
                     if len(keys) == 1:
                         # 关键：修饰键只在开头按下、结尾释放；双击是“按住 Alt，
                         # 连点两次主键”。既符合 comboClick 语义，也保证 keydown
-                        # 至少保持 45ms，避免相机工具用 GetAsyncKeyState 轮询时漏掉。
+                        # 默认保持 30ms，避免相机工具用 GetAsyncKeyState 轮询时漏掉。
                         for mod in mods:
                             self._press("keyboard", mod)
                         if mods:
@@ -238,9 +238,9 @@ class InputControllerAdapter:
                 for i in range(presses):
                     if i:
                         self._runtime.time.sleep(interval)
-                    self._press("direct", hotkey)
+                    self._press("direct", hotkey.lower())
                     self._runtime.time.sleep(hold)
-                    self._release("direct", hotkey)
+                    self._release("direct", hotkey.lower())
                 return True
             except Exception as e:
                 self.release_held_keys()

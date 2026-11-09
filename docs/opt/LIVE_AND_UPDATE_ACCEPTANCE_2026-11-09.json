@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "date": "2026-11-09",
-  "version": "1.15.1",
-  "candidate_sha256": "8de079698d959a1a540d039ce33c1021162228b69b7f73b2a3b5c6c9ac71083f",
+  "version": "1.15.2",
+  "candidate_sha256": "a27e3e1cb73cb43e8accfae42a18859bd53ac0d55c776c68b3dfa5c327b18556",
   "live_demo": {
     "start_local": "2026-11-09 08:34:15",
     "end_local": "2026-11-09 08:39:08",
@@ -40,7 +40,8 @@
     },
     "g4_passed": false,
     "four_hour_load_passed": false,
-    "observation_24h_requirement_removed": true
+    "observation_24h_requirement_removed": true,
+    "version": "1.15.1"
   },
   "update_transactions": [
     {
@@ -126,5 +127,96 @@
   "evidence_sha256": {
     "D:\\Yuzibei\\local-data\\live-p-20261109\\session2-redacted.json": "735f3eee26c6aa430d0ce45b7956a9cee96f53d4e240ed223cb27359ebf23f82",
     "D:\\Yuzibei\\local-data\\wupd-feem-20261109\\evidence\\p10-session2-readonly.json": "7ebfb2f3081a685ee9c969d980ce37041bd9020bbc9f616ce7984d77d0c2e40d"
-  }
+  },
+  "candidate_bytes": 187675244,
+  "regression": {
+    "total": 401,
+    "passed": 399,
+    "skipped": 2,
+    "seconds": 83.829,
+    "skip_reasons": [
+      "jsonschema dependency unavailable",
+      "pre-migration source unavailable"
+    ]
+  },
+  "additional_live_sessions": [
+    {
+      "session": 3,
+      "version": "1.15.1",
+      "start_local": "2026-11-09 09:18:48",
+      "end_local": "2026-11-09 09:21:59",
+      "cuts_requested": 22,
+      "matched_new_gsi_shots": 20,
+      "feedback_window_seconds": 2,
+      "records": 36,
+      "batches": 30,
+      "client_confirmed": true,
+      "server_readonly": "passed",
+      "evidence": "session3-redacted.json",
+      "sha256": "1fbde8897db7e0fe61cef00e5532bb2efb629398d5b78c2514b6ccd45f1bf29c",
+      "errors": 0
+    },
+    {
+      "session": 4,
+      "version": "1.15.2-intermediate",
+      "start_local": "2026-11-09 09:35:23",
+      "end_local": "2026-11-09 09:38:33",
+      "cuts_requested": 25,
+      "matched_new_gsi_shots": 23,
+      "feedback_window_seconds": 2,
+      "records": 34,
+      "batches": 17,
+      "client_confirmed": true,
+      "server_readonly": "pending",
+      "evidence": "session4-redacted.json",
+      "sha256": "4a5a8b2ae86ecad70a34639c1407adaa1eebc19fe02ebf24999b8d5871fccf04",
+      "errors": 0
+    },
+    {
+      "session": 6,
+      "version": "1.15.2",
+      "start_local": "2026-11-09 09:51:52",
+      "end_local": "2026-11-09 09:55:41",
+      "cuts_requested": 16,
+      "matched_new_gsi_shots": 15,
+      "feedback_window_seconds": 2,
+      "records": 15,
+      "batches": 8,
+      "client_confirmed": true,
+      "server_readonly": "pending",
+      "evidence": "session6-redacted.json",
+      "sha256": "0715bb4eae006c1357724b67ef68ecfd43862eef78c8fde0ae86fb429008932f",
+      "errors": 0
+    },
+    {
+      "session": 7,
+      "version": "1.15.2",
+      "start_local": "2026-11-09 09:55:52",
+      "end_local": "2026-11-09 09:56:45",
+      "cuts_requested": 11,
+      "matched_new_gsi_shots": 11,
+      "feedback_window_seconds": 2,
+      "records": 10,
+      "batches": 10,
+      "client_confirmed": true,
+      "server_readonly": "pending",
+      "evidence": "session7-redacted.json",
+      "sha256": "ed29cee93c89eb85a22361a2ebe90b0ee641fb40d6abb918f6417088cde7fcc3",
+      "errors": 0
+    }
+  ],
+  "final_candidate_live_checks": {
+    "ct_spawn_camera": true,
+    "t_spawn_camera": true,
+    "t_macro_handoff_to_pov": true,
+    "same_gui_stop_start_gsi": true,
+    "a_b_automatic_final_binary": false,
+    "manual_takeover_during_macro": false,
+    "g4_passed": false,
+    "four_hour_load_passed": false,
+    "observation_24h_requirement_removed": true,
+    "stopped": true,
+    "paid_arbitration_enabled": false
+  },
+  "historical_update_scope": "Transactions below remain 1.15.0 to 1.15.1; not retested as 1.15.2 updates."
 }

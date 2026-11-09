@@ -1,6 +1,8 @@
 """GSI transport and snapshot mailbox; independent of the GUI."""
 from __future__ import annotations
 import json
+import socket
+import sys
 import threading
 import time
 from typing import Any, Optional, Callable
@@ -44,6 +46,9 @@ class _BoundedHTTPServer(ThreadingHTTPServer):
 
     def __init__(self, *args, **kwargs):
         self._slots = threading.BoundedSemaphore(16)
+        self._connections_lock = threading.Lock()
+        self._connections = set()
+        self._closing = False
         super().__init__(*args, **kwargs)
 
     def process_request(self, request, client_address):
@@ -54,9 +59,17 @@ class _BoundedHTTPServer(ThreadingHTTPServer):
             finally:
                 self.shutdown_request(request)
             return
+        with self._connections_lock:
+            if self._closing:
+                self._slots.release()
+                self.shutdown_request(request)
+                return
+            self._connections.add(request)
         try:
             super().process_request(request, client_address)
         except Exception:
+            with self._connections_lock:
+                self._connections.discard(request)
             self._slots.release()
             raise
 
@@ -64,7 +77,28 @@ class _BoundedHTTPServer(ThreadingHTTPServer):
         try:
             super().process_request_thread(request, client_address)
         finally:
+            with self._connections_lock:
+                self._connections.discard(request)
             self._slots.release()
+
+    def server_close(self):
+        # HTTP/1.1 keeps the CS2 connection alive across requests. Closing only
+        # the listener leaves its handler feeding the previous session forever.
+        with self._connections_lock:
+            self._closing = True
+            connections = tuple(self._connections)
+        for connection in connections:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            connection.close()
+        super().server_close()
+
+    def handle_error(self, request, client_address):
+        if self._closing and isinstance(sys.exc_info()[1], OSError):
+            return  # Expected when shutdown interrupts a keepalive read.
+        super().handle_error(request, client_address)
 
 
 class _GSIHandler(BaseHTTPRequestHandler):
@@ -72,6 +106,9 @@ class _GSIHandler(BaseHTTPRequestHandler):
     server_version = "CS2AIDirectorGSI"
 
     def do_POST(self) -> None:  # noqa: N802
+        if self.server._closing:
+            self.close_connection = True
+            return
         try:
             length = int(self.headers.get("Content-Length") or 0)
             if not 0 < length <= 1024*1024:
@@ -92,9 +129,16 @@ class _GSIHandler(BaseHTTPRequestHandler):
                 self.server.note_rejected(why)  # type: ignore[attr-defined]
                 self._reply(200, b"ignored")
                 return
-            self.server.store.update(snap)  # type: ignore[attr-defined]
+            with self.server._connections_lock:
+                if self.server._closing:
+                    self.close_connection = True
+                    return
+                self.server.store.update(snap)  # type: ignore[attr-defined]
             self._reply(200, b"ok")
         except Exception as e:
+            if self.server._closing:
+                self.close_connection = True
+                return
             try:
                 self.server.log_fn(f"GSI 解析失败：{type(e).__name__}: {e}")  # type: ignore[attr-defined]
             except Exception:

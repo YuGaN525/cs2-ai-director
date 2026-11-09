@@ -1000,7 +1000,9 @@ def parse_selectable_hotkey(hotkey: str) -> tuple[str, str]:
 
 def split_hotkey(hotkey: str) -> tuple[list[str], list[str]]:
     """把 "alt+1" 拆成 (["alt"], ["1"])；无法识别时返回空 keys。"""
-    parts = [p.strip() for p in str(hotkey or "").split("+") if p.strip()]
+    # keyboard 的 Windows 别名表把大写 M 优先映射为浏览器主页键。
+    # 配置/界面仍可显示大写；传给输入后端的物理键名统一小写。
+    parts = [p.strip().lower() for p in str(hotkey or "").split("+") if p.strip()]
     mods = [p for p in parts if p.lower() in HOTKEY_MODIFIERS]
     keys = [p for p in parts if p.lower() not in HOTKEY_MODIFIERS]
     return mods, keys
@@ -1524,6 +1526,8 @@ class DirectorEngine:
         self._last_switch_at: Optional[float] = None
         self._last_switch_slot: Optional[int] = None
         self._bomb_cam_until = 0.0
+        self._cinematic_request: Optional[dict[str, Any]] = None
+        self._cinematic_retry_at = 0.0
         self._stale_active = False
         self._last_spectate_log = 0.0
         self._last_trigger_fail = 0.0
@@ -1643,6 +1647,9 @@ class DirectorEngine:
                 raise RuntimeError('导播线程仍在停止，暂不能启动新会话，请稍后重试停止')
             self._thread = None
         self.input.release_held_keys()
+        if self._cinematic_request is not None:
+            self.bus.warning("已停止发送按键；若 MulNX 运镜仍在播放，请按 Alt+P 单次停止预览。")
+            self._cinematic_request = None
         if self.timeline is not None:
             self._needs_flush = True
             if self.timeline.close(time.monotonic(), '导播停止') is False:
@@ -2029,7 +2036,39 @@ class DirectorEngine:
         self._last_scores = (snap.score_ct, snap.score_t)
 
     # ---- 运镜 ----
+    def _handoff_cinematic(self, snap: Snapshot, now: float) -> bool:
+        """结束本程序请求的宏，再允许 POV；不干预未由本程序触发的预览。"""
+        request = self._cinematic_request
+        if request is None:
+            return True
+        reason = ""
+        if now < self._manual_until:
+            reason = "人工接管"
+        elif (snap.map_name, snap.round_num) != request["round"]:
+            reason = "回合或地图变化"
+        elif request["kind"] == "round" and snap.phase != "freezetime":
+            reason = "出生点阶段结束"
+        elif request["kind"] == "bomb" and snap.phase != "live":
+            reason = "包点阶段结束"
+        elif now >= request["until"]:
+            reason = "运镜保护时间结束"
+        if not reason or now < self._cinematic_retry_at:
+            return False
+        self._cinematic_retry_at = now + 1.0
+        # MulNX 内置 Alt+P 单次停止所有预览。双击会清理运镜，绝不能使用。
+        # 沿用授权门、停止信号、前台检查和 200ms 连击缓冲后的 Alt 保持。
+        if not self.input.send_hotkey("alt+p", double=False):
+            return False
+        self._cinematic_request = None
+        self._bomb_cam_until = 0.0
+        if self.timeline is not None:
+            self.timeline.end_cinematic(now, f"{reason}，已请求 MulNX 交还 POV")
+        self.bus.info(f"{reason}，已发送 MulNX 停止预览：alt+p（单次），恢复 POV。")
+        return True
+
     def _handle_triggers(self, snap: Snapshot, now: float) -> None:
+        if not self._handoff_cinematic(snap, now) or now < self._manual_until:
+            return
         # 按用户要求，不再用“是否观战视角”阻断运镜/切换。
         for ev in self.triggers.poll(snap, now):
             site: Optional[str] = None
@@ -2090,6 +2129,12 @@ class DirectorEngine:
             mode_txt = "双击" if double else "单次"
             ok = self.input.send_hotkey(str(hotkey), double=double)
             if ok:
+                self._cinematic_request = {
+                    "kind": ev.kind, "round": (snap.map_name, snap.round_num),
+                    "until": now + (30.0 if ev.kind == "round" else
+                                    max(0.0, float(self.cfg["bomb_cam_grace"]))),
+                }
+                self._cinematic_retry_at = 0.0
                 self.triggers.confirm(ev)
                 if ev.kind == "round":
                     why = f"默认 {side}" if spawn_default else f"上回合 {side} 胜"
@@ -2412,20 +2457,12 @@ class DirectorEngine:
     # ---- 核心：评分 + 决策 + 按键 ----
     def _decide_and_switch(self, snap: Snapshot, now: float,
                            status: dict[str, Any]) -> None:
+        if not self._handoff_cinematic(snap, now):
+            status["reason"] = "MulNX 运镜播放中，或等待停止预览后恢复 POV"
+            return
         if not snap.players:
             status["reason"] = "GSI 中缺少 allplayers 数据"
             return
-        # 运镜结束：出生点运镜在进入 live 时交还 POV；包点运镜在保护时间
-        # 结束后交还。否则时间线会一直停在 BOMB/SPAWN。
-        if self.timeline is not None:
-            cur = self.timeline.current
-            if cur is not None:
-                if (cur.shot_type == story_mod.SHOT_SPAWN
-                        and snap.phase == "live"):
-                    self.timeline.end_cinematic(now, "进入 live，恢复 POV")
-                elif (cur.shot_type == story_mod.SHOT_BOMB
-                      and now >= self._bomb_cam_until):
-                    self.timeline.end_cinematic(now, "包点运镜结束，恢复 POV")
         # 按用户要求，移除“当前不是观战视角就跳过”的判定；即使 GSI 没给出
         # observer_slot，也继续按评分切人。
         if snap.phase not in ("", "live"):
