@@ -8,7 +8,7 @@
 
 真实采集16条、12批次客户端confirmed。网站07:53:55生产只读核对全部批次和回执一致，acceptedRows=16、duplicateRows=0，样本/自然键/数据批次匹配；未重放上传或修改设备资格。真实断网/重启补传仍待验收，P-10不标全通过。
 
-现场发现MulNX自定义宏CTSPAWN/TSPAWN/ASITE/BSITE未被检查器识别，已在1.15.1支持明确别名、显示文件名并拒绝歧义，5项专项回归通过。实际exe构建/自检及GUI正式账号与模型序号3通过。候选D:/Yuzibei/local-data/live-p-20261109/candidate/Yuzi_CS2_AIDirector.exe，187673132字节，SHA256 8de079698d959a1a540d039ce33c1021162228b69b7f73b2a3b5c6c9ac71083f；公开信任配置保持。GitHub提交与核验随后补记，官网未公开发行/部署。
+现场发现MulNX自定义宏CTSPAWN/TSPAWN/ASITE/BSITE未被检查器识别，已在1.15.1支持明确别名、显示文件名并拒绝歧义，5项专项回归通过。实际exe构建/自检及GUI正式账号与模型序号3通过。候选D:/Yuzibei/local-data/live-p-20261109/candidate/Yuzi_CS2_AIDirector.exe，187673132字节，SHA256 8de079698d959a1a540d039ce33c1021162228b69b7f73b2a3b5c6c9ac71083f；公开信任配置保持。功能提交98982c083ad3e4775ff97c2f12b8b7c38b20e60f已推送GitHub YuGaN525/cs2-ai-director:main并核验远端一致，官网未公开发行/部署。
 
 当前两个Dust2运镜包的绑定均与旧程序配置不完全一致；游戏内Insert自动操作未打开面板，待用户手动确认实际加载包后继续真实运镜。当前候选保持停止，未把短测试计为4小时。P-01/03/10仅部分真实证据，运镜、完整G4及其余P项仍待完成。详情程序docs/opt/LIVE_P_ACCEPTANCE_2026-11-09.md；本地证据live-p-20261109，网站evidence/p10-readonly.json。原AGENTS用户修改保持，不混入提交。
 
