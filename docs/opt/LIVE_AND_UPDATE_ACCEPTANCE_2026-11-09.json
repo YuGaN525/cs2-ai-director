@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "date": "2026-11-09",
+  "version": "1.15.1",
+  "candidate_sha256": "8de079698d959a1a540d039ce33c1021162228b69b7f73b2a3b5c6c9ac71083f",
+  "live_demo": {
+    "start_local": "2026-11-09 08:34:15",
+    "end_local": "2026-11-09 08:39:08",
+    "user_confirmed_pack": "xinghuo_dust2",
+    "cuts_requested": 38,
+    "matched_new_gsi_shots": 36,
+    "feedback_window_seconds": 2,
+    "feedback_median_ms": 154.5,
+    "feedback_p95_ms": 215.0,
+    "p95_method": "sorted[floor(0.95*(n-1))]",
+    "unconfirmed": [
+      {
+        "time": "2026-11-09 08:38:29,046",
+        "slot": 6,
+        "confirmed_by_new_gsi_shot": false
+      },
+      {
+        "time": "2026-11-09 08:38:32,144",
+        "slot": 4,
+        "confirmed_by_new_gsi_shot": false
+      }
+    ],
+    "errors": 0,
+    "stopped": true,
+    "records": 88,
+    "batches": 47,
+    "server_readonly": {
+      "passed": true,
+      "checkedAtUtc": "2026-11-09T00:46:07.074754+00:00",
+      "batchCount": 47,
+      "rowCount": 88,
+      "acceptedRows": 88,
+      "duplicateRows": 0,
+      "naturalKeyDuplicates": 0
+    },
+    "g4_passed": false,
+    "four_hour_load_passed": false,
+    "observation_24h_requirement_removed": true
+  },
+  "update_transactions": [
+    {
+      "case": "upgrade",
+      "role": "director",
+      "phase": "complete",
+      "old_version": "1.15.0",
+      "new_version": "1.15.1",
+      "old_sha256": "c0365a08540e4ea56ba02eb12f778d0e8b2a0692225db6db52962cc6ec3e9ff8",
+      "new_sha256": "8de079698d959a1a540d039ce33c1021162228b69b7f73b2a3b5c6c9ac71083f",
+      "target_sha256": "8de079698d959a1a540d039ce33c1021162228b69b7f73b2a3b5c6c9ac71083f",
+      "data_unchanged": true,
+      "fault": null,
+      "entrypoint": null,
+      "transaction_verified": true,
+      "release_id": "c547aab4-4d97-4edd-b508-6c283d99cc36",
+      "sequence": 1,
+      "formal_key_id": "yuzibei-app-20261109",
+      "startup_ack": true,
+      "user_data_evidence_scope": "preseeded synthetic record hash only"
+    },
+    {
+      "case": "rollback",
+      "role": "director",
+      "phase": "rolled_back",
+      "old_version": "1.15.0",
+      "new_version": "1.15.1",
+      "old_sha256": "c0365a08540e4ea56ba02eb12f778d0e8b2a0692225db6db52962cc6ec3e9ff8",
+      "new_sha256": "8de079698d959a1a540d039ce33c1021162228b69b7f73b2a3b5c6c9ac71083f",
+      "target_sha256": "c0365a08540e4ea56ba02eb12f778d0e8b2a0692225db6db52962cc6ec3e9ff8",
+      "data_unchanged": true,
+      "fault": "cancel before startup confirmation",
+      "entrypoint": null,
+      "transaction_verified": true,
+      "release_id": "c547aab4-4d97-4edd-b508-6c283d99cc36",
+      "sequence": 1,
+      "formal_key_id": "yuzibei-app-20261109",
+      "startup_ack": false,
+      "user_data_evidence_scope": "preseeded synthetic record hash only"
+    },
+    {
+      "case": "trainer",
+      "role": "trainer",
+      "phase": "complete",
+      "old_version": "1.15.0",
+      "new_version": "1.15.1",
+      "old_sha256": "c0365a08540e4ea56ba02eb12f778d0e8b2a0692225db6db52962cc6ec3e9ff8",
+      "new_sha256": "8de079698d959a1a540d039ce33c1021162228b69b7f73b2a3b5c6c9ac71083f",
+      "target_sha256": "8de079698d959a1a540d039ce33c1021162228b69b7f73b2a3b5c6c9ac71083f",
+      "data_unchanged": true,
+      "fault": null,
+      "entrypoint": "actual GUI buttons",
+      "transaction_verified": true,
+      "release_id": "c547aab4-4d97-4edd-b508-6c283d99cc36",
+      "sequence": 1,
+      "formal_key_id": "yuzibei-app-20261109",
+      "startup_ack": true,
+      "user_data_evidence_scope": "preseeded synthetic record hash only"
+    }
+  ],
+  "withdrawal": {
+    "checked_at": 1794185853.2138839,
+    "ready_release_id": "c547aab4-4d97-4edd-b508-6c283d99cc36",
+    "rejected": true,
+    "error": "UpdateProtocolError",
+    "reason": "update_revalidation_unavailable",
+    "target_unchanged": true,
+    "no_new_job": true
+  },
+  "evidence_sha256": {
+    "D:\\Yuzibei\\local-data\\live-p-20261109\\session2-redacted.json": "735f3eee26c6aa430d0ce45b7956a9cee96f53d4e240ed223cb27359ebf23f82",
+    "D:\\Yuzibei\\local-data\\wupd-feem-20261109\\evidence\\p10-session2-readonly.json": "7ebfb2f3081a685ee9c969d980ce37041bd9020bbc9f616ce7984d77d0c2e40d"
+  }
+}

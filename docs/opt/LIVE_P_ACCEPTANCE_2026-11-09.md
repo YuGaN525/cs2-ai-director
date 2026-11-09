@@ -41,8 +41,18 @@
 
 实际1.15.1 GUI已启动，正式账号、168小时有效许可和模型序号3正常显示。当前保持停止，等待运镜包确认。观察工具以隔离模拟数据短测2秒，21个GSI包后正常退出，observation_seconds_required=0；这只验证默认已取消24小时阶段，不属于真实游戏或4小时负载证据。
 
+### 1.15.1第二轮：08:34:15～08:39:08（北京时间）
+
+用户确认游戏中加载`xinghuo_dust2`。只通过程序设置将CT出生点改为Alt+M双击、T出生点改为Alt+N双击并保存；A/B保持Alt+1/Alt+6双击。只读检查四项与该包匹配，未修改MulNX文件；配置匹配不等于实际运镜通过。
+
+- 连续运行约293秒，界面观察到1179个真实GSI包、最近0.2秒；仲裁off，正式账号与模型序号3有效。正常停止，停止后无新增导播输入，运行ERROR为0。
+- 38次切人请求中36次与新GSI视角时间线在2秒窗口内对齐，已匹配样本反馈中位154.5ms、P95为215ms。08:38:29.046的slot6及08:38:32.144的slot4未在2秒内确认，均处于出生点运镜结束附近；保留为待定位问题，不将38次全部记为成功。
+- A包点请求后看到A点广角画面；CT/T请求后尚未取得充分画面证据，B未触发。游戏内Insert自动操作未能打开面板，已请用户手动保持打开以检查启用状态。CT/T包时长约18.55/26.92秒、A约8.5秒，程序让镜窗口与实际宏时长的关系需要进一步验证。
+- 第30/31/32回合指标分别为击杀覆盖33%/0%/50%、交火前40%/80%/40%、镜头均长5.33/3.77/4.91秒、16.4/17.7/12.2次切换每分钟；首尾为不完整回合。G4未通过，不以短片段或请求数代替质量验收。
+- 新增88条真实样本、47批次，客户端全部confirmed且attempts=1。网站08:46:07生产只读核对47/47批次唯一定位，acceptedRows=88、duplicateRows=0，两类自然键无重复，回执身份、计数、样本摘要和结果批次一致。未重放上传、修改资格或写生产；断网/重启补传仍待验收。
+
 ### 证据与剩余边界
 
-本机脱敏证据位于`D:/Yuzibei/local-data/live-p-20261109/`：`session-redacted.json`、`readiness-redacted.json`、`obs-acceptance-redacted.json`、`self-check.json`。网站只读证据为`D:/Yuzibei/local-data/wupd-feem-20261109/evidence/p10-readonly.json`。原始账号信息、令牌和私有配置不纳入Git。
+本机脱敏证据位于`D:/Yuzibei/local-data/live-p-20261109/`：首轮`session-redacted.json`、第二轮`session2-redacted.json`、`readiness-redacted.json`、`obs-acceptance-redacted.json`、`self-check.json`。网站只读证据为`D:/Yuzibei/local-data/wupd-feem-20261109/evidence/p10-readonly.json`和`p10-session2-readonly.json`。原始账号信息、令牌和私有配置不纳入Git。
 
 P-01/P-03/P-10仅取得上述部分真实证据；P-02实际运镜、完整G4、4小时负载及其余P项目仍未通过。24小时观察已删除，与自动更新24小时检查周期无关。
