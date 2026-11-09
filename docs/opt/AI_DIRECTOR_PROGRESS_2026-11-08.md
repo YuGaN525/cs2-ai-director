@@ -1,5 +1,13 @@
 # AI导播网页与程序统一进度
 
+## 2026-11-09 真实训练器生产上传验收完成
+
+用户恢复窗口后，实际发行1.15.3内部训练器于11:47:15向正式www.yuzibei.cn成功提交已授权的真实candidate.json.gz（1892717字节、9dc84bd0…）。requestId 58314ee5-a687-48db-99d6-730b853dbfb7，modelId eb8b22a5-8601-413c-84b5-20fc94045fef，existingModel=true、reviewed；实际GUI成功提示及持久回执一致。随后两次GET完全一致，没有再次POST。
+
+网页侧生产只读审计通过：唯一提交1条、模型总数仍2，原模型状态、发布头和灰度保持。两处真实上传验收均完成，关闭此前生产提交及恢复窗口待验项。程序证据见RELEASE_1.15.3.md/JSON，网站证据见web-remaining-20261109/training-submission-production-readonly.json。回执实际目录为%APPDATA%/CS2AIDirector/identity/training-submissions/，指南已修正。
+
+此次仅补验收与文档，1.15.3 EXE和签名不变；程序未发起付费仲裁，网站平台配置独立维护。G4、4小时负载、物理DPI与最终A/B自动运镜/宏中人工接管等仍待验，不将上传通过扩大为全部P项目完成。
+
 ## 2026-11-09 网站正式发布与每日额度
 
 网站产品777a1e4b30ecd08975e1fe4890dc1d50688cbc3c已双仓推送并部署，API/nginx/ChatBot镜像web-remaining-20261109。有效资格账号默认北京时间每日0.50元，不累计、跨日保留未知预留；100009原无限额度保持，平台供应商仍空。后台11个导播模块统一至“AI导播”，独立权限不合并；账号设备页可直接进入逐账号预算配置。

@@ -46,3 +46,13 @@ C盘中文空格路径和独立APPDATA内，实际1.15.2 GUI完成检查、下�
 网页侧生产只读补验确认session4=17批34条、session6=8批15条、session7=10批10条，全部confirmed、回执及样本身份匹配、自然键重复0，未重放上传。详情已补入LIVE_AND_UPDATE_ACCEPTANCE_2026-11-09.json。
 
 正式模型提交API已就绪，用户已允许现有candidate.json.gz提交；实际训练器被最小化，UI输入保护阻止恢复，当前等待用户手动恢复窗口继续GUI上传。尚无生产模型提交回执，不将本机成功或API上线代替实际提交。
+
+## 真实训练器生产上传验收完成（2026-11-09）
+
+用户恢复窗口后，实际发行1.15.3内部训练器于北京时间11:47:15完成既有真实训练结果向正式www.yuzibei.cn提交。文件1,892,717字节、SHA256 `9dc84bd00578763388a160d890765991955cd60f3b354359a8f42b451368b16d`；GUI显示服务器已核对已有模型且原状态保持。requestId `58314ee5-a687-48db-99d6-730b853dbfb7`，modelId `eb8b22a5-8601-413c-84b5-20fc94045fef`，existingModel=true，status=reviewed。
+
+同设备会话随后仅执行两次GET，回执与GUI持久记录逐字段一致，本地记录未变，未再次POST。首轮只读核验碰到运行中程序的短暂设备会话锁，重试后通过；没有改锁或刷新登录来规避。实际回执目录为`%APPDATA%/CS2AIDirector/identity/training-submissions/`，指南已修正。
+
+网页侧生产SELECT审计通过：该requestId仅1条提交，模型总数仍2、原模型状态和发布头/灰度与基线一致；没有重复模型、审核或发布。服务器报告`web-remaining-20261109/training-submission-production-readonly.json`与程序`release-1.15.3/website-submission-production.json`摘要写入机器验收记录。
+
+本机真实隔离API/PG与正式生产GUI两处上传验收均完成，关闭此前窗口恢复/生产提交待验项。应用版本、EXE及签名不变，本次只补充验收和使用说明；本轮没有发起付费仲裁。G4、4小时负载、物理DPI及最终A/B自动运镜/宏中人工接管等实机门槛仍保持待验。

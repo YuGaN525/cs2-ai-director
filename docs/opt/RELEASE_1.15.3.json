@@ -46,7 +46,46 @@
     "internal_frozen_director_entry": true
   },
   "website_download_scope": "director-only",
-  "production_submission": "api_deployed_pending_actual_frozen_gui_upload",
+  "production_submission": {
+    "scope": "Actual frozen 1.15.3 internal trainer GUI production upload, followed by two GET-only receipt checks using the same device session",
+    "passed": true,
+    "origin": "https://www.yuzibei.cn",
+    "receipt": {
+      "requestId": "58314ee5-a687-48db-99d6-730b853dbfb7",
+      "modelId": "eb8b22a5-8601-413c-84b5-20fc94045fef",
+      "artifactSha256": "9dc84bd00578763388a160d890765991955cd60f3b354359a8f42b451368b16d",
+      "artifactBytes": 1892717,
+      "status": "reviewed",
+      "existingModel": true,
+      "submittedAt": "2026-11-09T03:47:15.9518784Z"
+    },
+    "repeat_gets": 2,
+    "repeat_receipts_identical": true,
+    "local_state_unchanged": true,
+    "verification_post_count": 0,
+    "checked_at": 1794196259.1773474,
+    "state_sha256": "3375c40f0d53c42261be8e1365d3274c74d3ee1aaecd53a36a09fa58b35d2743",
+    "model_review_or_publish_requested": false,
+    "server_readonly_audit": {
+      "passed": true,
+      "scope": "Production SELECT only; no submit/review/publish",
+      "receipt": {
+        "requestId": "58314ee5-a687-48db-99d6-730b853dbfb7",
+        "modelId": "eb8b22a5-8601-413c-84b5-20fc94045fef",
+        "artifactSha256": "9dc84bd00578763388a160d890765991955cd60f3b354359a8f42b451368b16d",
+        "artifactBytes": 1892717,
+        "status": "reviewed",
+        "existingModel": true,
+        "submittedAt": "2026-11-09T03:47:15.9518784Z"
+      },
+      "uniqueSubmissionCount": 1,
+      "modelCount": 2,
+      "modelStatusUnchanged": true,
+      "modelHeadsAndRolloutUnchanged": true
+    },
+    "server_evidence_sha256": "d06c4930af9af1c369a77b83c253afd8d8dc5dbf90f8aee14a2e1371ebbbf6ff",
+    "frozen_gui_success_message_observed": true
+  },
   "real_game": {
     "inherited_evidence_version": "1.15.2",
     "g4_passed": false,
@@ -89,7 +128,9 @@
     "website-submission-synthetic.json": "e6c169e751ce70bbc1cac2dcd348a9769a62a8d203838f9cc5d70241c260f512",
     "website-submission-isolated.json": "a05aee80782c38a6fe833c329a63cd40a349021d39fedc06dc915f17ddf689ad",
     "production-update-install.json": "6390718876fe5107a23143935442e83ad26b6aaca3ebd90ce3e6777a74739af3",
-    "production-update-metadata.json": "ab0ad3996190f11e9a38b4deafbb5a3488ede756d7d5dfebebf7ccceee8c951f"
+    "production-update-metadata.json": "ab0ad3996190f11e9a38b4deafbb5a3488ede756d7d5dfebebf7ccceee8c951f",
+    "website-submission-production.json": "041f8eedef24f0b55e59340a5c5f6c88b678ca1b0fcc74de9be2a9b31ee5c2af",
+    "D:\\Yuzibei\\local-data\\web-remaining-20261109\\training-submission-production-readonly.json": "d06c4930af9af1c369a77b83c253afd8d8dc5dbf90f8aee14a2e1371ebbbf6ff"
   },
   "production_update": {
     "scope": "Production HTTPS origin and pinned signing key; actual frozen GUI download/exit/install/restart; isolated C: installation and APPDATA, no account",
