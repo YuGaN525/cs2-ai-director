@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "version": "1.15.3",
+  "source_commit": "9485265c369ea9ee6a7c86b66642ab6cd331a959",
+  "github": {
+    "url": "https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.15.3",
+    "published_at": "2026-11-09T02:42:01Z",
+    "draft": false,
+    "prerelease": false,
+    "repository_private": true,
+    "tag_matches_source": true
+  },
+  "artifacts": [
+    {
+      "name": "Yuzi_CS2_AIDirector.exe",
+      "bytes": 187692999,
+      "sha256": "6d5fdc281974f4c800c5dace3e646454026fa2d0990029dc04ac181d51d19ee4",
+      "github_digest_matches": true,
+      "self_check_exit": 0
+    },
+    {
+      "name": "Yuzi_CS2_AIDecisionTrainer.exe",
+      "bytes": 187692999,
+      "sha256": "6d5fdc281974f4c800c5dace3e646454026fa2d0990029dc04ac181d51d19ee4",
+      "github_digest_matches": true,
+      "self_check_exit": 0
+    }
+  ],
+  "regression": {
+    "total": 415,
+    "passed": 413,
+    "skipped": 2,
+    "seconds": 92.389
+  },
+  "gui": {
+    "matrix_cases": 24,
+    "callback_errors": 0,
+    "font_extremes": [
+      9,
+      14
+    ],
+    "light_and_dark_visually_checked": true,
+    "physical_dpi_matrix_passed": false,
+    "internal_frozen_trainer_default_entry": true,
+    "formal_model_sequence": 3
+  },
+  "website_download_scope": "director-only",
+  "production_submission": "pending_website_deployment",
+  "real_game": {
+    "inherited_evidence_version": "1.15.2",
+    "g4_passed": false,
+    "four_hour_load_passed": false,
+    "observation_24h_removed": true
+  },
+  "isolated_synthetic_submission": {
+    "scope": "localhost isolated website API/PostgreSQL; synthetic actor and newly generated synthetic model only",
+    "passed": true,
+    "receipt": {
+      "requestId": "81347f89-46f7-4ed5-a2e4-896982e207f7",
+      "modelId": "ee38970f-2330-431f-9525-6f2b91e02da8",
+      "artifactSha256": "b9fe4da82b0ec333f084f673bafedb1d8414699477276d44b2126aa3563ef8a1",
+      "artifactBytes": 181,
+      "status": "candidate",
+      "existingModel": false,
+      "submittedAt": "2026-11-09T02:37:11.4278029Z"
+    },
+    "repeat_after_process_restart": true
+  },
+  "isolated_real_model_submission": {
+    "scope": "real isolated website API and PostgreSQL; synthetic device actor; existing real local trained artifact",
+    "passed": true,
+    "receipt": {
+      "requestId": "a0ecacba-57fd-4b6c-9515-6181c4f0832c",
+      "modelId": "dda7b328-eafb-4829-b6a4-ee9aee02aa64",
+      "artifactSha256": "9dc84bd00578763388a160d890765991955cd60f3b354359a8f42b451368b16d",
+      "artifactBytes": 1892717,
+      "status": "candidate",
+      "existingModel": false,
+      "submittedAt": "2026-11-09T02:38:56.3334296Z"
+    },
+    "repeat_after_process_restart": true
+  },
+  "evidence_sha256": {
+    "regression.log": "1ae0db9ea307e890286860fea120da4b2cfc0b08920f0c7fc663f53ff983b864",
+    "ui-matrix-final.json": "2dbe99f09f8f4d5eeb95fefb1454d9f89d5d8492cbd4c8477ae2d4ea78217ec8",
+    "director-self-check.json": "2e0df6463de86a35e1df705d826448812017864e35d4fc7f12efca07c5dcd805",
+    "trainer-self-check.json": "2e0df6463de86a35e1df705d826448812017864e35d4fc7f12efca07c5dcd805",
+    "website-submission-synthetic.json": "e6c169e751ce70bbc1cac2dcd348a9769a62a8d203838f9cc5d70241c260f512",
+    "website-submission-isolated.json": "a05aee80782c38a6fe833c329a63cd40a349021d39fedc06dc915f17ddf689ad"
+  }
+}

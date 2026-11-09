@@ -23,7 +23,15 @@
 
 证据目录 `D:/Yuzibei/local-data/release-1.15.3/`：`regression.log`、`ui-matrix-final.json`、`ui-matrix-final-errors.log`及构建日志。界面调整中发现的ttk继承判断和ScrolledText容器打包问题已修复后重新通过最终矩阵；没有删改历史失败日志以伪装首次通过。
 
-## 保留边界
+## 发行及隔离联合验收补记
+
+GitHub已于2026-11-09 10:42:01（北京时间）正式发布 [v1.15.3](https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.15.3)，非草稿、非预发布；私有仓库不改变可见范围，tag指向 `9485265c369ea9ee6a7c86b66642ab6cd331a959`。两个EXE及SHA256SUMS附件状态uploaded，服务端digest/size与本地逐项一致。实际内部训练器EXE无参数启动到1.15.3工作台，正式登录有效、模型发布序号3。
+
+网页真实本机API/PG（127.0.0.1:5147、合成隔离设备）已完成程序客户端实际提交：纯合成181字节模型与已有真实1,892,717字节模型均新登记candidate；各自独立进程重试返回同一不可变回执，没有重复登记或审核发布。真实模型requestId `a0ecacba-57fd-4b6c-9515-6181c4f0832c`、modelId `dda7b328-eafb-4829-b6a4-ee9aee02aa64`。此实际模型提交在用户明确允许两处上传验收后执行；前一次自动审批拦截未产生上传。生产同模型应保持原状态，等待网站部署后继续实际GUI验收。
+
+机器摘要见同目录 `RELEASE_1.15.3.json`；本机 `website-submission-synthetic.json` 与 `website-submission-isolated.json` 保留独立证据。联验使用合成设备适配器指向loopback，不修改产品固定HTTPS来源或正式账号配置。
+
+## 仍待验收
 
 1.15.2实机修复基线为 `06a7e58f469a5d0a811eb7ffae13301b6dfb7cd4`，CT/T自动运镜、T交还POV和同GUI重启收GSI已有实际画面证据。1.15.3不重复把这些记为新游戏场次。最终包A/B自动运镜、宏播放中的人工接管、完整G4、4小时负载和其它P项目仍按实机记录继续；24小时观察已按用户要求删除。既有UPD正式事务仍为1.15.0→1.15.1。
 
