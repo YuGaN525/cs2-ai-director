@@ -46,7 +46,7 @@ class TrainerApp:
         from desktop_tasks import Tasks
         self.tasks = Tasks(self.root)
         self._closing = False
-        self.root.title(f"{APP_TITLE} v{VERSION} · {APP_SUBTITLE}")
+        self.root.title(f"Yuzi CS2 AI Director · 训练工作台 v{VERSION}")
         self.root.geometry("940x920")
         from desktop_ui import fit_window
         fit_window(self.root, 940, 850)
@@ -101,9 +101,9 @@ class TrainerApp:
         for widget in self._developer_widgets:
             widget.grid() if prefs['developer_mode'] else widget.grid_remove()
         if prefs['developer_mode']:
-            self.btn_calibrate.pack(side='left')
+            self._cal_row.grid()
         else:
-            self.btn_calibrate.pack_forget()
+            self._cal_row.grid_remove()
 
     def _on_tk_exception(self, exc: Any, val: Any, tb: Any) -> None:
         try:
@@ -135,156 +135,301 @@ class TrainerApp:
             pass
 
     def _build(self) -> None:
-        header = tk.Frame(self.root, bg=UI_HEADER, height=92)
+        colors = self._colors
+        header = tk.Frame(self.root, bg=colors['header'], height=100)
+        header._theme_surface = 'header'
         header.pack(fill="x")
         header.pack_propagate(False)
+        header_inner = tk.Frame(header, bg=colors['header'])
+        header_inner._theme_surface = 'header'
+        header_inner.pack(fill="both", expand=True, padx=22, pady=(13, 11))
         try:
             self._logo_img = tk.PhotoImage(file=str(asset_path("yuzi_logo_76.png")))
-            tk.Label(header, image=self._logo_img, bg=UI_HEADER).pack(
-                side="left", padx=(18, 14), pady=8)
+            tk.Label(header_inner, image=self._logo_img,
+                     bg=colors['header']).pack(side="left", padx=(0, 16))
         except Exception:
             self._logo_img = None
-        title_box = tk.Frame(header, bg=UI_HEADER)
+
+        title_box = tk.Frame(header_inner, bg=colors['header'])
+        title_box._theme_surface = 'header'
         title_box.pack(side="left", fill="y")
-        tk.Label(title_box, text=APP_TITLE, bg=UI_HEADER, fg="#f0c46a",
-                 font=("Microsoft YaHei UI", 17, "bold")).pack(
-            side="top", anchor="w", pady=(12, 0))
-        tk.Label(title_box, text=f"{APP_SUBTITLE}  ·  v{VERSION}",
-                 bg=UI_HEADER, fg="#b9b2a5",
+        tk.Label(title_box, text="Yuzi CS2 AI Director",
+                 bg=colors['header'], fg=colors['accent'],
+                 font=("Microsoft YaHei UI", 21, "bold")).pack(
+            side="top", anchor="w", pady=(1, 0))
+        tk.Label(title_box, text=f"训练工作台  ·  {APP_SUBTITLE}  ·  v{VERSION}",
+                 bg=colors['header'], fg=colors['muted'],
                  font=("Microsoft YaHei UI", 9)).pack(side="top", anchor="w", pady=(2, 0))
-        tk.Label(header, text="YUZI CUP  ·  TRAINER", bg=UI_HEADER,
-                 fg="#7f7769", font=("Segoe UI", 9, "bold")).pack(
-            side="right", anchor="e", padx=(0, 18))
+
+        mark = tk.Frame(header_inner, bg=colors['header'])
+        mark._theme_surface = 'header'
+        mark.pack(side="right", anchor="e", padx=(0, 2))
+        tk.Label(mark, text="YUZI CUP", bg=colors['header'],
+                 fg=colors['accent'], font=("Segoe UI", 9, "bold")).pack(anchor="e")
+        tk.Label(mark, text="TRAINER CONSOLE", bg=colors['header'],
+                 fg=colors['muted'], font=("Segoe UI", 8)).pack(anchor="e", pady=(2, 0))
+        rule = tk.Frame(header, bg=colors['accent'], height=2, bd=0, highlightthickness=0)
+        rule._theme_surface = 'accent'
+        rule.place(relx=0, rely=1.0, relwidth=1.0, anchor="sw")
 
         from account_ui import mount_account
-        mount_account(self.root,self.account)
+        mount_account(self.root, self.account)
         from desktop_ui import ScrollableFrame, settings as open_settings
-        bar = ttk.Frame(self.root)
-        bar.pack(fill="x")
-        ttk.Button(bar, text="设置中心", command=lambda: open_settings(self)).pack(side="right", padx=10)
+
+        top = ttk.Frame(self.root)
+        top.pack(fill="x", padx=22, pady=(8, 0))
+        top.columnconfigure(0, weight=1)
+        title_col = ttk.Frame(top)
+        title_col.grid(row=0, column=0, sticky="w")
+        ttk.Label(title_col, text="训练工作台", style='H1.TLabel').pack(anchor="w")
+        ttk.Label(title_col, text="准备数据、训练候选、校准并提交审核；所有产物先保存在本机。",
+                  style='Caption.TLabel').pack(anchor="w", pady=(2, 0))
+        ttk.Button(top, text="设置中心", style='Link.TButton',
+                   command=lambda: open_settings(self)).grid(row=0, column=1, sticky="e")
+
         scroll = ScrollableFrame(self.root)
-        scroll.pack(fill="both", expand=True)
-        outer = scroll.inner
-        outer.columnconfigure(1, weight=1)
+        scroll.pack(fill="both", expand=True, padx=12, pady=(10, 10))
+        page = scroll.inner
+        page.columnconfigure(0, weight=3)
+        page.columnconfigure(1, weight=2)
 
-        ttk.Label(outer, text="决策 CSV").grid(row=0, column=0, sticky="w")
-        ttk.Entry(outer, textvariable=self.var_csv).grid(
-            row=0, column=1, sticky="ew", padx=6)
-        ttk.Button(outer, text="浏览…", width=8, command=self._browse_csv).grid(
-            row=0, column=2)
+        def _card(parent):
+            shell = tk.Frame(parent, bg=colors['card'],
+                             highlightbackground=colors['border'],
+                             highlightthickness=1, bd=0)
+            shell._theme_surface = 'card'
+            inner = ttk.Frame(shell)
+            inner.pack(fill="both", expand=True, padx=16, pady=10)
+            return shell, inner
 
-        ttk.Label(outer, text="输出目录").grid(row=1, column=0, sticky="w", pady=(6, 0))
-        ttk.Entry(outer, textvariable=self.var_out_dir).grid(
-            row=1, column=1, sticky="ew", padx=6, pady=(6, 0))
-        ttk.Button(outer, text="浏览…", width=8, command=self._browse_out).grid(
-            row=1, column=2, pady=(6, 0))
+        def _caption(parent, text, pady=(4, 0)):
+            label = ttk.Label(parent, text=text, style='Caption.TLabel',
+                              justify="left", wraplength=460)
+            label._own_wrap = True
+            label.pack(anchor="w", pady=pady)
+            parent.bind(
+                '<Configure>',
+                lambda e, w=label: w.configure(wraplength=max(180, e.width - 28)),
+                add='+')
+            return label
 
-        params = ttk.LabelFrame(outer, text=" 训练参数 ", padding=8)
-        params.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(10, 6))
+        def _section(parent, number, title, note):
+            head = ttk.Frame(parent)
+            head.pack(fill="x")
+            ttk.Label(head, text=number, style='StepNum.TLabel').pack(side="left", anchor="n")
+            text_col = ttk.Frame(head)
+            text_col.pack(side="left", fill="x", expand=True, padx=(10, 0))
+            ttk.Label(text_col, text=title, style='StepTitle.TLabel').pack(anchor="w")
+            note_label = ttk.Label(text_col, text=note, style='Caption.TLabel',
+                                   justify="left", wraplength=420)
+            note_label._own_wrap = True
+            note_label.pack(anchor="w", pady=(2, 0))
+            parent.bind(
+                '<Configure>',
+                lambda e, w=note_label: w.configure(wraplength=max(180, e.width - 68)),
+                add='+')
+
+        left = ttk.Frame(page)
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 14))
+        left.columnconfigure(0, weight=1)
+        right = ttk.Frame(page)
+        right.grid(row=0, column=1, sticky="nsew")
+
+        data_shell, data = _card(left)
+        data_shell.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+        _section(data, "01", "训练数据", "读取导播在线决策日志，训练候选模型。")
+        form = ttk.Frame(data)
+        form.pack(fill="x", pady=(10, 0))
+        form.columnconfigure(1, weight=1)
+        ttk.Label(form, text="决策 CSV", style='Muted.TLabel').grid(
+            row=0, column=0, sticky="w", pady=(0, 6))
+        ttk.Entry(form, textvariable=self.var_csv).grid(
+            row=0, column=1, sticky="ew", padx=(8, 6), pady=(0, 6))
+        ttk.Button(form, text="浏览…", width=7, command=self._browse_csv).grid(
+            row=0, column=2, pady=(0, 6))
+        ttk.Label(form, text="输出目录", style='Muted.TLabel').grid(
+            row=1, column=0, sticky="w")
+        ttk.Entry(form, textvariable=self.var_out_dir).grid(
+            row=1, column=1, sticky="ew", padx=(8, 6))
+        ttk.Button(form, text="浏览…", width=7, command=self._browse_out).grid(
+            row=1, column=2)
+        _caption(data, "模型产物写入输出目录；正式导播只使用服务端批准并校验的模型。")
+
+        demo_shell, demo = _card(left)
+        demo_shell.grid(row=1, column=0, sticky="ew")
+        _section(demo, "02", "样本来源", "可选：从 .dem 解析 live 采样，生成训练 CSV。")
+        demo_body = ttk.Frame(demo)
+        demo_body.pack(fill="x")
+        demo_body.columnconfigure(0, weight=1)
+        ttk.Entry(demo_body, textvariable=self.var_demos).grid(
+            row=0, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        ttk.Button(demo_body, text="选文件", width=7, command=self._browse_demos).grid(
+            row=0, column=3, padx=(6, 0), pady=(10, 0))
+        ttk.Button(demo_body, text="选目录", width=7, command=self._browse_demo_dir).grid(
+            row=0, column=4, padx=(6, 0), pady=(10, 0))
+        ticks = ttk.Frame(demo_body)
+        ticks.grid(row=1, column=0, columnspan=5, sticky="w", pady=(8, 0))
+        ttk.Label(ticks, text="预测窗口 tick", style='Muted.TLabel').pack(side="left")
+        ttk.Entry(ticks, textvariable=self.var_horizon, width=8).pack(side="left", padx=(6, 14))
+        ttk.Label(ticks, text="采样间隔 tick", style='Muted.TLabel').pack(side="left")
+        ttk.Entry(ticks, textvariable=self.var_step, width=8).pack(side="left", padx=(6, 14))
+        self.btn_demo = ttk.Button(ticks, text="解析 demo 并训练",
+                                   command=self._start_demo)
+        self.btn_demo.pack(side="left")
+        _caption(demo, "live 阶段定时采样；按 64 tick 估算：默认每 2 秒采样，预测未来 3 秒伤害/击杀。")
+
+        params_shell, params = _card(left)
+        params_shell.grid(row=2, column=0, sticky="ew", pady=(0, 12))
+        _section(params, "03", "训练参数", "控制样本门槛、树的规模与验证集比例。")
+        param_grid = ttk.Frame(params)
+        param_grid.pack(fill="x", pady=(10, 0))
         for i, (label, var, width) in enumerate((
             ("最少样本", self.var_min, 8),
             ("树数量", self.var_trees, 8),
             ("最大深度", self.var_depth, 8),
             ("验证集比例", self.var_test, 8),
         )):
-            ttk.Label(params, text=label).grid(row=0, column=i * 2, sticky="w",
-                                               padx=(0 if i == 0 else 12, 4))
-            ttk.Entry(params, textvariable=var, width=width).grid(
-                row=0, column=i * 2 + 1, sticky="w")
+            cell = ttk.Frame(param_grid)
+            cell.grid(row=i // 2, column=i % 2, sticky="w", padx=(0, 18), pady=(0, 8))
+            ttk.Label(cell, text=label, style='Muted.TLabel').pack(anchor="w")
+            ttk.Entry(cell, textvariable=var, width=width).pack(anchor="w", pady=(2, 0))
 
-        ai_box = ttk.LabelFrame(
-            outer, text=" AI 辅助训练（DeepSeek 顾问 + 本地验证） ", padding=8)
-        ai_box.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(2, 6))
-        ai_box.columnconfigure(0, weight=1)
+        ai_shell, ai_box = _card(left)
+        ai_shell.grid(row=3, column=0, sticky="ew")
+        _section(ai_box, "04", "AI 辅助", "DeepSeek 只接收聚合统计；候选仍须本地验证通过。")
+        ai_row = ttk.Frame(ai_box)
+        ai_row.pack(fill="x", pady=(10, 0))
         self.chk_ai = tk.Checkbutton(
-            ai_box, text="启用 DeepSeek 顾问（读取导播 config.json 的 Key）",
-            variable=self.var_ai, bg=UI_CARD, fg=UI_INK,
-            activebackground=UI_CARD, activeforeground=UI_INK,
-            selectcolor="#ffffff", highlightthickness=0, bd=0, anchor="w")
-        self.chk_ai.grid(row=0, column=0, sticky="w")
-        self.btn_ai = ttk.Button(ai_box, text="AI 辅助训练（CSV）",
-                                 command=self._start_ai, style="Accent.TButton")
-        self.btn_ai.grid(row=0, column=1, sticky="e", padx=(8, 0))
-        ttk.Label(ai_box, textvariable=self.var_ai_status,
-                  foreground=UI_GOLD_DARK).grid(
-            row=1, column=0, columnspan=2, sticky="w", pady=(4, 2))
-        ttk.Label(
-            ai_box,
-            text="只发送聚合统计（样本/正负比/指标/特征重要性），不含 SteamID/昵称；"
-                 "AI 候选需在本地验证集上超过基线且体积不超标才采用，否则保留基线；"
-                 "无 Key 或调用失败自动回退本地扩展搜索。",
-            foreground="#555555", wraplength=820, justify="left",
-        ).grid(row=2, column=0, columnspan=2, sticky="w")
+            ai_row, text="启用 DeepSeek 顾问",
+            variable=self.var_ai, bg=colors['card'], fg=colors['text'],
+            activebackground=colors['card'], activeforeground=colors['text'],
+            selectcolor=colors['field'], highlightthickness=0, bd=0, anchor="w")
+        self.chk_ai.pack(side="left", anchor="w")
+        self.btn_ai = ttk.Button(ai_row, text="AI 辅助训练", style="Accent.TButton",
+                                 command=self._start_ai)
+        self.btn_ai.pack(side="right")
+        ttk.Label(ai_box, textvariable=self.var_ai_status, style='Accent.TLabel',
+                  justify="left", wraplength=420).pack(anchor="w", pady=(6, 2))
+        _caption(ai_box, "只发送样本量、正负比、指标与特征重要性，不含 SteamID 或昵称；无 Key 时回退本地扩展搜索。")
 
-        self._developer_widgets = [params, ai_box]
-        demo = ttk.LabelFrame(outer, text=" 从 .dem 导入（可选） ", padding=8)
-        demo.grid(row=4, column=0, columnspan=3, sticky="ew", pady=(4, 6))
-        demo.columnconfigure(1, weight=1)
-        ttk.Label(demo, text="demo 文件/目录").grid(row=0, column=0, sticky="w")
-        ttk.Entry(demo, textvariable=self.var_demos).grid(
-            row=0, column=1, sticky="ew", padx=6)
-        ttk.Button(demo, text="选文件", width=8, command=self._browse_demos).grid(
-            row=0, column=2)
-        ttk.Button(demo, text="选目录", width=8, command=self._browse_demo_dir).grid(
-            row=0, column=3, padx=(4, 0))
-        row = ttk.Frame(demo)
-        row.grid(row=1, column=0, columnspan=4, sticky="w", pady=(6, 0))
-        ttk.Label(row, text="预测窗口 tick").pack(side="left")
-        ttk.Entry(row, textvariable=self.var_horizon, width=8).pack(side="left", padx=4)
-        ttk.Label(row, text="采样间隔 tick").pack(side="left")
-        ttk.Entry(row, textvariable=self.var_step, width=8).pack(side="left", padx=4)
-        self.btn_demo = ttk.Button(row, text="解析 demo 并训练",
-                                   command=self._start_demo)
-        self.btn_demo.pack(side="left", padx=8)
-        ttk.Label(demo, text="live 阶段定时采样；按 64tick 估算：默认每 2 秒采样，预测未来 3 秒伤害/击杀。",
-                  foreground="#777777").grid(row=2, column=0, columnspan=4, sticky="w", pady=(4, 0))
-
-        actions = ttk.Frame(outer)
-        actions.grid(row=5, column=0, columnspan=3, sticky="ew", pady=(4, 6))
-        self.btn_train = ttk.Button(actions, text="用 CSV 开始训练",
+        action_shell, action = _card(right)
+        action_shell.pack(fill="x", pady=(0, 12))
+        action.columnconfigure(0, weight=1)
+        ttk.Label(action, text="训练操作", style='H3.TLabel').grid(row=0, column=0, sticky="w")
+        action_note = ttk.Label(
+            action, text="训练会写入本地候选模型；提交后仍需网站审核与发布。",
+            style='Caption.TLabel', justify="left", wraplength=300)
+        action_note._own_wrap = True
+        action_note.grid(row=1, column=0, sticky="w", pady=(2, 0))
+        action.bind(
+            '<Configure>',
+            lambda e, w=action_note: w.configure(wraplength=max(180, e.width - 32)),
+            add='+')
+        self.btn_train = ttk.Button(action, text="用 CSV 开始训练",
                                     command=self._start, style="Accent.TButton")
-        self.btn_train.pack(side="left")
-        ttk.Button(actions, text="打开输出目录", command=self._open_out).pack(
-            side="left", padx=8)
+        self.btn_train.grid(row=2, column=0, sticky="ew", pady=(10, 0))
+        secondary = ttk.Frame(action)
+        secondary.grid(row=3, column=0, sticky="w", pady=(6, 0))
+        ttk.Button(secondary, text="打开输出目录",
+                   command=self._open_out).pack(side="left")
+        ttk.Button(secondary, text="训练数据状态",
+                   command=lambda: __import__("desktop_ui").settings(self)).pack(
+            side="left", padx=(6, 0))
+        self._cal_row = ttk.Frame(action)
+        self._cal_row.grid(row=4, column=0, sticky="w", pady=(6, 0))
         self.btn_calibrate = ttk.Button(
-            actions, text="校准线上模型", command=self._calibrate)
+            self._cal_row, text="校准线上模型", command=self._calibrate)
         self.btn_calibrate.pack(side="left")
-        ttk.Button(actions, text="训练数据状态", command=lambda: __import__("desktop_ui").settings(self)).pack(side="left", padx=4)
-        submission = ttk.LabelFrame(outer, text=" 训练结果提交 ", padding=10)
-        submission.grid(row=6,column=0,columnspan=3,sticky='ew',pady=(4,8))
-        submission.columnconfigure(1,weight=1)
-        self.btn_submit = ttk.Button(submission,text='上传训练结果…',command=self._submit_result)
-        self.btn_submit.grid(row=0,column=0,sticky='nw',padx=(0,12))
-        self.submission_status = ttk.Label(submission,style='Muted.TLabel',justify='left',wraplength=620,
+
+        status_panel = tk.Frame(action, bg=colors['field'],
+                                highlightbackground=colors['border'],
+                                highlightthickness=1, bd=0)
+        status_panel._theme_surface = 'field'
+        status_panel.grid(row=5, column=0, sticky="ew", pady=(10, 0))
+        self.progress = ttk.Progressbar(status_panel, mode="indeterminate", length=160)
+        self.progress.pack(fill="x", padx=10, pady=(9, 5))
+        self.lbl_status = ttk.Label(status_panel, text="就绪", style='Status.TLabel',
+                                    justify="left", wraplength=240)
+        self.lbl_status.pack(anchor="w", fill="x", padx=10, pady=(0, 9))
+        self.lbl_status._own_wrap = True
+        status_panel.bind(
+            '<Configure>',
+            lambda e: self.lbl_status.configure(wraplength=max(160, e.width - 22)),
+            add='+')
+
+        sub_shell, submission = _card(right)
+        sub_shell.pack(fill="x", pady=(0, 12))
+        ttk.Label(submission, text="训练结果提交", style='H3.TLabel').pack(anchor="w")
+        self.btn_submit = ttk.Button(submission, text="上传训练结果…",
+                                     command=self._submit_result)
+        self.btn_submit.pack(fill="x", pady=(8, 0))
+        self.submission_status = ttk.Label(
+            submission, style='Muted.TLabel', justify='left', wraplength=280,
             text='选择本地模型和配套评估文件，直接提交到网站待审区。需要训练管理员权限；提交后可继续本地训练。')
-        self.submission_status.grid(row=0,column=1,sticky='ew')
-        progress_row = ttk.Frame(outer)
-        progress_row.grid(row=7,column=0,columnspan=3,sticky='ew',pady=(0,8))
-        progress_row.columnconfigure(1,weight=1)
-        self.progress = ttk.Progressbar(progress_row, mode="indeterminate", length=160)
-        self.progress.grid(row=0,column=0,sticky='w',padx=(0,10))
-        self.lbl_status = ttk.Label(progress_row, text="就绪",style='Muted.TLabel',wraplength=620)
-        self.lbl_status.grid(row=0,column=1,sticky='ew')
-        for label in (self.submission_status,self.lbl_status):
+        self.submission_status.pack(anchor="w", fill="x", pady=(8, 0))
+        self.submission_status._own_wrap = True
+        submission.bind(
+            '<Configure>',
+            lambda e: self.submission_status.configure(wraplength=max(160, e.width - 32)),
+            add='+')
+
+        help_shell, help_box = _card(right)
+        help_shell.pack(fill="x")
+        ttk.Label(help_box, text="训练说明", style='H3.TLabel').pack(anchor="w")
+        for text in (
+            "样本少于「最少样本」时不会开始训练。",
+            "模型 JSON 会随树数量和深度增大，指标接近时优先紧凑模型。",
+            "训练与提交互不影响；正式导播模型只由服务端发布。",
+        ):
+            row = ttk.Frame(help_box)
+            row.pack(fill="x", pady=(7, 0))
+            ttk.Label(row, text="·", style='Accent.TLabel').pack(side="left", anchor="n")
+            label = ttk.Label(row, text=text, style='Caption.TLabel',
+                              justify="left", wraplength=280)
             label._own_wrap = True
-            label.bind('<Configure>',lambda event: event.widget.configure(wraplength=max(1,event.width)))
+            label.pack(side="left", fill="x", expand=True, padx=(7, 0))
+            help_box.bind(
+                '<Configure>',
+                lambda e, w=label: w.configure(wraplength=max(160, e.width - 46)),
+                add='+')
 
-        ttk.Label(
-            outer,
-            text="本地训练产物保存在输出目录；正式导播使用服务端批准并校验的模型。"
-                 "样本少于最少样本时不会训练。",
-            foreground="#555555", wraplength=800, justify="left",
-        ).grid(row=8, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
+        log_shell, log_card = _card(left)
+        log_shell.grid(row=4, column=0, sticky="ew")
+        log_head = ttk.Frame(log_card)
+        log_head.pack(fill="x")
+        ttk.Label(log_head, text="运行日志", style='H3.TLabel').pack(side="left")
+        ttk.Button(log_head, text="回到最新日志", style='Link.TButton',
+                   command=lambda: self.log.see("end")).pack(side="right")
         from desktop_ui import ThemedScrolledText
         self.log = ThemedScrolledText(
-            outer, height=13, wrap="word", font=("Consolas", 9),
-            background="#111418", foreground="#d6d6d6",
-            insertbackground="#d6d6d6", relief="flat")
-        self.log.grid(row=9, column=0, columnspan=3, sticky="nsew")
-        ttk.Button(outer, text="回到最新日志", command=lambda: self.log.see("end")).grid(row=10, column=0, columnspan=3, sticky="e")
+            log_card, height=7, wrap="word", font=("Consolas", 9),
+            background=colors['field'], foreground=colors['text'],
+            insertbackground=colors['text'], relief="flat")
+        self.log.pack(fill="both", expand=True, pady=(8, 0))
         self.log.configure(state="disabled")
-        outer.rowconfigure(9, weight=1)
+
+        self._developer_widgets = [params_shell, ai_shell]
+
+        layout_state = {'narrow': None}
+
+        def _reflow(event=None):
+            width = event.width if event is not None else page.winfo_width()
+            narrow = width < 820
+            if layout_state['narrow'] == narrow:
+                return
+            layout_state['narrow'] = narrow
+            if narrow:
+                page.columnconfigure(0, weight=1)
+                page.columnconfigure(1, weight=0)
+                left.grid_configure(row=0, column=0, padx=0, sticky="ew")
+                right.grid_configure(row=1, column=0, padx=0, pady=(14, 0), sticky="ew")
+            else:
+                page.columnconfigure(0, weight=3)
+                page.columnconfigure(1, weight=2)
+                left.grid_configure(row=0, column=0, padx=(0, 14), sticky="nsew")
+                right.grid_configure(row=0, column=1, padx=0, pady=0, sticky="nsew")
+
+        page.bind('<Configure>', _reflow, add='+')
 
     def _submit_result(self):
         if self._closing or self._training or self._calibrating or self._submitting:
