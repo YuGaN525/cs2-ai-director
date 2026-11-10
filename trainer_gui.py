@@ -84,6 +84,8 @@ class TrainerApp:
         self._apply_preferences()
         from training_data_runtime import TrainingDataRuntime
         self.training_data = TrainingDataRuntime(identity_provider=self.account.upload_identity, binding_provider=self.account.binding)
+        from dataset_runtime import DatasetRuntime
+        self.datasets = DatasetRuntime(self.account)
         self.account.start()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         schedule(self.root,100, self._poll_events)
@@ -359,13 +361,18 @@ class TrainerApp:
 
         sub_shell, submission = _card(right)
         sub_shell.pack(fill="x", pady=(0, 12))
-        ttk.Label(submission, text="训练结果提交", style='H3.TLabel').pack(anchor="w")
-        self.btn_submit = ttk.Button(submission, text="上传训练结果…",
+        ttk.Label(submission, text="训练数据上传", style='H3.TLabel').pack(anchor="w")
+        self.btn_datasets = ttk.Button(submission, text="查看上传与筛选状态…",
+                                      command=lambda: __import__('dataset_ui').open_datasets(self))
+        self.btn_datasets.pack(fill='x', pady=(8,0))
+        ttk.Label(submission, text='训练成功后自动排队。所有数据均须管理员筛选纳入，再由管理员主动训练。',
+                  style='Muted.TLabel', wraplength=260, justify='left').pack(fill='x', pady=(8,0))
+        self.btn_submit = ttk.Button(submission, text="提交模型候选…",
                                      command=self._submit_result)
         self.btn_submit.pack(fill="x", pady=(8, 0))
         self.submission_status = ttk.Label(
             submission, style='Muted.TLabel', justify='left', wraplength=280,
-            text='选择本地模型和配套评估文件，直接提交到网站待审区。需要训练管理员权限；提交后可继续本地训练。')
+            text='模型候选是独立的旧入口；上传模型不等于上传可重训样本。需要训练管理员权限。')
         self.submission_status.pack(anchor="w", fill="x", pady=(8, 0))
         self.submission_status._own_wrap = True
         submission.bind(
@@ -379,7 +386,7 @@ class TrainerApp:
         for text in (
             "样本少于「最少样本」时不会开始训练。",
             "模型 JSON 会随树数量和深度增大，指标接近时优先紧凑模型。",
-            "上传期间请等待回执，再继续训练；正式导播模型只由服务端发布。",
+            "训练数据上传可后台续传；正式导播模型仍只由服务端审核发布。",
         ):
             row = ttk.Frame(help_box)
             row.pack(fill="x", pady=(7, 0))
@@ -435,7 +442,7 @@ class TrainerApp:
         if self._closing or self._training or self._calibrating or self._submitting:
             return
         path = filedialog.askopenfilename(parent=self.root,title='选择要上传的训练结果',
-            initialdir=self.var_out_dir.get().strip(),initialfile='decision_model.json.gz',
+            initialdir=str(getattr(self,'_last_model_dir',self.var_out_dir.get().strip())),initialfile='decision_model.json.gz',
             filetypes=[('训练模型','*.json.gz')])
         if not path:
             return
@@ -471,7 +478,7 @@ class TrainerApp:
 
     def _open_out(self) -> None:
         try:
-            os.startfile(self.var_out_dir.get().strip())  # type: ignore[attr-defined]
+            os.startfile(str(getattr(self,'_last_model_dir',self.var_out_dir.get().strip())))  # type: ignore[attr-defined]
         except Exception as e:
             messagebox.showerror("打开目录", str(e), parent=self.root)
 
@@ -481,7 +488,7 @@ class TrainerApp:
         if self._training or self._calibrating or self._submitting:
             return
         csv_path = decision_csv_path()
-        out_dir = Path(self.var_out_dir.get().strip())
+        out_dir = getattr(self, '_last_model_dir', Path(self.var_out_dir.get().strip()))
         model_path = out_dir / "decision_model.pkl"
         if not csv_path.is_file():
             messagebox.showwarning("校准", f"找不到线上日志：\n{csv_path}", parent=self.root)
@@ -589,26 +596,40 @@ class TrainerApp:
         min_samples, trees, depth, test_size = params
 
         def worker() -> None:
+            run_id = None
             try:
                 if demo_paths:
                     from demo_dataset import build_demo_csv
                     self._worker_log("开始解析 demo …")
                     build_demo_csv(demo_paths, csv_path, horizon=horizon,
                                    step=step, log=self._worker_log)
-                self.training_data.capture_training_file(csv_path, "offline" if demo_paths else "online")
+                run_id, frozen_csv = self.datasets.begin_training(csv_path)
+                run_out = out.parent / 'runs' / run_id
+                run_out.mkdir(parents=True, exist_ok=False)
                 result = train_from_csv(
-                    csv_path, out, metrics,
+                    frozen_csv, run_out / out.name, run_out / metrics.name,
                     min_samples=min_samples, test_size=test_size,
                     trees=trees, max_depth=depth,
                     log=self._worker_log,
                 )
+                self._dataset_completed(run_id, result)
                 self._events.put(("done", result))
             except TrainingError as e:
+                if run_id:self.datasets.failed(run_id)
                 self._events.put(("error", str(e)))
             except Exception as e:
+                if run_id:self.datasets.failed(run_id)
                 self._events.put(("error", f"{type(e).__name__}: {e}"))
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _dataset_completed(self, run_id, result):
+        try:
+            data = self.datasets.succeeded(run_id, result)
+            self._worker_log('训练数据已进入持久上传队列；服务器接收后仍待管理员筛选。' if data else
+                             '本地训练完成；训练数据整理未完成，请在上传状态中查看原因并重试。')
+        except Exception:
+            self._worker_log('本地训练完成；数据队列暂不可用，输入快照已保留，请在上传状态中处理。')
 
     def _start(self) -> None:
         if self._closing:
@@ -680,24 +701,32 @@ class TrainerApp:
         self._begin_training("AI 辅助训练中…" if use_ai else "本地搜索训练中…")
 
         def worker() -> None:
+            run_id = None
             try:
-                self.training_data.capture_training_file(csv_path, "online")
+                run_id, frozen_csv = self.datasets.begin_training(csv_path)
+                run_out = out_dir / 'runs' / run_id
+                run_out.mkdir(parents=True, exist_ok=False)
                 report = ai_assist.run_ai_training(
-                    csv_path, out_dir,
-                    out_dir / "decision_model_metrics.json",
+                    frozen_csv, run_out,
+                    run_out / "decision_model_metrics.json",
                     min_samples=min_samples, test_size=test_size,
                     trees=trees, max_depth=depth, use_ai=use_ai,
                     log=self._worker_log,
                 )
+                self._dataset_completed(run_id, dict(report.get('outputs') or {}, split_hash=report.get('split_hash')))
                 self._events.put(("ai_done", report))
             except TrainingError as e:
+                if run_id:self.datasets.failed(run_id)
                 self._events.put(("ai_error", str(e)))
             except Exception as e:  # noqa: BLE001
+                if run_id:self.datasets.failed(run_id)
                 self._events.put(("ai_error", f"{type(e).__name__}: {e}"))
 
         threading.Thread(target=worker, daemon=True).start()
 
     def _ai_done(self, report: dict[str, Any]) -> None:
+        if (report.get('outputs') or {}).get('model_json'):
+            self._last_model_dir = Path(report['outputs']['model_json']).parent
         self._training = False
         self.btn_train.configure(state="normal")
         self.btn_demo.configure(state="normal")
@@ -782,6 +811,7 @@ class TrainerApp:
             messagebox.showerror("训练失败", error, parent=self.root)
             return
         assert result is not None
+        self._last_model_dir = Path(result['model_json']).parent
         top1 = result.get("top1")
         top1_text = "--" if top1 is None else f"{float(top1):.1%}"
         ambiguous = int(result.get("ambiguous", 0) or 0)
@@ -834,6 +864,8 @@ class TrainerApp:
                 self.preferences.update(**window_changes)
             if not self.training_data.close():
                 return False
+            if not self.datasets.close():
+                return False
             self.account.close()
             return True
         def done(flushed, error):
@@ -871,21 +903,74 @@ def _demo_cli(args: list[str], runtime=None) -> int:
     parser.add_argument("--step-ticks", type=int, default=DEFAULT_STEP,
                         help="live 阶段采样间隔，默认 128 tick")
     ns = parser.parse_args(args)
+    run_id = None
     try:
         build_demo_csv(ns.demos, Path(ns.demo_csv), ns.tick_offset,
                        horizon=ns.horizon_ticks, step=ns.step_ticks)
         if runtime is not None:
-            runtime.capture_training_file(Path(ns.demo_csv), "offline")
-
-        train_from_csv(
-            Path(ns.demo_csv), Path(ns.out), Path(ns.metrics),
+            run_id, csv_input = runtime.begin_training(Path(ns.demo_csv))
+            output = Path(ns.out).parent / 'runs' / run_id
+            output.mkdir(parents=True, exist_ok=False)
+        else:
+            csv_input = Path(ns.demo_csv)
+            output = None
+        result = train_from_csv(
+            csv_input, output / Path(ns.out).name if output else Path(ns.out),
+            output / Path(ns.metrics).name if output else Path(ns.metrics),
             min_samples=ns.min_samples, test_size=ns.test_size,
             trees=ns.trees, max_depth=ns.max_depth,
         )
+        if run_id:
+            try:runtime.succeeded(run_id, result)
+            except Exception:print('本地训练完成；数据整理未完成，输入快照保留。', file=sys.stderr)
     except Exception as e:  # noqa: BLE001
+        if run_id:runtime.failed(run_id)
         print(f"失败：{type(e).__name__}: {e}", file=sys.stderr)
         return 1
     return 0
+
+
+def _csv_cli(args, runtime):
+    """GUI and frozen CLI use the same immutable lifecycle; never feed the old sample queue."""
+    import json
+    def value(flag, default):
+        for i, arg in enumerate(args):
+            if arg.startswith(flag+'='):return arg.split('=',1)[1]
+            if arg==flag:
+                if i+1>=len(args):raise ValueError('缺少参数：'+flag)
+                return args[i+1]
+        return default
+    def replace(values, flag, selected):
+        result=[];skip=False
+        for arg in values:
+            if skip:skip=False;continue
+            if arg==flag:skip=True;continue
+            if arg.startswith(flag+'='):continue
+            result.append(arg)
+        return result+[flag,str(selected)]
+    from train_decision_model import main as normal_main
+    from ai_trainer import main as ai_main
+    invoke=ai_main if '--ai' in args else normal_main
+    arguments=[a for a in args if a!='--ai']
+    if '--help' in arguments or '-h' in arguments:return invoke(arguments)
+    run_id=None
+    try:
+        selected=Path(value('--csv',str(decision_csv_path())))
+        model=Path(value('--out',str(decision_model_path())))
+        metrics=Path(value('--metrics','decision_model_metrics.json') or 'decision_model_metrics.json')
+        run_id,frozen=runtime.begin_training(selected)
+        output=model.parent/'runs'/run_id;output.mkdir(parents=True,exist_ok=False)
+        arguments=replace(arguments,'--csv',frozen)
+        arguments=replace(arguments,'--out',output/model.name)
+        arguments=replace(arguments,'--metrics',output/metrics.name)
+        code=invoke(arguments)
+        if code!=0:runtime.failed(run_id);return code
+        try:runtime.succeeded(run_id,json.loads((output/metrics.name).read_text(encoding='utf-8')))
+        except Exception:print('本地训练完成；数据队列需要处理，输入快照已保留。',file=sys.stderr)
+        return 0
+    except Exception as error:
+        if run_id:runtime.failed(run_id)
+        print('训练未完成：'+str(error),file=sys.stderr);return 1
 
 
 def main() -> None:
@@ -897,25 +982,20 @@ def main() -> None:
         args = [a for a in sys.argv[1:] if a != "--cli"]
         from account_client import default_account
         from training_data_runtime import TrainingDataRuntime
+        from dataset_runtime import DatasetRuntime
         account = default_account()
         account.start()
         runtime = TrainingDataRuntime(identity_provider=account.upload_identity,binding_provider=account.binding)
+        datasets = DatasetRuntime(account)
         try:
-            if "--csv" in args and "--calibrate" not in args:
-                selected=Path(args[args.index("--csv")+1])
-                if runtime.capture_training_file(selected,"online") is None:print(runtime.status_text())
             if "--calibrate" in args:
                 from decision_calibration import main as cal_main
                 raise SystemExit(cal_main([a for a in args if a != "--calibrate"]))
-            if "--ai" in args:
-                from ai_trainer import main as ai_main
-                raise SystemExit(ai_main([a for a in args if a != "--ai"]))
             if "--demos" in args:
-                raise SystemExit(_demo_cli(args,runtime))
-            from train_decision_model import main as cli_main
-            raise SystemExit(cli_main(args))
+                raise SystemExit(_demo_cli(args,datasets))
+            raise SystemExit(_csv_cli(args,datasets))
         finally:
-            runtime.close();account.close()
+            datasets.close();runtime.close();account.close()
     try:
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
     except Exception:

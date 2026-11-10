@@ -22,6 +22,7 @@ with tempfile.TemporaryDirectory() as temp:
     account.allowed.return_value=False
     account.binding.return_value=Binding('unbound','local','fixture')
     account.upload_identity.return_value=None
+    account.local_device='fixture'
     account.status_snapshot.return_value=dict(allowed=False,logged_in=False,reason_code='login_required',remaining_seconds=0,last_verified_at=None,model_state='未登录')
     with mock.patch('account_client.default_account',return_value=account),mock.patch.object(d.DirectorApp,'_register_pause_hotkey'),mock.patch.object(d.DirectorApp,'_unregister_pause_hotkey'):
         for cls,args in ((d.DirectorApp,(copy.deepcopy(d.DEFAULT_CONFIG),)),(trainer_gui.TrainerApp,())):
@@ -56,6 +57,10 @@ with tempfile.TemporaryDirectory() as temp:
                             app.root.update()
                             app._settings_window.destroy()
                             app.root.update()
+                            if hasattr(app,'datasets'):
+                                from dataset_ui import open_datasets
+                                dataset_window=open_datasets(app);dataset_window.geometry(size)
+                                app.root.update();dataset_window.destroy();app.root.update()
                             results.append([cls.__name__,size,mode,developer])
                 for font_size in (9,14):
                     app.preferences.update(font_size=font_size)
@@ -109,6 +114,7 @@ with tempfile.TemporaryDirectory() as temp:
             finally:
                 if hasattr(app,'timeline'):assert app.timeline.close(time.monotonic())
                 assert app.training_data.close()
+                if hasattr(app,'datasets'):assert app.datasets.close()
                 if hasattr(app,'pro'):app.pro.stop()
                 app.root.destroy()
                 logging.shutdown()

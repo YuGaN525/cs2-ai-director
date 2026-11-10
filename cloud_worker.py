@@ -14,10 +14,10 @@ class WorkerClient:
             if len(raw)>1048576:raise ValueError('worker_response_budget')
             return json.loads(raw)['data']
     def download(self,lease,item,path,keepalive=lambda:None):
-        if item['kind'] not in ('demo','csv','derived'):raise ValueError('worker_input_kind')
+        if item['kind'] not in ('demo','csv','derived','dataset'):raise ValueError('worker_input_kind')
         route=f"jobs/{lease['jobId']}/inputs/{item['kind']}/{item['id']}?fence={lease['fence']}"
         req=urllib.request.Request(self.origin+'/api/internal/director-training/'+route,headers={'X-Director-Worker-Key':self.key,'X-Director-Job-Lease':lease['leaseToken']})
-        limit=512*1024*1024 if item['kind']=='demo' else 4*1024*1024 if item['kind']=='derived' else 32*1024*1024
+        limit=512*1024*1024 if item['kind']=='demo' else 4*1024*1024 if item['kind']=='derived' else 1024*1024 if item['kind']=='dataset' else 32*1024*1024
         with self.opener.open(req,timeout=60) as response,path.open('wb') as output:
             total=0
             while True:
@@ -27,7 +27,7 @@ class WorkerClient:
                 total+=len(chunk)
                 if total>limit:raise ValueError('worker_input_budget')
                 output.write(chunk)
-        with (path.open('rb') if item['kind'] in ('demo','derived') else gzip.open(path,'rb')) as verified:
+        with (path.open('rb') if item['kind'] in ('demo','derived','dataset') else gzip.open(path,'rb')) as verified:
             digest=hashlib.file_digest(verified,'sha256').hexdigest()
         if digest!=item['artifactHash']:raise ValueError('worker_input_hash')
         if item['kind']=='derived':
@@ -45,6 +45,23 @@ class WorkerClient:
                         if size>part['bytes']:raise ValueError('derived_part_length')
                         checksum.update(chunk);output.write(chunk)
                 if size!=part['bytes'] or checksum.hexdigest()!=part['sha256']:raise ValueError('derived_part_hash')
+        if item['kind']=='dataset':
+            from dataset_reader import manifest,part_path
+            value,source=manifest(path,item)
+            for part in value['files']:
+                if part['sourceId']!=source['sourceId']:continue
+                keepalive()
+                route=f"jobs/{lease['jobId']}/datasets/{item['id']}/files/{part['index']}?fence={lease['fence']}"
+                request=urllib.request.Request(self.origin+'/api/internal/director-training/'+route,headers={'X-Director-Worker-Key':self.key,'X-Director-Job-Lease':lease['leaseToken']})
+                target=part_path(path,item,part['index']);size=0;checksum=hashlib.sha256()
+                with self.opener.open(request,timeout=60) as response,target.open('wb') as output:
+                    while True:
+                        keepalive();chunk=response.read(65536)
+                        if not chunk:break
+                        size+=len(chunk)
+                        if size>part['bytes']:raise ValueError('dataset_file_length')
+                        checksum.update(chunk);output.write(chunk)
+                if size!=part['bytes'] or checksum.hexdigest()!=part['sha256']:raise ValueError('dataset_file_hash')
     def complete(self,lease,result,model=None):
         boundary='worker_'+uuid.uuid4().hex;body=f'--{boundary}\r\nContent-Disposition: form-data; name="metadata"\r\n\r\n'.encode()+canonical(dict(result,fence=lease['fence'],leaseToken=lease['leaseToken']))+b'\r\n'
         if model is not None:body+=f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="candidate.json.gz"\r\nContent-Type: application/gzip\r\n\r\n'.encode()+Path(model).read_bytes()+b'\r\n'
@@ -58,13 +75,21 @@ def train_child(folder):
         import resource
         resource.setrlimit(resource.RLIMIT_AS,(limit,limit));resource.setrlimit(resource.RLIMIT_CPU,(budget['maxSeconds'],budget['maxSeconds']+2))
     from upload_protocol import COLUMNS
-    output=folder/'dataset.csv';stats=[];seen=set();count=0
-    if spec['snapshot']['manifest'].get('schema',1) not in (1,2):raise ValueError('snapshot_schema')
+    output=folder/'dataset.csv';stats=[];seen=set();sample_payloads={};count=0;duplicates=0
+    from dataset_protocol import EXTRA
+    snapshot_schema=spec['snapshot']['manifest'].get('schemaVersion',spec['snapshot']['manifest'].get('schema',1))
+    if snapshot_schema not in (1,2,3):raise ValueError('snapshot_schema')
+    columns=COLUMNS+EXTRA+['recording_source_id']
     with output.open('w',newline='',encoding='utf-8') as stream:
-        writer=csv.DictWriter(stream,fieldnames=COLUMNS+['match_source_id']);writer.writeheader()
+        writer=csv.DictWriter(stream,fieldnames=columns);writer.writeheader()
         for item in spec['snapshot']['manifest']['items']:
             path=folder/(item['id']+('.dem' if item['kind']=='demo' else '.csv.gz'))
-            if item['kind']=='derived':
+            if item['kind']=='dataset':
+                if snapshot_schema!=3:raise ValueError('dataset_snapshot_version')
+                from dataset_reader import rows,READER_VERSION
+                incoming=None;source_rows=rows(path,item)
+                stats.append({'source':item['id'],'clientSourceId':item['sourceId'],'reader':READER_VERSION,'input':'dataset-v1'})
+            elif item['kind']=='derived':
                 from derived_training_input import rows
                 incoming=None;source_rows=rows(path,item,COLUMNS)
                 stats.append({'source':item['id'],'parser':'demo-v2-live.1','input':'derived-v1'})
@@ -75,10 +100,19 @@ def train_child(folder):
             else:raise ValueError('worker_input_kind')
             try:
                 for row in source_rows if incoming is None else csv.DictReader(incoming):
-                    row={k:row.get(k,'') for k in COLUMNS};row['match_source_id']=item['matchHash']
+                    row={k:row.get(k,'') for k in columns};row['match_source_id']=item['matchHash']
+                    if item['kind']=='dataset' and row['source_tick'] and row['recording_source_id']:
+                        identity=tuple(row[k] for k in ('recording_source_id','source_tick','target_slot','parser_version','sampling_method','sample_step_ticks','label_horizon_ticks','tickrate_assumption','label_definition','missing_fields'))
+                        # Group text can differ between equivalent exports; sample identity is recorded, not feature-based.
+                        payload=hashlib.sha256(canonical({k:v for k,v in row.items() if k!='group'})).hexdigest()
+                        previous=sample_payloads.get(identity)
+                        if previous is not None:
+                            if previous!=payload:raise ValueError('dataset_sample_conflict')
+                            duplicates+=1;continue
+                        sample_payloads[identity]=payload
                     # The canonical match identity is independent of uploader/account and all windows stay together.
                     key=hashlib.sha256(canonical(row)).hexdigest()
-                    if key in seen:continue
+                    if key in seen:duplicates+=1;continue
                     seen.add(key);writer.writerow(row);count+=1
                     if count>200000:raise ValueError('worker_row_budget')
             finally:
@@ -87,7 +121,7 @@ def train_child(folder):
     metrics=train_from_csv(output,folder/'candidate.pkl',folder/'metrics.json',min_samples=100,trees=budget['trees'],max_depth=budget['maxDepth'])
     candidate=json.loads((folder/'candidate.submission.json').read_text());candidate['name']='Cloud candidate '+spec['jobId'][:8]
     report={key:metrics[key] for key in ('samples','positive','negative','algorithm','comparison','partitions','split_hash','dataset_hash','auc','top1','final_test','model_json_bytes','model_nodes') if key in metrics}
-    report.update(snapshotHash=spec['snapshot']['manifestHash'],parserStats=stats,selectionUsesFinal=False,executionCoverage={'available':False,'reason':'needs full event/scheduler replay with fixed latency; classification AUC is insufficient'},environment={'python':sys.version.split()[0],'core':'0.1.0','threads':1})
+    report.update(snapshotHash=spec['snapshot']['manifestHash'],parserStats=stats,duplicateRows=duplicates,selectionUsesFinal=False,executionCoverage={'available':False,'reason':'needs full event/scheduler replay with fixed latency; classification AUC is insufficient'},environment={'python':sys.version.split()[0],'core':'0.1.0','threads':1})
     atomic_write(folder/'result.json',canonical({'candidate':candidate,'report':report,'errorCode':None}))
 
 
@@ -100,7 +134,7 @@ def stop_child(child):
 
 
 def run_once(client,root,worker):
-    lease=client.call('claim',{'workerId':worker})
+    lease=client.call('claim',{'workerId':worker,'readerVersions':['training-dataset-v1']})
     if lease is None:return False
     folder=root/(lease['jobId']+'-'+str(lease['fence']));folder.mkdir(parents=True,exist_ok=False)
     # Lease tokens and worker secrets stay in parent memory, never child files or logs.

@@ -88,7 +88,7 @@ class TestBranding(unittest.TestCase):
     def test_brand_names(self):
         self.assertEqual(d.APP_TITLE, "Yuzi_CS2_AIDirector")
         self.assertEqual(d.APP_SUBTITLE, "CS2 AI 专业导播")
-        self.assertTrue(d.VERSION.startswith("1.15."))
+        self.assertTrue(d.VERSION.startswith("1.16."))
 
     def test_brand_assets_exist(self):
         self.assertTrue(d.asset_path("yuzi.ico").is_file())

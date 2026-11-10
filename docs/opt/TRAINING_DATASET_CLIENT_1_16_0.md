@@ -1,0 +1,45 @@
+# 1.16.0 训练数据客户端与 worker
+
+日期：2026-11-10。程序任务 TD-CLI-01～09 对应网站 ADT-03～14。网站端维护统一进度与部署；本文件记录程序事实。源码发布和服务器部署分别验收，不能由本地测试推断生产启用。
+
+## 用户流程
+
+训练器先保存本次 CSV 输入、摘要和独立 run 目录，再开始本地训练。训练成功后整理并持久排队上传完整样本。失败或中断的训练不会自动上传；整理失败保留成功记录和输入，可在队列重试。每次模型输出保存在所选目录的 `runs/<runId>`，打开输出目录及提交模型候选默认定位本次输出。
+
+主界面“训练数据上传”可查看样本、接收回执和管理员筛选状态，支持暂停、继续、取消以及过期/取消后显式新建提交。未绑定数据需手动关联到当前账号；其他账号、设备、站点的数据不会自动迁移。长表格提供纵横滚动，整体窗口可滚动；浅色为默认，深色按钮和表头使用统一边框颜色。
+
+模型 `.json.gz` 的“提交模型候选”仍为独立入口；上传样本不提交模型。所有样本接收后都待管理员筛选，纳入后仍须管理员主动训练，最终模型仍待独立审核发布。
+
+## 实现与兼容
+
+| 任务 | 实现 |
+| --- | --- |
+| TD-CLI-01 | `dataset_store.py` SQLite WAL/FULL、不可变 input.csv/input.manifest.json、训练成功标记、独立模型目录；GUI/CLI 共用生命周期 |
+| TD-CLI-02 | `dataset_export.py` 保留 36 列及 1～10 槽位、采样/解析/标签语义；姓名、SteamID、自由文本和路径不上传；旧 CSV 保持 legacy 26 列及未知来源，不补造真值 |
+| TD-CLI-03 | runId 派生稳定 clientDatasetId，规范化清单/requestHash、原字节分片、actor 作用域；新训练不再进入旧自动样本队列 |
+| TD-CLI-04 | `dataset_transport.py` 先查未知回执，再协商限额；仅补缺片；权限/登录变化停传；Retry-After、持久退避、单机进程锁、恢复成功后的整理、回执不可变 |
+| TD-CLI-05 | `dataset_ui.py` 区分训练/整理/接收/筛选状态和阻断原因；所有磁盘/联网工作在后台，Tk 更新在主线程 |
+| TD-CLI-06 | `upload_governance.py` 普通采集独立只读治理查询，权限仍为 device-entitlement；legacy-selected-only 不变，旧服务器兼容；设置页提供状态入口 |
+| TD-CLI-07 | 明确选取历史 CSV、完整包或含 spec.json 的 derived 目录，先脱敏预览再确认排队；保留原件，模型-only 无法还原完整样本 |
+| TD-CLI-08 | `dataset_reader.py` 的 training-dataset-v1 读取器；worker 支持 schemaVersion/schema 3、能力声明、选中来源下载、服务端核实 BO 分区、重复样本统计及冲突拒绝；兼容原 schema 1/2 |
+| TD-CLI-09 | 单测、界面矩阵、真实本机 HTTP/PG 联验及发行校验；生产联验与下载切换须以后续实际证据更新 |
+
+冻结目录 `contracts/director-training-dataset-v1` 不改写，manifest SHA256 为 `50898c584789e3aeac7385a51760c03ad30dc7c36ffa6710b0f6816c452f7b6d`。runtime 校验器与全部冻结正反例一致。新接收要求设备＋有效产品资格＋当前训练权限；普通采集不新增 train 权限。
+
+本地队列默认上限 2 GiB，计入保留的失败包和预览；空间不足停止新增并保留原件。恢复训练过程本身不自动重跑。新签名模型、公测/灰度/预算、真实游戏质量门及原未完成测试不由本次变更代替。
+
+## Worker 对接
+
+claim 请求增加 `readerVersions:["training-dataset-v1"]`。新 snapshot manifest 使用 schemaVersion 3（兼容读取 schema），dataset item 包含服务端来源 id、客户端 sourceId、readerVersion、整个规范化清单 artifactHash、核实 matchHash 与选中源 rows。
+
+现有 lease/fence/worker key 保护不变。输入路由 `jobs/{jobId}/inputs/dataset/{id}` 返回原始规范化清单；`jobs/{jobId}/datasets/{id}/files/{fileIndex}` 只下载选中来源文件。解压/摘要/字段/完整候选组均校验后才训练。录像身份单列 recording_source_id，训练分区使用服务器 matchHash；不会按特征相同合并不同 tick 样本。candidate-v2 仍是独立未兼容输入。
+
+## 验收记录（随联调更新）
+
+- 完整回归：451 项，4 项按既有环境条件跳过，其余通过。新增传输用例覆盖丢首片回执、丢完成回执、重新启动、暂停、资格变化、跨账号隔离、治理版本回退和服务端退避。
+- 界面矩阵：两程序、3 种尺寸、浅深两色、普通/开发者模式共 24 种组合，9/14 字号及回调检查通过；另实看 Windows 浅深训练数据窗口及滚动。不是物理 DPI 全矩阵。
+- 本机 127.0.0.1:5147 隔离服务真实最小包 3,537 行，初始化及分片后通过原 ID 续传，取得匹配摘要的不可变回执与 pending-review 治理；acceptedRows 表示新接收，不表示管理员纳入。
+- 联调先后发现网站初始化事务、ORM 集合转换错误以及 PUT 返回空 data；客户端保留原 ID，未错误标记成功。网站修复后继续同一会话；PUT 规范回执修复和完整包验证待下条记录。
+- 完整历史包已离线校验：41 来源、48 文件、167,517 行、12,483 正例，压缩 9,650,205 字节，展开 68,533,797 字节。BO 声明仍是 filename-inferred，不能替代网站核实。
+
+程序源码、Windows 构建和生产切换的最终提交与摘要在发布后补记。私有身份配置、真实样本和测试数据库不进入 Git 或发行包。

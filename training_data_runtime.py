@@ -55,6 +55,7 @@ class TrainingDataRuntime:
               f"待上传 {states.get('pending',0)} 批 · 上传中 {states.get('inflight',0)} 批\n"
               f"已确认 {states.get('confirmed',0)} 批 · 待处理 {states.get('blocked',0)} 批\n"
               f"数据被拒绝 {states.get('rejected',0)} 批（记录保留）")
+        if self.uploader.governance is not None:text+='\n\n'+self.uploader.governance.summary(self.binding())
         return self.status_text()+text
 
     def close(self):

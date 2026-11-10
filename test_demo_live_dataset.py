@@ -184,9 +184,12 @@ class LiveDatasetTests(unittest.TestCase):
         import trainer_gui
         output = self.root / 'cli.csv'
         runtime = mock.Mock()
+        runtime.begin_training.return_value=('00000000-0000-0000-0000-000000000001',output)
         with mock.patch('demoparser2.DemoParser', return_value=parser_fixture()), mock.patch('trainer_gui.train_from_csv') as train, redirect_stdout(io.StringIO()):
-            self.assertEqual(trainer_gui._demo_cli(['--demos', str(self.demo), '--demo-csv', str(output)], runtime), 0)
-        runtime.capture_training_file.assert_called_once_with(output, 'offline')
+            self.assertEqual(trainer_gui._demo_cli(['--demos', str(self.demo), '--demo-csv', str(output),'--out',str(self.root/'model.pkl')], runtime), 0)
+        runtime.begin_training.assert_called_once_with(output)
+        runtime.capture_training_file.assert_not_called()
+        runtime.succeeded.assert_called_once()
         train.assert_called_once()
         manifest = json.loads(output.with_suffix('.csv.manifest.json').read_text(encoding='utf-8'))
         self.assertEqual((manifest['horizon_ticks'], manifest['step_ticks']), (192, 128))
@@ -202,14 +205,16 @@ class LiveDatasetTests(unittest.TestCase):
         app = mock.Mock()
         output = self.root / 'gui.csv'
         calls = []
-        def capture(path, source):
+        def freeze(path):
             self.assertTrue(path.with_suffix('.csv.manifest.json').exists())
-            calls.append('capture')
-        app.training_data.capture_training_file.side_effect = capture
+            calls.append('freeze')
+            return '00000000-0000-0000-0000-000000000001',path
+        app.datasets.begin_training.side_effect = freeze
         with mock.patch('demoparser2.DemoParser', return_value=parser_fixture()), mock.patch('trainer_gui.threading.Thread') as thread, mock.patch('trainer_gui.train_from_csv', side_effect=lambda *a, **k: calls.append('train')):
             thread.side_effect = lambda **kw: mock.Mock(start=kw['target'])
             trainer_gui.TrainerApp._run_worker(app, output, self.root/'model.pkl', self.root/'metrics.json', (100, 50, 4, .25), [str(self.demo)])
-        self.assertEqual(calls, ['capture', 'train'])
+        self.assertEqual(calls, ['freeze', 'train'])
+        app.training_data.capture_training_file.assert_not_called()
         self.assertEqual(app._events.put.call_args.args[0][0], 'done')
 
     def test_worker_training_projection_retains_same_features_and_labels(self):

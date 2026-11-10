@@ -181,7 +181,7 @@ def theme(root, mode, font_size=None):
         style.map('Accent.TButton', background=[('disabled', p['card']), ('pressed', p['accent']), ('active', p['accent'])], foreground=[('disabled', p['muted']), ('active', accent_foreground)])
         style.map('Stop.TButton', background=[('disabled', p['card']), ('pressed', p['pressed']), ('active', p['hover'])], foreground=[('disabled', p['muted']), ('active', p['error'])])
         style.configure('Vertical.TScrollbar', background=p['field'], troughcolor=p['card'], bordercolor=p['border'], arrowcolor=p['text'])
-        style.configure('Treeview.Heading', background=p['field'], foreground=p['accent'])
+        style.configure('Treeview.Heading', background=p['field'], foreground=p['accent'],bordercolor=p['border'],lightcolor=p['border'],darkcolor=p['border'],relief='flat')
         style.map('Treeview.Heading', background=[('active', p['hover'])], lightcolor=[('active',p['border'])], darkcolor=[('active',p['border'])])
         style.configure('Horizontal.TProgressbar', background=p['accent'], troughcolor=p['field'], bordercolor=p['border'], lightcolor=p['accent'], darkcolor=p['accent'])
         style.map('Treeview', background=[('selected', p['accent'])], foreground=[('selected', accent_foreground)])
@@ -458,6 +458,16 @@ def settings(app):
         schedule(top, 1000, refresh)
     ttk.Button(frame, text='请求账号与正式模型重新检查', command=app.account.sync_requested.set).pack(anchor='w')
     ttk.Button(frame, text='唤醒自动补传', command=lambda: app.training_data.uploader.wake_event.set()).pack(anchor='w', pady=6)
+    def capture_status():
+        binding=app.training_data.binding()
+        def done(value,error):
+            if not top.winfo_exists() or app.training_data.binding()!=binding:return
+            text_dialog(top,'普通采集 · 接收与筛选状态','暂时无法读取，记录保留。' if error else value)
+        app.tasks.submit('capture-governance',app.training_data.summary,done)
+    ttk.Button(frame,text='查看采集接收与筛选状态',command=capture_status).pack(anchor='w',pady=6)
+    if hasattr(app,'datasets'):
+        from dataset_ui import open_datasets
+        ttk.Button(frame,text='查看训练数据上传队列',command=lambda:open_datasets(app)).pack(anchor='w',pady=6)
     def export_records():
         path = filedialog.asksaveasfilename(parent=top, defaultextension='.csv', initialfile='director-local-records.csv')
         if not path:

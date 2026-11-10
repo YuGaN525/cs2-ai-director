@@ -107,6 +107,10 @@ class UploadWorker:
         if isinstance(self.client,TrainingUploadClient):self.client.identity_provider=identity_provider
         self.stop_event=threading.Event();self.wake_event=threading.Event()
         self.thread=None;self.status='未登录，数据保留在本地';self._identity_fingerprint=None
+        self.governance=None
+        if isinstance(self.client,TrainingUploadClient):
+            from upload_governance import CaptureGovernance
+            self.governance=CaptureGovernance(outbox,self.client)
 
     def run_once(self):
         identity=self.identity_provider()
@@ -118,6 +122,7 @@ class UploadWorker:
         self.outbox.prepare_batch(identity.binding)
         batch=self.outbox.claim(identity.binding)
         if batch is None:
+            if self.governance is not None:self.governance.refresh(identity)
             states=self.outbox.stats(identity.binding)['states']
             self.status=('登录、权限或回执问题待处理，记录保留' if states.get('blocked')
                          else '存在被拒绝的数据，记录保留' if states.get('rejected')
@@ -130,7 +135,7 @@ class UploadWorker:
             if current is None or current.binding!=identity.binding or current.access_token!=identity.access_token:
                 raise UploadFailure(401,'identity_changed')
             receipt=self.client.upload(current,batch)
-            self.outbox.acknowledge(batch,receipt);self.status='上传已确认';return True
+            self.outbox.acknowledge(batch,receipt);self.status='已接收，等待管理员筛选';return True
         except UploadFailure as error:
             rejected=error.status in (400,409,413,415,422) or 300<=error.status<400
             blocked=error.status in (401,403)
