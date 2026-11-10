@@ -51,7 +51,7 @@ with tempfile.TemporaryDirectory() as temp:
                                     y=button.winfo_rooty()-app.root.winfo_rooty()
                                     assert 0<=y and y+button.winfo_height()<=app.root.winfo_height()
                             if hasattr(app,'submission_status'):
-                                for label in (app.submission_status,app.lbl_status):
+                                for label in (app.submission_status,app.lbl_status,app.dataset_note):
                                     assert int(label.cget('wraplength'))<=label.winfo_width()
                             settings(app)
                             app.root.update()

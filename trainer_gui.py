@@ -365,8 +365,10 @@ class TrainerApp:
         self.btn_datasets = ttk.Button(submission, text="查看上传与筛选状态…",
                                       command=lambda: __import__('dataset_ui').open_datasets(self))
         self.btn_datasets.pack(fill='x', pady=(8,0))
-        ttk.Label(submission, text='训练成功后自动排队。所有数据均须管理员筛选纳入，再由管理员主动训练。',
-                  style='Muted.TLabel', wraplength=260, justify='left').pack(fill='x', pady=(8,0))
+        self.dataset_note=ttk.Label(submission, text='训练成功后自动排队。所有数据均须管理员筛选纳入，再由管理员主动训练。',
+                  style='Muted.TLabel', wraplength=260, justify='left')
+        self.dataset_note._own_wrap=True
+        self.dataset_note.pack(fill='x', pady=(8,0))
         self.btn_submit = ttk.Button(submission, text="提交模型候选…",
                                      command=self._submit_result)
         self.btn_submit.pack(fill="x", pady=(8, 0))
@@ -377,7 +379,8 @@ class TrainerApp:
         self.submission_status._own_wrap = True
         submission.bind(
             '<Configure>',
-            lambda e: self.submission_status.configure(wraplength=max(160, e.width - 32)),
+            lambda e: (self.submission_status.configure(wraplength=max(160, e.width - 32)),
+                       self.dataset_note.configure(wraplength=max(160,e.width-32))),
             add='+')
 
         help_shell, help_box = _card(right)
