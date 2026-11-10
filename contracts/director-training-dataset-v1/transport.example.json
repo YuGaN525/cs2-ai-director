@@ -1,0 +1,10 @@
+{
+  "schema": "director-training-dataset-v1",
+  "clientDatasetId": "00000000-0000-0000-0000-000000000001",
+  "manifestSha256": "ef153845cd74ead1d6ef22259ebef6e40231853729415313034a1c9991ba540b",
+  "requestHash": "1e240bdf3ad6911e9942d352cd1cd06d26ce881a9c91fa3c3659adaf1082e5b9",
+  "transportStatus": "receiving",
+  "expiresAt": "2026-11-17T00:00:00Z",
+  "receivedParts": [],
+  "hasReceipt": false
+}

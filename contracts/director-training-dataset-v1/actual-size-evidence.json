@@ -1,0 +1,15 @@
+{
+  "scope": "Read-only historical derived files; no upload or real sample export",
+  "sourceDirectory": "D:/Yuzibei/local-data/adw-opt-20261108/retrain-real-20261108",
+  "sources": 41,
+  "files": 154,
+  "rows": 167517,
+  "positiveRows": 12483,
+  "compressedBytes": 8300611,
+  "expandedBytes": 69501209,
+  "maxFileBytes": 65188,
+  "maxExpandedFileBytes": 524705,
+  "maxFileRows": 1285,
+  "legacyProjectedDatasetBytes": 47413715,
+  "containsPrivateSampleRows": false
+}

@@ -1,0 +1,30 @@
+{
+  "schema": "director-training-dataset-v1",
+  "enabled": false,
+  "rowSchemas": [
+    "demo-live36-v1",
+    "legacy26-v1"
+  ],
+  "featureVersion": "pov-v1",
+  "canonicalization": "ascii-integer-json-v1",
+  "authentication": "device-entitlement-train",
+  "initialGovernanceStatus": "pending-review",
+  "limits": {
+    "maxManifestBytes": 1048576,
+    "maxInitializeBytes": 2097152,
+    "maxSources": 256,
+    "maxFiles": 1024,
+    "maxRows": 200000,
+    "maxCompressedBytes": 134217728,
+    "maxExpandedBytes": 536870912,
+    "maxFileBytes": 8388608,
+    "maxExpandedFileBytes": 33554432,
+    "maxFileRows": 50000,
+    "partBytes": 262144,
+    "maxClientConcurrency": 2,
+    "maxActiveSessionsPerAccount": 2,
+    "maxReservedBytesPerAccount": 268435456,
+    "sessionLifetimeSeconds": 604800,
+    "expiredRetentionSeconds": 604800
+  }
+}

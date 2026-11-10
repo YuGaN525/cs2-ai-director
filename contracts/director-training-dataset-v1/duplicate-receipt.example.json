@@ -1,0 +1,13 @@
+{
+  "schema": "director-training-dataset-v1",
+  "clientDatasetId": "00000000-0000-0000-0000-000000000004",
+  "datasetId": "00000000-0000-0000-0000-0000000001f5",
+  "manifestSha256": "ef153845cd74ead1d6ef22259ebef6e40231853729415313034a1c9991ba540b",
+  "requestHash": "16e718968e7864a1bea53a738de0aa8e25b22c4a6a8d08cace58b547d29949dd",
+  "receivedFiles": 1,
+  "receivedRows": 2,
+  "acceptedRows": 0,
+  "duplicateRows": 2,
+  "receivedAt": "2026-11-10T00:00:00Z",
+  "initialGovernanceStatus": "pending-review"
+}

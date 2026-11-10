@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "director-training-dataset-v1"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "rowSchemas": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "demo-live36-v1",
+          "legacy26-v1"
+        ]
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "featureVersion": {
+      "const": "pov-v1"
+    },
+    "canonicalization": {
+      "const": "ascii-integer-json-v1"
+    },
+    "authentication": {
+      "const": "device-entitlement-train"
+    },
+    "initialGovernanceStatus": {
+      "const": "pending-review"
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "maxManifestBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "maxInitializeBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2097152
+        },
+        "maxSources": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "maxFiles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        },
+        "maxRows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200000
+        },
+        "maxCompressedBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 134217728
+        },
+        "maxExpandedBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 536870912
+        },
+        "maxFileBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "maxExpandedFileBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 33554432
+        },
+        "maxFileRows": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50000
+        },
+        "partBytes": {
+          "const": 262144
+        },
+        "maxClientConcurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "maxActiveSessionsPerAccount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "maxReservedBytesPerAccount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 268435456
+        },
+        "sessionLifetimeSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 604800
+        },
+        "expiredRetentionSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 604800
+        }
+      },
+      "required": [
+        "maxManifestBytes",
+        "maxInitializeBytes",
+        "maxSources",
+        "maxFiles",
+        "maxRows",
+        "maxCompressedBytes",
+        "maxExpandedBytes",
+        "maxFileBytes",
+        "maxExpandedFileBytes",
+        "maxFileRows",
+        "partBytes",
+        "maxClientConcurrency",
+        "maxActiveSessionsPerAccount",
+        "maxReservedBytesPerAccount",
+        "sessionLifetimeSeconds",
+        "expiredRetentionSeconds"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema",
+    "enabled",
+    "rowSchemas",
+    "featureVersion",
+    "canonicalization",
+    "authentication",
+    "initialGovernanceStatus",
+    "limits"
+  ],
+  "additionalProperties": false
+}

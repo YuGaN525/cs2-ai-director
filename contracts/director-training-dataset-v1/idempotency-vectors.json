@@ -1,0 +1,26 @@
+[
+  {
+    "first": "minimal",
+    "next": "same-request-reordered",
+    "scope": "same-account-device-origin",
+    "expected": "same-session-and-receipt"
+  },
+  {
+    "first": "minimal",
+    "next": "same-content-new-command",
+    "scope": "same-account-device-origin",
+    "expected": "new-pending-review-receipt-object-reuse-only"
+  },
+  {
+    "first": "minimal",
+    "next": "same-id-different-request",
+    "scope": "same-account-device-origin",
+    "expected": "409-DIRECTOR_DATASET_CONFLICT"
+  },
+  {
+    "first": "minimal",
+    "next": "minimal",
+    "scope": "different-account-device-origin",
+    "expected": "different-ownership-scope-no-receipt-disclosure"
+  }
+]

@@ -1,0 +1,77 @@
+[
+  {
+    "http": 400,
+    "code": "DIRECTOR_DATASET_INVALID",
+    "handling": "Fix malformed request; never blind retry"
+  },
+  {
+    "http": 401,
+    "code": "DIRECTOR_DEVICE_UNAUTHORIZED",
+    "handling": "Restore device authentication"
+  },
+  {
+    "http": 403,
+    "code": "DIRECTOR_NO_ENTITLEMENT",
+    "handling": "Restore product entitlement"
+  },
+  {
+    "http": 403,
+    "code": "FORBIDDEN",
+    "handling": "Current train permission required only on dataset endpoint"
+  },
+  {
+    "http": 404,
+    "code": "DIRECTOR_DATASET_NOT_FOUND",
+    "handling": "Missing or outside current identity scope"
+  },
+  {
+    "http": 404,
+    "code": "DIRECTOR_DATASET_RECEIPT_NOT_FOUND",
+    "handling": "Query transport; keep original ID and payload"
+  },
+  {
+    "http": 409,
+    "code": "DIRECTOR_DATASET_CONFLICT",
+    "handling": "Same ID with different request or part content"
+  },
+  {
+    "http": 409,
+    "code": "DIRECTOR_DATASET_INCOMPLETE",
+    "handling": "Resume missing parts"
+  },
+  {
+    "http": 409,
+    "code": "DIRECTOR_DATASET_STATE",
+    "handling": "Terminal/received state cannot be changed by cancel/upload"
+  },
+  {
+    "http": 410,
+    "code": "DIRECTOR_DATASET_EXPIRED",
+    "handling": "Keep local original; create new explicit attempt when appropriate"
+  },
+  {
+    "http": 413,
+    "code": "DIRECTOR_DATASET_LIMIT",
+    "handling": "Honor negotiated and hard limits; proxy may return non-JSON"
+  },
+  {
+    "http": 422,
+    "code": "DIRECTOR_DATASET_CONTENT_INVALID",
+    "handling": "Fix invalid content; preserve diagnostic and original"
+  },
+  {
+    "http": 429,
+    "code": "DIRECTOR_DATASET_QUOTA",
+    "handling": "Honor Retry-After; do not duplicate reservation"
+  },
+  {
+    "http": 503,
+    "code": "DIRECTOR_DATASET_DISABLED",
+    "handling": "Feature unavailable; never send samples to model endpoint"
+  },
+  {
+    "http": 503,
+    "code": "DIRECTOR_DATASET_STORAGE_UNAVAILABLE",
+    "handling": "Query original operation before retry"
+  }
+]

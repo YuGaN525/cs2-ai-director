@@ -1,0 +1,784 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Director training dataset offline contract",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/director/training/datasets/capabilities": {
+      "get": {
+        "operationId": "get__capabilities",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; data uses the indicated schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "const": "OK"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "Capabilities.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed contract"
+          },
+          "401": {
+            "description": "Device authentication needed"
+          },
+          "403": {
+            "description": "Entitlement/train permission denied"
+          },
+          "404": {
+            "description": "Out of scope or not found"
+          },
+          "409": {
+            "description": "Identity/content/state conflict"
+          },
+          "413": {
+            "description": "Size limit; proxy may return non-JSON"
+          },
+          "422": {
+            "description": "Invalid dataset content"
+          },
+          "429": {
+            "description": "Quota/concurrency; honor Retry-After"
+          },
+          "503": {
+            "description": "Feature disabled or storage unavailable"
+          }
+        },
+        "description": "Contract only; not an enabled endpoint. Success data: Capabilities.schema.json"
+      }
+    },
+    "/api/director/training/datasets": {
+      "post": {
+        "operationId": "post_initialize",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; data uses the indicated schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "const": "OK"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "TransportState.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed contract"
+          },
+          "401": {
+            "description": "Device authentication needed"
+          },
+          "403": {
+            "description": "Entitlement/train permission denied"
+          },
+          "404": {
+            "description": "Out of scope or not found"
+          },
+          "409": {
+            "description": "Identity/content/state conflict"
+          },
+          "413": {
+            "description": "Size limit; proxy may return non-JSON"
+          },
+          "422": {
+            "description": "Invalid dataset content"
+          },
+          "429": {
+            "description": "Quota/concurrency; honor Retry-After"
+          },
+          "503": {
+            "description": "Feature disabled or storage unavailable"
+          },
+          "201": {
+            "description": "Success envelope; data uses the indicated schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "const": "OK"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "TransportState.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "description": "Contract only; not an enabled endpoint. Success data: TransportState.schema.json",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "Initialize.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/training/datasets/{clientDatasetId}": {
+      "get": {
+        "operationId": "get__clientDatasetId",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; data uses the indicated schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "const": "OK"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "TransportState.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed contract"
+          },
+          "401": {
+            "description": "Device authentication needed"
+          },
+          "403": {
+            "description": "Entitlement/train permission denied"
+          },
+          "404": {
+            "description": "Out of scope or not found"
+          },
+          "409": {
+            "description": "Identity/content/state conflict"
+          },
+          "413": {
+            "description": "Size limit; proxy may return non-JSON"
+          },
+          "422": {
+            "description": "Invalid dataset content"
+          },
+          "429": {
+            "description": "Quota/concurrency; honor Retry-After"
+          },
+          "503": {
+            "description": "Feature disabled or storage unavailable"
+          }
+        },
+        "description": "Contract only; not an enabled endpoint. Success data: TransportState.schema.json",
+        "parameters": [
+          {
+            "name": "clientDatasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/director/training/datasets/{clientDatasetId}/files/{fileIndex}/parts/{partIndex}": {
+      "put": {
+        "operationId": "put__clientDatasetId_files_fileIndex_parts_partIndex",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; data uses the indicated schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "const": "OK"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "PartReceipt.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed contract"
+          },
+          "401": {
+            "description": "Device authentication needed"
+          },
+          "403": {
+            "description": "Entitlement/train permission denied"
+          },
+          "404": {
+            "description": "Out of scope or not found"
+          },
+          "409": {
+            "description": "Identity/content/state conflict"
+          },
+          "413": {
+            "description": "Size limit; proxy may return non-JSON"
+          },
+          "422": {
+            "description": "Invalid dataset content"
+          },
+          "429": {
+            "description": "Quota/concurrency; honor Retry-After"
+          },
+          "503": {
+            "description": "Feature disabled or storage unavailable"
+          }
+        },
+        "description": "Contract only; not an enabled endpoint. Success data: PartReceipt.schema.json",
+        "parameters": [
+          {
+            "name": "clientDatasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "fileIndex",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1023
+            }
+          },
+          {
+            "name": "partIndex",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 31
+            }
+          },
+          {
+            "name": "X-Part-Sha256",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/training/datasets/{clientDatasetId}/complete": {
+      "post": {
+        "operationId": "post__clientDatasetId_complete",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; data uses the indicated schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "const": "OK"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "Receipt.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed contract"
+          },
+          "401": {
+            "description": "Device authentication needed"
+          },
+          "403": {
+            "description": "Entitlement/train permission denied"
+          },
+          "404": {
+            "description": "Out of scope or not found"
+          },
+          "409": {
+            "description": "Identity/content/state conflict"
+          },
+          "413": {
+            "description": "Size limit; proxy may return non-JSON"
+          },
+          "422": {
+            "description": "Invalid dataset content"
+          },
+          "429": {
+            "description": "Quota/concurrency; honor Retry-After"
+          },
+          "503": {
+            "description": "Feature disabled or storage unavailable"
+          },
+          "202": {
+            "description": "Still verifying; query state/receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "const": "OK"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "TransportState.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "description": "Contract only; not an enabled endpoint. Success data: Receipt.schema.json",
+        "parameters": [
+          {
+            "name": "clientDatasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "EmptyCommand.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/training/datasets/{clientDatasetId}/receipt": {
+      "get": {
+        "operationId": "get__clientDatasetId_receipt",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; data uses the indicated schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "const": "OK"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "Receipt.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed contract"
+          },
+          "401": {
+            "description": "Device authentication needed"
+          },
+          "403": {
+            "description": "Entitlement/train permission denied"
+          },
+          "404": {
+            "description": "Out of scope or not found"
+          },
+          "409": {
+            "description": "Identity/content/state conflict"
+          },
+          "413": {
+            "description": "Size limit; proxy may return non-JSON"
+          },
+          "422": {
+            "description": "Invalid dataset content"
+          },
+          "429": {
+            "description": "Quota/concurrency; honor Retry-After"
+          },
+          "503": {
+            "description": "Feature disabled or storage unavailable"
+          }
+        },
+        "description": "Contract only; not an enabled endpoint. Success data: Receipt.schema.json",
+        "parameters": [
+          {
+            "name": "clientDatasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/director/training/datasets/{clientDatasetId}/cancel": {
+      "post": {
+        "operationId": "post__clientDatasetId_cancel",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; data uses the indicated schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "const": "OK"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "TransportState.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed contract"
+          },
+          "401": {
+            "description": "Device authentication needed"
+          },
+          "403": {
+            "description": "Entitlement/train permission denied"
+          },
+          "404": {
+            "description": "Out of scope or not found"
+          },
+          "409": {
+            "description": "Identity/content/state conflict"
+          },
+          "413": {
+            "description": "Size limit; proxy may return non-JSON"
+          },
+          "422": {
+            "description": "Invalid dataset content"
+          },
+          "429": {
+            "description": "Quota/concurrency; honor Retry-After"
+          },
+          "503": {
+            "description": "Feature disabled or storage unavailable"
+          }
+        },
+        "description": "Contract only; not an enabled endpoint. Success data: TransportState.schema.json",
+        "parameters": [
+          {
+            "name": "clientDatasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "EmptyCommand.schema.json"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/director/training/datasets/{clientDatasetId}/governance": {
+      "get": {
+        "operationId": "get__clientDatasetId_governance",
+        "security": [
+          {
+            "deviceToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success envelope; data uses the indicated schema",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "code": {
+                      "const": "OK"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "$ref": "GovernanceState.schema.json"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed contract"
+          },
+          "401": {
+            "description": "Device authentication needed"
+          },
+          "403": {
+            "description": "Entitlement/train permission denied"
+          },
+          "404": {
+            "description": "Out of scope or not found"
+          },
+          "409": {
+            "description": "Identity/content/state conflict"
+          },
+          "413": {
+            "description": "Size limit; proxy may return non-JSON"
+          },
+          "422": {
+            "description": "Invalid dataset content"
+          },
+          "429": {
+            "description": "Quota/concurrency; honor Retry-After"
+          },
+          "503": {
+            "description": "Feature disabled or storage unavailable"
+          }
+        },
+        "description": "Contract only; not an enabled endpoint. Success data: GovernanceState.schema.json",
+        "parameters": [
+          {
+            "name": "clientDatasetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "deviceToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "d1 device token"
+      }
+    }
+  }
+}

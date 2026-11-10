@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "director-training-dataset-v1"
+    },
+    "clientDatasetId": {
+      "type": "string",
+      "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "manifestSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "requestHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "transportStatus": {
+      "type": "string",
+      "enum": [
+        "receiving",
+        "verifying",
+        "received",
+        "cancelled",
+        "expired",
+        "rejected"
+      ]
+    },
+    "expiresAt": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "receivedParts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fileIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1023
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 31
+            },
+            "minItems": 0,
+            "maxItems": 32
+          }
+        },
+        "required": [
+          "fileIndex",
+          "parts"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 1024
+    },
+    "hasReceipt": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema",
+    "clientDatasetId",
+    "manifestSha256",
+    "requestHash",
+    "transportStatus",
+    "expiresAt",
+    "receivedParts",
+    "hasReceipt"
+  ],
+  "additionalProperties": false
+}

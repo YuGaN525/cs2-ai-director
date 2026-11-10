@@ -1,0 +1,16 @@
+{
+  "schema": "director-training-dataset-v1",
+  "clientDatasetId": "00000000-0000-0000-0000-000000000001",
+  "datasetId": "00000000-0000-0000-0000-0000000001f4",
+  "revision": 1,
+  "governanceStatus": "pending-review",
+  "sources": [
+    {
+      "sourceId": "00000000-0000-0000-0000-000000000065",
+      "status": "pending-review",
+      "blockers": [
+        "SOURCE_UNVERIFIED"
+      ]
+    }
+  ]
+}

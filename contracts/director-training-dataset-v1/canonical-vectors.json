@@ -1,0 +1,84 @@
+[
+  {
+    "id": "ordered",
+    "path": "samples/canonical-ordered.json",
+    "valid": true,
+    "canonical": "{\"a\":{\"a\":null,\"b\":true},\"s\":\"a/b<>&\",\"z\":2}",
+    "sha256": "aba4060fbeebd77db95111810d9b26e9bbed226ad38e009c1ebca9d91274ff28"
+  },
+  {
+    "id": "escaped",
+    "path": "samples/canonical-escaped.json",
+    "valid": true,
+    "canonical": "{\"quote\":\"\\\"\",\"slash\":\"\\\\\"}",
+    "sha256": "91055a9a2526d4e33937f0140c77b87ecf249b6f3f72e4343da4a64b0be8a472"
+  },
+  {
+    "id": "safe-integer",
+    "path": "samples/canonical-safe-integer.json",
+    "valid": true,
+    "canonical": "{\"n\":9007199254740991}",
+    "sha256": "e1da48c6a6089f06ecb4e0a2259e658e3786b2420f52baccdf929ec6460d7b41"
+  },
+  {
+    "id": "reordered",
+    "path": "samples/canonical-reordered.json",
+    "valid": true,
+    "canonical": "{\"a\":1,\"b\":[0,2]}",
+    "sha256": "6d1d41af030a9e49d0a06045bf0cf8581865975c74160104bd0616a57b8e5a06"
+  },
+  {
+    "id": "duplicate",
+    "path": "samples/canonical-duplicate.json",
+    "valid": false,
+    "error": "DUPLICATE_KEY"
+  },
+  {
+    "id": "negative-zero",
+    "path": "samples/canonical-negative-zero.json",
+    "valid": false,
+    "error": "INTEGER_TOKEN"
+  },
+  {
+    "id": "exponent",
+    "path": "samples/canonical-exponent.json",
+    "valid": false,
+    "error": "INTEGER_TOKEN"
+  },
+  {
+    "id": "fraction",
+    "path": "samples/canonical-fraction.json",
+    "valid": false,
+    "error": "INTEGER_TOKEN"
+  },
+  {
+    "id": "unsafe-integer",
+    "path": "samples/canonical-unsafe-integer.json",
+    "valid": false,
+    "error": "INTEGER"
+  },
+  {
+    "id": "unicode",
+    "path": "samples/canonical-unicode.json",
+    "valid": false,
+    "error": "ASCII"
+  },
+  {
+    "id": "control",
+    "path": "samples/canonical-control.json",
+    "valid": false,
+    "error": "ASCII"
+  },
+  {
+    "id": "nan",
+    "path": "samples/canonical-nan.json",
+    "valid": false,
+    "error": "INTEGER_TOKEN"
+  },
+  {
+    "id": "bom",
+    "path": "samples/canonical-bom.json",
+    "valid": false,
+    "error": "BOM"
+  }
+]

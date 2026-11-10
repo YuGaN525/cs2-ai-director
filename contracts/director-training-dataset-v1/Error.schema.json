@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "success": {
+      "const": false
+    },
+    "code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{0,79}$"
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "data": {
+      "const": null
+    }
+  },
+  "required": [
+    "success",
+    "code",
+    "message",
+    "data"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,310 @@
+[
+  {
+    "id": "minimal",
+    "initialize": "samples/minimal.initialize.json",
+    "files": [
+      "samples/minimal.0.csv.gz"
+    ],
+    "valid": true,
+    "error": null,
+    "manifestSha256": "ef153845cd74ead1d6ef22259ebef6e40231853729415313034a1c9991ba540b",
+    "requestHash": "1e240bdf3ad6911e9942d352cd1cd06d26ce881a9c91fa3c3659adaf1082e5b9",
+    "initialGovernanceStatus": "pending-review"
+  },
+  {
+    "id": "multi-bo",
+    "initialize": "samples/multi-bo.initialize.json",
+    "files": [
+      "samples/multi-bo.0.csv.gz",
+      "samples/multi-bo.1.csv.gz",
+      "samples/multi-bo.2.csv.gz"
+    ],
+    "valid": true,
+    "error": null,
+    "manifestSha256": "f5303ff543b3e33b66cb6adc286b78490e7ed99d6ec0cb64d438debaf168ec2a",
+    "requestHash": "15fdec1d0c37c33f9ead33294e96a4e322d9ea74a1631cc997a28746b5120554",
+    "initialGovernanceStatus": "pending-review"
+  },
+  {
+    "id": "legacy",
+    "initialize": "samples/legacy.initialize.json",
+    "files": [
+      "samples/legacy.0.csv.gz"
+    ],
+    "valid": true,
+    "error": null,
+    "manifestSha256": "42807ecff47f64a02b42e12fa4af2d17a8692892cd4cc7170f238a2c26005abb",
+    "requestHash": "0e6a1f7b79e4eb7aaa85cbf8697667bba4c57b8aa451675c893f4c2e27387322",
+    "initialGovernanceStatus": "pending-review"
+  },
+  {
+    "id": "same-request-reordered",
+    "initialize": "samples/same-request-reordered.initialize.json",
+    "files": [
+      "samples/same-request-reordered.0.csv.gz"
+    ],
+    "valid": true,
+    "error": null,
+    "manifestSha256": "ef153845cd74ead1d6ef22259ebef6e40231853729415313034a1c9991ba540b",
+    "requestHash": "1e240bdf3ad6911e9942d352cd1cd06d26ce881a9c91fa3c3659adaf1082e5b9",
+    "initialGovernanceStatus": "pending-review"
+  },
+  {
+    "id": "wrong-schema",
+    "initialize": "samples/wrong-schema.initialize.json",
+    "files": [
+      "samples/wrong-schema.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "SCHEMA"
+  },
+  {
+    "id": "extra-field",
+    "initialize": "samples/extra-field.initialize.json",
+    "files": [
+      "samples/extra-field.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "FIELDS"
+  },
+  {
+    "id": "nil-id",
+    "initialize": "samples/nil-id.initialize.json",
+    "files": [
+      "samples/nil-id.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "STRING"
+  },
+  {
+    "id": "bad-file-index",
+    "initialize": "samples/bad-file-index.initialize.json",
+    "files": [
+      "samples/bad-file-index.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "INTEGER"
+  },
+  {
+    "id": "bad-part-count",
+    "initialize": "samples/bad-part-count.initialize.json",
+    "files": [
+      "samples/bad-part-count.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "PART_COUNT"
+  },
+  {
+    "id": "wrong-total",
+    "initialize": "samples/wrong-total.initialize.json",
+    "files": [
+      "samples/wrong-total.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "TOTALS"
+  },
+  {
+    "id": "source-without-file",
+    "initialize": "samples/source-without-file.initialize.json",
+    "files": [
+      "samples/source-without-file.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "SOURCE_TOTALS"
+  },
+  {
+    "id": "unsafe-source",
+    "initialize": "samples/unsafe-source.initialize.json",
+    "files": [
+      "samples/unsafe-source.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "SOURCE_IDENTITY"
+  },
+  {
+    "id": "wrong-source-hash",
+    "initialize": "samples/wrong-source-hash.initialize.json",
+    "files": [
+      "samples/wrong-source-hash.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "SOURCE_IDENTITY"
+  },
+  {
+    "id": "row-budget",
+    "initialize": "samples/row-budget.initialize.json",
+    "files": [
+      "samples/row-budget.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "INTEGER"
+  },
+  {
+    "id": "manifest-hash",
+    "initialize": "samples/manifest-hash.initialize.json",
+    "files": [
+      "samples/manifest-hash.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "MANIFEST_HASH"
+  },
+  {
+    "id": "duplicate-key",
+    "initialize": "samples/duplicate-key.initialize.json",
+    "files": [
+      "samples/duplicate-key.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "DUPLICATE_KEY"
+  },
+  {
+    "id": "fractional-json",
+    "initialize": "samples/fractional-json.initialize.json",
+    "files": [
+      "samples/fractional-json.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "INTEGER_TOKEN"
+  },
+  {
+    "id": "non-ascii-json",
+    "initialize": "samples/non-ascii-json.initialize.json",
+    "files": [
+      "samples/non-ascii-json.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "ASCII"
+  },
+  {
+    "id": "corrupt-file-hash",
+    "initialize": "samples/corrupt-file-hash.initialize.json",
+    "files": [
+      "samples/corrupt-file-hash.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "FILE_HASH"
+  },
+  {
+    "id": "nan-feature",
+    "initialize": "samples/nan-feature.initialize.json",
+    "files": [
+      "samples/nan-feature.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "CSV_NUMBER"
+  },
+  {
+    "id": "missing-group",
+    "initialize": "samples/missing-group.initialize.json",
+    "files": [
+      "samples/missing-group.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "STRING"
+  },
+  {
+    "id": "bad-label",
+    "initialize": "samples/bad-label.initialize.json",
+    "files": [
+      "samples/bad-label.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "CSV_INTEGER"
+  },
+  {
+    "id": "wrong-tick-time",
+    "initialize": "samples/wrong-tick-time.initialize.json",
+    "files": [
+      "samples/wrong-tick-time.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "CSV_TIME"
+  },
+  {
+    "id": "duplicate-target",
+    "initialize": "samples/duplicate-target.initialize.json",
+    "files": [
+      "samples/duplicate-target.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "GROUP_TARGET"
+  },
+  {
+    "id": "partial-candidate-group",
+    "initialize": "samples/partial-candidate-group.initialize.json",
+    "files": [
+      "samples/partial-candidate-group.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "GROUP_SIZE"
+  },
+  {
+    "id": "model-misroute",
+    "initialize": "samples/model-misroute.initialize.json",
+    "files": [
+      "samples/model-misroute.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "CSV_COLUMNS"
+  },
+  {
+    "id": "private-column",
+    "initialize": "samples/private-column.initialize.json",
+    "files": [
+      "samples/private-column.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "CSV_COLUMNS"
+  },
+  {
+    "id": "concatenated-gzip",
+    "initialize": "samples/concatenated-gzip.initialize.json",
+    "files": [
+      "samples/concatenated-gzip.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "GZIP"
+  },
+  {
+    "id": "truncated-gzip",
+    "initialize": "samples/truncated-gzip.initialize.json",
+    "files": [
+      "samples/truncated-gzip.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "GZIP"
+  },
+  {
+    "id": "expanded-budget",
+    "initialize": "samples/expanded-budget.initialize.json",
+    "files": [
+      "samples/expanded-budget.0.csv.gz"
+    ],
+    "valid": false,
+    "error": "EXPANDED_LIMIT"
+  },
+  {
+    "id": "same-content-new-command",
+    "initialize": "samples/same-content-new-command.initialize.json",
+    "files": [
+      "samples/same-content-new-command.0.csv.gz"
+    ],
+    "valid": true,
+    "error": null,
+    "manifestSha256": "ef153845cd74ead1d6ef22259ebef6e40231853729415313034a1c9991ba540b",
+    "requestHash": "16e718968e7864a1bea53a738de0aa8e25b22c4a6a8d08cace58b547d29949dd",
+    "initialGovernanceStatus": "pending-review"
+  },
+  {
+    "id": "same-id-different-request",
+    "initialize": "samples/same-id-different-request.initialize.json",
+    "files": [
+      "samples/same-id-different-request.0.csv.gz"
+    ],
+    "valid": true,
+    "error": null,
+    "manifestSha256": "ef153845cd74ead1d6ef22259ebef6e40231853729415313034a1c9991ba540b",
+    "requestHash": "9bb45c451858ffaa861634ca1edc9bd2c9ea2bc86a58e1e03a1fc6bf6cd9be36",
+    "initialGovernanceStatus": "pending-review"
+  }
+]
