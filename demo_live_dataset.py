@@ -1,5 +1,5 @@
 """Demo v2: periodic live-round sampling, future labels and past-only features."""
-import bisect,csv,hashlib
+import bisect,csv,hashlib,math
 from pathlib import Path
 import director_core as core
 from train_from_demos import build_snapshot
@@ -18,6 +18,15 @@ LIVE_COLUMNS = COLUMNS + ['match_source_id', 'source_tick', 'label_horizon_ticks
 def validate_sampling(horizon, step):
     if any(type(value) is not int or value <= 0 for value in (horizon, step)):
         raise ValueError('demo_sampling_ticks_must_be_positive_integers')
+
+
+def recorded_team(record):
+    """Missing parser values are not team IDs (including NaN spectator rows)."""
+    try:
+        value=float(record.get('team_num'))
+        return int(value) if math.isfinite(value) and value.is_integer() else None
+    except (ValueError,TypeError,OverflowError):
+        return None
 
 
 def live_windows(starts,ends,horizon=DEFAULT_HORIZON,step=DEFAULT_STEP,max_samples=12000):
@@ -65,16 +74,23 @@ def _build_live_csv(path,out,horizon,step):
     frame=parser.parse_ticks(['X','Y','Z','health','armor','team_num','is_alive','active_weapon_name','yaw','pitch','tick','steamid','name'],ticks=[x[1] for x in samples])
     by_tick={}
     for record in frame.to_dict('records'):by_tick.setdefault(int(record['tick']),[]).append(record)
-    identities=sorted({str(r['steamid']) for records in by_tick.values() for r in records if int(r.get('team_num') or 0) in (2,3)})
+    identities=sorted({str(r['steamid']) for records in by_tick.values() for r in records if recorded_team(r) in (2,3)})
     if len(identities)>10:raise ValueError('demo_ambiguous_player_mapping')
     slots={sid:i+1 for i,sid in enumerate(identities)}
     with Path(path).open('rb') as original:source=hashlib.file_digest(original,'sha256').hexdigest()
-    rows=[];counts={0:0,1:0};missing=0
+    rows=[];counts={0:0,1:0};missing=0;missing_team_rows=0;incomplete_team_windows=0
     for round_no,tick,stop in samples:
         records=by_tick.get(tick)
         if not records:missing+=1;continue
+        unknown=[r for r in records if recorded_team(r) is None]
+        missing_team_rows+=len(unknown)
+        # Disconnected/spectator records may have no team. If a potentially
+        # active player has no team, omit the whole candidate window instead
+        # of inventing a team or silently training an incomplete ranking.
+        if any(r.get('is_alive') is not False for r in unknown):
+            missing+=1;incomplete_team_windows+=1;continue
         # Old v1 builder used swapped numeric team enums. v2 explicitly maps CS2 2=T,3=CT.
-        fixed=[dict(r,team_num=3 if int(r.get('team_num') or 0)==2 else 2 if int(r.get('team_num') or 0)==3 else 0) for r in records]
+        fixed=[dict(r,team_num=3 if recorded_team(r)==2 else 2) for r in records if recorded_team(r) in (2,3)]
         snap=build_snapshot(fixed,map_name)
         if snap is None:missing+=1;continue
         snap.round_num=round_no
@@ -95,4 +111,4 @@ def _build_live_csv(path,out,horizon,step):
     if not rows:raise ValueError('demo_no_samples')
     with Path(out).open('w',newline='',encoding='utf-8') as output:
         writer=csv.DictWriter(output,fieldnames=LIVE_COLUMNS);writer.writeheader();writer.writerows(rows)
-    return {'parser':PARSER_VERSION,'sampling_method':SAMPLING_METHOD,'source_sha256':source,'sample_windows':len(samples),'rows':len(rows),'positive':counts[1],'negative':counts[0],'missing_windows':missing,'horizon_ticks':horizon,'step_ticks':step,'tickrate_assumption':64,'label_definition':'damage_or_kill_in_(tick,tick+horizon]','features':list(core.DECISION_FEATURES),'missing_fields':'armor_helmet_flash_defuse_bomb_ammo_approx','limitations':'unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence'}
+    return {'parser':PARSER_VERSION,'sampling_method':SAMPLING_METHOD,'source_sha256':source,'sample_windows':len(samples),'rows':len(rows),'positive':counts[1],'negative':counts[0],'missing_windows':missing,'missing_team_rows':missing_team_rows,'incomplete_team_windows':incomplete_team_windows,'horizon_ticks':horizon,'step_ticks':step,'tickrate_assumption':64,'label_definition':'damage_or_kill_in_(tick,tick+horizon]','features':list(core.DECISION_FEATURES),'missing_fields':'armor_helmet_flash_defuse_bomb_ammo_approx','limitations':'unavailable GSI fields explicitly marked; real Demo/GSI alignment requires same-match evidence'}

@@ -72,6 +72,31 @@ class LiveDatasetTests(unittest.TestCase):
         self.assertTrue(all(r['label'] == '0' for r in a))
         self.assertEqual(report['positive'], 2)
 
+    def test_missing_team_disconnected_record_does_not_change_candidates(self):
+        baseline,_=self.parse(parser_fixture())
+        parser=parser_fixture();original=parser.parse_ticks.side_effect
+        def ticks(fields,ticks):
+            frame=original(fields,ticks)
+            frame.records.extend(dict(tick=t,steamid='spectator',team_num=float('nan'),is_alive=False) for t in ticks)
+            return frame
+        parser.parse_ticks.side_effect=ticks
+        rows,report=self.parse(parser)
+        self.assertEqual(rows,baseline)
+        self.assertEqual(report['missing_team_rows'],2)
+        self.assertEqual(report['incomplete_team_windows'],0)
+
+    def test_unknown_active_team_omits_entire_window(self):
+        parser=parser_fixture();original=parser.parse_ticks.side_effect
+        def ticks(fields,ticks):
+            frame=original(fields,ticks)
+            frame.records.append(dict(tick=128,steamid='unknown',team_num=None,is_alive=True))
+            return frame
+        parser.parse_ticks.side_effect=ticks
+        rows,report=self.parse(parser)
+        self.assertEqual({row['source_tick'] for row in rows},{'256'})
+        self.assertEqual(report['incomplete_team_windows'],1)
+        self.assertEqual(report['missing_windows'],1)
+
     def test_label_window_excludes_present_includes_exact_horizon(self):
         for tick, expected in ((128, '0'), (129, '1'), (320, '1'), (321, '0')):
             with self.subTest(tick=tick):
