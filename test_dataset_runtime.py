@@ -44,6 +44,15 @@ class DatasetRuntimeTests(unittest.TestCase):
         self.assertGreaterEqual(self.store.get(rid)['next_at']-self.store.clock(),899)
         self.assertEqual(retry_seconds('120'),120);self.assertEqual(retry_seconds('broken'),0)
 
+    def test_refreshed_device_credential_resumes_reauth_blocked_run(self):
+        rid=self.success();runtime=self.runtime(rid)
+        with patch.object(runtime.client,'upload',side_effect=DatasetFailure('DIRECTOR_REAUTH_REQUIRED',401)):
+            runtime.run_once()
+        self.assertEqual(self.store.get(rid)['state'],'blocked')
+        runtime.client.current=UploadIdentity(self.binding,'refreshed-fixture')
+        self.assertTrue(runtime.run_once())
+        self.assertEqual(self.store.get(rid)['state'],'received')
+
     def test_cancelled_replacement_keeps_old_evidence_and_samples(self):
         rid=self.success();old=self.store.get(rid)
         self.store.cancelled(rid,self.binding);new_id=self.store.renew(rid,self.binding)

@@ -76,7 +76,7 @@ class DatasetRuntime:
         fingerprint=hashlib.sha256((str(identity.binding)+identity.access_token).encode()).hexdigest()
         if fingerprint!=self._fingerprint:
             with self.store.transaction() as db:
-                db.execute("UPDATE runs SET state='pending',next_at=0 WHERE account=? AND origin=? AND device=? AND state='blocked' AND error IN ('IDENTITY_CHANGED','DIRECTOR_DEVICE_UNAUTHORIZED','FORBIDDEN','DIRECTOR_NO_ENTITLEMENT')",self.store.actor(identity.binding))
+                db.execute("UPDATE runs SET state='pending',next_at=0 WHERE account=? AND origin=? AND device=? AND state='blocked' AND error IN ('IDENTITY_CHANGED','DIRECTOR_DEVICE_UNAUTHORIZED','DIRECTOR_REAUTH_REQUIRED','FORBIDDEN','DIRECTOR_NO_ENTITLEMENT')",self.store.actor(identity.binding))
             self._fingerprint=fingerprint
         try:
             with FileLock(self.store.root/'upload-worker.lock',timeout=0):
