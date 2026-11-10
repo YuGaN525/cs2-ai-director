@@ -22,7 +22,7 @@
 | TD-CLI-06 | `upload_governance.py` 普通采集独立只读治理查询，权限仍为 device-entitlement；legacy-selected-only 不变，旧服务器兼容；设置页提供状态入口 |
 | TD-CLI-07 | 明确选取历史 CSV、完整包或含 spec.json 的 derived 目录，先脱敏预览再确认排队；保留原件，模型-only 无法还原完整样本 |
 | TD-CLI-08 | `dataset_reader.py` 的 training-dataset-v1 读取器；worker 支持 schemaVersion/schema 3、能力声明、选中来源下载、服务端核实 BO 分区、重复样本统计及冲突拒绝；兼容原 schema 1/2 |
-| TD-CLI-09 | 单测、界面矩阵、真实本机 HTTP/PG 联验及发行校验；生产联验与下载切换须以后续实际证据更新 |
+| TD-CLI-09 | 单测、界面矩阵、真实本机 HTTP/PG 联验、Linux 离线重训、GitHub 正式发行及官网切换后的独立公钥验签/完整下载校验均通过 |
 
 冻结目录 `contracts/director-training-dataset-v1` 不改写，manifest SHA256 为 `50898c584789e3aeac7385a51760c03ad30dc7c36ffa6710b0f6816c452f7b6d`。runtime 校验器与全部冻结正反例一致。新接收要求设备＋有效产品资格＋当前训练权限；普通采集不新增 train 权限。
 
@@ -54,6 +54,20 @@ claim 请求增加 `readerVersions:["training-dataset-v1"]`。新 snapshot manif
 
 GitHub 私有仓已正式发布 [v1.16.0](https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.16.0)，tag 对应桌面源码 da254cb8。两款 EXE 各 187,786,546 字节，SHA256 同为 `2d4763a3d654b18698013cb05ad27a917144ac24cc314ea33a457db3052499f9`；远端三个附件（含 SHA256SUMS）逐一核验。两实际 EXE 自检通过，独立更新与账号/模型公钥不变，内部训练器 CLI 导入及数据队列窗口启动通过。官网仅交付导播 EXE，内部训练器留在私有 GitHub。
 
-云 worker 部署固定独立提交 `26164278852504aaa33baff4c3aca174a771aaf7`：仅补齐 Dockerfile.worker 的新读取器/校验器 COPY，不改变上述 EXE。使用该提交的干净构建上下文及 requirements-worker.lock 构建；19 个复制模块均存在且编译通过。Linux 容器、生产部署及官网下载最终验证由网站发布门禁和后续回读补记。
+云 worker 部署固定独立提交 `26164278852504aaa33baff4c3aca174a771aaf7`：仅补齐 Dockerfile.worker 的新读取器/校验器 COPY，不改变上述 EXE。使用该提交的干净构建上下文及 requirements-worker.lock 构建；19 个复制模块均存在且编译通过。
+
+服务器 Linux 实际离线重训已通过：固定 2616427 镜像、非 root、`network none`、无身份配置及数据库写入；Python 3.14.10，24.819 秒处理同一 10 份清单及 13 份 gzip。输入摘要、39,720 行、24,568 / 6,801 / 8,351 分区、6 / 2 / 2 组隔离、算法和节点数均通过与原 Windows 任务的比较。datasetHash 为 `8b0f13b1c12da1b9257d1f1a0a51272daa3769a5aa37bac6cb9ed9b3398f90ac`，splitHash 为 `ec1d420a57cfea5290d43dda9509a4567cd15cc3c475e0047766ef030b08c784`，重复排除 0 行；Linux 新模型仅留在临时验收目录，未上传或发布。报告为网站验收目录 `worker-offline.json`。
+
+离线包 `linux-schema3-fixture.tar.gz` 为 2,339,771 字节，SHA256 `a5479943917d911fa46545365c2316a64b83b7aece205b619d7f59aab7ac6450`，仅含 spec、输入清单/分片、预期摘要及验证脚本，不含凭据或原 DEM。脚本调用镜像已有 `cloud_worker.py --child`，显式沿用 `DIRECTOR_CLOUD_BUDGET=1` 及 2 GiB / 300 秒预算；最初漏设该环境的包装试跑已被修正后重跑，未用于正式 Linux 验收。本机预算一致的重跑耗时 15.037 秒，解压后模型原字节与原任务相同；跨平台验收不要求 gzip 封装摘要相同，也不代替权威 BO/G4 验收。
+
+## 生产发布与独立下载核验
+
+2026-11-10 网站已部署 API/nginx `f9a835c` 和固定 worker `2616427`。网站报告 300 秒上线健康检查通过，两类 worker 无重启增量、Bot ready；生产克隆两次启动、只读回退及发布工具预览/提交/重复提交均通过。数据库检查区分原有 216 张表的业务数据与巡检运行时记录，升级后 225 张表；完整证据由网站发布记录维护。
+
+程序侧独立匿名回读官网：stable 为 **1.16.0**，releaseId `747b8d72-65e0-45d9-9698-8fd16879a380`。1.15.4 客户端判断 `update_available`，当前 1.16.0 加正确文件摘要判断 `up_to_date`。使用发行包固定更新公钥验证 Ed25519 清单，通过同源、版本、文件摘要/长度及防回退序号检查，sequence **7**、keyId `yuzibei-app-20261109`。
+
+[官网下载导播程序](https://www.yuzibei.cn/api/director/client-releases/747b8d72-65e0-45d9-9698-8fd16879a380/file)已经匿名完整流式下载校验：19.683 秒、187,786,546 字节、SHA256 `2d4763a3d654b18698013cb05ad27a917144ac24cc314ea33a457db3052499f9`，与本地最终包及 GitHub 正式附件一致。响应 Content-Length、ETag 和下载名 `Yuzi_CS2_AIDirector.exe` 同时通过检查；此步骤仅下载校验，没有在用户电脑上执行安装。原 UI 优化分支已合并 main，本次正式版包含这些改动。
+
+独立验收证据保存于本机 `D:/Yuzibei/local-data/release-1.16.0/production-update-metadata.json`、`production-file.json`；Linux 结果为 `D:/Yuzibei/local-data/adt-web-20261110/worker-offline.json`。官网仅提供导播程序，训练器仍通过私有 GitHub 内部发行。本次没有审核或发布模型，原模型通道及 UID100009 灰度不由这次客户端发布改变。
 
 私有身份配置、真实样本和测试数据库不进入 Git 或发行包。
