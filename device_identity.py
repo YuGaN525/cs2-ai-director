@@ -126,7 +126,10 @@ class DeviceSession:
             lock.seek(0)
             if os.name == 'nt':
                 import msvcrt
-                if lock.read(1) == b'':
+                # Windows locks deny reads of the protected byte too. Inspect
+                # metadata before acquiring it, so concurrent clients wait in
+                # LK_LOCK instead of failing during lock-file initialization.
+                if os.fstat(lock.fileno()).st_size == 0:
                     lock.write(b'0'); lock.flush()
                 lock.seek(0); msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
             else:
