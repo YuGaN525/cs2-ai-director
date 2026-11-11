@@ -63,7 +63,7 @@
     }
   },
   "deferred": [
-    "Visible desktop interactions and real foreground-switch acceptance explicitly deferred by user",
+    "Real foreground-switch input suppression and physical modifier handoff remain untested on desktop",
     "Third-party WeChat incident causality not established",
     "Existing real CS2/MulNX/OBS quality, G4 and four-hour load acceptance remain independent"
   ],
@@ -71,5 +71,21 @@
     "website": "director only",
     "trainer": "private GitHub only"
   },
-  "evidenceRoot": "C:\\Users\\Administrator\\DirectorRuns\\release-1.16.3"
+  "evidenceRoot": "C:\\Users\\Administrator\\DirectorRuns\\release-1.16.3",
+  "visibleDesktop": {
+    "passed": true,
+    "scope": "isolated immutable frozen GUI, synthetic localhost device; no real game input",
+    "evidence": "DIR_FB_1.16.3_GUI.validation.json",
+    "screenshots": 19,
+    "manualReportsReceived": 2,
+    "ownerGetReceiptsMatch": true,
+    "normalClose": {
+      "remainingSessionMarkers": 0,
+      "remainingTestWindowsObserved": 0,
+      "directorWaitProcessExitCodeObserved": 0,
+      "trainerClosedThroughWindowControl": true
+    },
+    "sourceChanged": false,
+    "repacked": false
+  }
 }

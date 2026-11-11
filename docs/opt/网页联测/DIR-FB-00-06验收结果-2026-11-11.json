@@ -1,5 +1,5 @@
 {
-  "status": "released; user-deferred desktop acceptance and unproven WeChat causality remain explicit",
+  "status": "released; visible frozen-client desktop acceptance passed; real-game validation separate and WeChat causality unproven",
   "websiteCommit": "fc5852474e400f8f4b8721a7fd45b0c98e539f49",
   "unitTests": {
     "passed": 629,
@@ -40,7 +40,90 @@
     "sameReceiptOnRetry": true,
     "syntheticOnly": true
   },
-  "desktopVisualAcceptance": "deferred by user in program chat",
+  "desktopVisualAcceptance": {
+    "passed": true,
+    "version": "1.16.3",
+    "verifiedAt": "2026-11-11T03:47:16.507551+00:00",
+    "environment": "isolated immutable frozen EXE, synthetic localhost device, separate APPDATA",
+    "origin": "http://127.0.0.1:5136",
+    "evidence": "local-data/dir-fb-20261111/gui-frozen-1.16.3/gui-upload-evidence.json",
+    "evidenceSha256": "ac08cd611d67d4f7bc9c657093c32d0c381fe0f823b29a071943d1bdbefa2f7a",
+    "reports": [
+      {
+        "roleObservedInGui": "director",
+        "requestId": "595043e6-4f17-4a02-9b73-0de4b579dc31",
+        "occurredAt": "2026-11-11T03:35:13Z",
+        "receipt": {
+          "id": "4e3be079-5671-4a11-b119-00dea16de70a",
+          "status": "received",
+          "receivedAt": "2026-11-11T03:35:13.454848Z",
+          "expiresAt": "2026-12-11T03:35:13.454848Z"
+        },
+        "ownerMatchesSyntheticFixture": true,
+        "ownerGetReceiptMatches": true,
+        "manualWithAutoDisabled": true,
+        "logBytes": 3996,
+        "logSha256": "de137941ee5f735cf46e450292c502384b294940256aee6bd49d5a2451fbf90e",
+        "fakeSensitiveFieldsAbsent": true
+      },
+      {
+        "roleObservedInGui": "trainer",
+        "requestId": "79919db8-04d9-4091-9837-c943d85b66c2",
+        "occurredAt": "2026-11-11T03:41:18Z",
+        "receipt": {
+          "id": "8cada383-6f6f-4b9b-b4e7-12d8acee0106",
+          "status": "received",
+          "receivedAt": "2026-11-11T03:41:18.996716Z",
+          "expiresAt": "2026-12-11T03:41:18.996716Z"
+        },
+        "ownerMatchesSyntheticFixture": true,
+        "ownerGetReceiptMatches": true,
+        "manualWithAutoDisabled": true,
+        "logBytes": 3996,
+        "logSha256": "1983189a05e8de40f65b2045a19137d2fd7ae93c3ae2e26c0f0ab1eaf05ef14f",
+        "fakeSensitiveFieldsAbsent": true
+      }
+    ],
+    "guiChecks": [
+      "director light/dark main and settings",
+      "auto checkbox off/on/off and persistence",
+      "director preview scroll to end and cancel",
+      "director dark manual submit, queue and native receipt",
+      "director outer settings scroll",
+      "trainer launched via bundled launcher",
+      "trainer dark/light main and settings",
+      "trainer light preview, manual submit and received queue",
+      "normal close of both isolated windows"
+    ],
+    "screenshotsVerified": 19,
+    "artifactHashesVerified": 4,
+    "normalClose": {
+      "remainingSessionMarkers": 0,
+      "remainingTestWindowsObserved": 0,
+      "directorWaitProcessExitCodeObserved": 0,
+      "trainerClosedThroughWindowControl": true
+    },
+    "finalPreferences": {
+      "theme": "light",
+      "auto_report_diagnostics": false,
+      "auto_check_updates": false
+    },
+    "realUserLogsRead": false,
+    "productionAccountUsed": false,
+    "trainingStarted": false,
+    "gameInputStarted": false,
+    "sourceChanged": false,
+    "repacked": false,
+    "notTested": [
+      "real CS2/MulNX/OBS input",
+      "non-game foreground input injection",
+      "physical modifier handoff",
+      "WeChat incident causality",
+      "G4",
+      "physical DPI",
+      "four-hour load"
+    ]
+  },
   "wechatIncident": {
     "affectedVersionUserConfirmed": "1.16.0",
     "causalityProven": false

@@ -1,0 +1,199 @@
+{
+  "version": "1.16.3",
+  "verifiedAt": "2026-11-11T03:47:16.507551+00:00",
+  "environment": "isolated immutable frozen EXE, synthetic localhost device, separate APPDATA",
+  "origin": "http://127.0.0.1:5136",
+  "reports": [
+    {
+      "roleObservedInGui": "director",
+      "requestId": "595043e6-4f17-4a02-9b73-0de4b579dc31",
+      "occurredAt": "2026-11-11T03:35:13Z",
+      "receipt": {
+        "id": "4e3be079-5671-4a11-b119-00dea16de70a",
+        "status": "received",
+        "receivedAt": "2026-11-11T03:35:13.454848Z",
+        "expiresAt": "2026-12-11T03:35:13.454848Z"
+      },
+      "ownerMatchesSyntheticFixture": true,
+      "ownerGetReceiptMatches": true,
+      "manualWithAutoDisabled": true,
+      "logBytes": 3996,
+      "logSha256": "de137941ee5f735cf46e450292c502384b294940256aee6bd49d5a2451fbf90e",
+      "fakeSensitiveFieldsAbsent": true
+    },
+    {
+      "roleObservedInGui": "trainer",
+      "requestId": "79919db8-04d9-4091-9837-c943d85b66c2",
+      "occurredAt": "2026-11-11T03:41:18Z",
+      "receipt": {
+        "id": "8cada383-6f6f-4b9b-b4e7-12d8acee0106",
+        "status": "received",
+        "receivedAt": "2026-11-11T03:41:18.996716Z",
+        "expiresAt": "2026-12-11T03:41:18.996716Z"
+      },
+      "ownerMatchesSyntheticFixture": true,
+      "ownerGetReceiptMatches": true,
+      "manualWithAutoDisabled": true,
+      "logBytes": 3996,
+      "logSha256": "1983189a05e8de40f65b2045a19137d2fd7ae93c3ae2e26c0f0ab1eaf05ef14f",
+      "fakeSensitiveFieldsAbsent": true
+    }
+  ],
+  "reportsCreatedByThisVerifier": 0,
+  "finalPreferences": {
+    "theme": "light",
+    "auto_report_diagnostics": false,
+    "auto_check_updates": false
+  },
+  "normalClose": {
+    "remainingSessionMarkers": 0,
+    "remainingTestWindowsObserved": 0,
+    "directorWaitProcessExitCodeObserved": 0,
+    "trainerClosedThroughWindowControl": true
+  },
+  "artifactHashesUnchanged": [
+    {
+      "path": "D:\\Yuzibei\\local-data\\dir-fb-20261111\\gui-frozen-1.16.3\\bin\\Yuzi_CS2_AIDirector.exe",
+      "sha256": "7b6199124fa8a66382a01551177515c6e4bec2190f351216541c21b40a90058c",
+      "bytes": 187833904
+    },
+    {
+      "path": "D:\\Yuzibei\\local-data\\dir-fb-20261111\\gui-frozen-1.16.3\\bin\\Yuzi_CS2_AIDecisionTrainer.exe",
+      "sha256": "7b6199124fa8a66382a01551177515c6e4bec2190f351216541c21b40a90058c",
+      "bytes": 187833904
+    },
+    {
+      "path": "C:\\Users\\Administrator\\DirectorRuns\\release-1.16.3\\assets\\Yuzi_CS2_AIDirector.exe",
+      "sha256": "7b6199124fa8a66382a01551177515c6e4bec2190f351216541c21b40a90058c",
+      "bytes": 187833904
+    },
+    {
+      "path": "C:\\Users\\Administrator\\DirectorRuns\\release-1.16.3\\assets\\Yuzi_CS2_AIDecisionTrainer.exe",
+      "sha256": "7b6199124fa8a66382a01551177515c6e4bec2190f351216541c21b40a90058c",
+      "bytes": 187833904
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "director-auto-enabled.png",
+      "bytes": 71137,
+      "sha256": "535fa907f1c512f465ae34f2397b97828c98a3e250ff8213e579c84f8df4e119"
+    },
+    {
+      "file": "director-dark-main.png",
+      "bytes": 106104,
+      "sha256": "b0e426c915dadaa6e93ed1078fdf69bc5ff4463c7b211dd9a755729893b50ec9"
+    },
+    {
+      "file": "director-dark-preview.png",
+      "bytes": 69853,
+      "sha256": "b2610f552a0a98cdc94903c4bae0a7f10b7fccc47c86b655c2d1dc624d135822"
+    },
+    {
+      "file": "director-dark-received-queue.png",
+      "bytes": 29038,
+      "sha256": "c568d9583c67d86680ca723b9e10e33f25a187a084c98ef471b6652970f11fb4"
+    },
+    {
+      "file": "director-dark-settings-scrolled.png",
+      "bytes": 55883,
+      "sha256": "c23640633e61f0d118cc28a6f13ccebecfb52aca22b7ce548a2d3fa7e1540071"
+    },
+    {
+      "file": "director-dark-settings.png",
+      "bytes": 71680,
+      "sha256": "be9b6b5ba8bc1be8b44bd979fda81f5fca8901441dd408ce2adf719e1304c383"
+    },
+    {
+      "file": "director-light-main.png",
+      "bytes": 104891,
+      "sha256": "e3ca235a936582bd3901dff8a8d46cb3038ba3075fc9890cf5c02950d1a3f6b3"
+    },
+    {
+      "file": "director-light-preview-bottom.png",
+      "bytes": 70744,
+      "sha256": "a4ff4b107e94a23789f8ba8f26792e9800809bd99c7abb62ba1e2b8269052c1e"
+    },
+    {
+      "file": "director-light-preview-top.png",
+      "bytes": 67407,
+      "sha256": "fce8c4461ae077fd1d77e76873e727415cf92daac98549e26f3c2109b9945847"
+    },
+    {
+      "file": "director-light-settings.png",
+      "bytes": 69703,
+      "sha256": "dfb1591b1fb9f524d923b84c31f4cafb49e146d1e487048b2718fb06f5040a10"
+    },
+    {
+      "file": "director-server-receipt.png",
+      "bytes": 12780,
+      "sha256": "1bf795929c3db20cc4edebfbfaf17e32fc31d39a5cc1c6d4a7677606b5dcd32f"
+    },
+    {
+      "file": "director-upload-received.png",
+      "bytes": 72255,
+      "sha256": "49ac16570df9a343b104005b270a32ccd3ff0e28914b75d3d90166506e7d1d1a"
+    },
+    {
+      "file": "trainer-dark-main.png",
+      "bytes": 128636,
+      "sha256": "2e8edf8f023e884942ae6b33989e248c00ee99a64c14e9be009d88fefa592083"
+    },
+    {
+      "file": "trainer-dark-settings.png",
+      "bytes": 70055,
+      "sha256": "b5d0bd3cba84c8100c02a025c257193eaa09513c4d747b603a493ed0ed90b9dc"
+    },
+    {
+      "file": "trainer-light-main.png",
+      "bytes": 128458,
+      "sha256": "51c632a58fa27d6ffe9fb6c829c18f0fa747fbb82e1161ddfa53c95d69bf5c0e"
+    },
+    {
+      "file": "trainer-light-preview.png",
+      "bytes": 67344,
+      "sha256": "519a057d08bb860200601da68f5c0802c9bb1b7b4bd9a31382818d54f888518d"
+    },
+    {
+      "file": "trainer-light-received-queue.png",
+      "bytes": 26508,
+      "sha256": "9ee091004cb307b8ed9d86e1d0fb661f0b514339a056632959f76fd4996219af"
+    },
+    {
+      "file": "trainer-light-settings.png",
+      "bytes": 70866,
+      "sha256": "2a51fc8e7bc3c4165ae85e65c2447992736a1702f8a80c97541de0d57ba7232c"
+    },
+    {
+      "file": "trainer-upload-received.png",
+      "bytes": 71742,
+      "sha256": "8cc0e8c98c9d6f5d5cb2ecb947851e209c79e524a525ece42a6d8aba3673a93c"
+    }
+  ],
+  "guiChecks": [
+    "director light/dark main and settings",
+    "auto checkbox off/on/off and persistence",
+    "director preview scroll to end and cancel",
+    "director dark manual submit, queue and native receipt",
+    "director outer settings scroll",
+    "trainer launched via bundled launcher",
+    "trainer dark/light main and settings",
+    "trainer light preview, manual submit and received queue",
+    "normal close of both isolated windows"
+  ],
+  "notTested": [
+    "real CS2/MulNX/OBS input",
+    "non-game foreground input injection",
+    "physical modifier handoff",
+    "WeChat incident causality",
+    "G4",
+    "physical DPI",
+    "four-hour load"
+  ],
+  "realUserLogsRead": false,
+  "productionAccountUsed": false,
+  "trainingStarted": false,
+  "gameInputStarted": false,
+  "sourceChanged": false,
+  "repacked": false
+}
