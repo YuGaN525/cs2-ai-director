@@ -339,6 +339,7 @@ class IdentityTests(unittest.TestCase):
         self.install();gate=identity.AuthorizationGate(self.session,'account-a',lambda:self.digest)
         controller=d.InputController(dict(d.DEFAULT_CONFIG),d.LogBus(),gate)
         controller._held_keys.add(('direct','1'))
+        controller._held_order.append(('direct','1'))
         with mock.patch.object(d,'pydirectinput') as backend:
             self.advance(604800);self.assertFalse(controller.press_slot(0))
             backend.keyUp.assert_called_once_with('1')

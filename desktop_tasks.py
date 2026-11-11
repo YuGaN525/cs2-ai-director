@@ -28,6 +28,9 @@ class Tasks:
                 result, error = work(), None
             except Exception as exc:
                 result, error = None, exc
+                if not key.startswith('diagnostics-') and not isinstance(exc, ValueError):
+                    from diagnostics_runtime import capture_background
+                    capture_background(type(exc), exc.__traceback__)
             if not self.closed:
                 self.completed.put((key, done, result, error))
         worker=threading.Thread(target=run, name='desktop-'+key, daemon=True)

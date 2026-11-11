@@ -87,7 +87,7 @@ def snapshot(**kwargs):
 class TestBranding(unittest.TestCase):
     def test_brand_names(self):
         self.assertEqual(d.APP_TITLE, "Yuzi_CS2_AIDirector")
-        self.assertEqual(d.APP_SUBTITLE, "CS2 AI 专业导播")
+        self.assertEqual(d.APP_SUBTITLE, "一人解放整场比赛")
         self.assertTrue(d.VERSION.startswith("1.16."))
 
     def test_brand_assets_exist(self):
@@ -1291,6 +1291,12 @@ class TestConfigPersistence(unittest.TestCase):
 
 
 class TestInputSafety(unittest.TestCase):
+    def setUp(self):
+        for name, value in [('get_foreground_hwnd', 1), ('game_window_identity', (1, 10, 'c:/game/cs2.exe')), ('modifier_conflict', False)]:
+            patch = mock.patch.object(d, name, return_value=value)
+            patch.start()
+            self.addCleanup(patch.stop)
+
     def test_self_press_suppression(self):
         cfg = dict(d.DEFAULT_CONFIG)
         ctl = d.InputController(cfg, d.LogBus())
@@ -1326,7 +1332,7 @@ class TestInputSafety(unittest.TestCase):
         try:
             with mock.patch.object(d.time, "sleep") as sleep:
                 self.assertTrue(ctl.send_hotkey("alt+N", double=False))
-                sleep.assert_any_call(0.30)
+                self.assertAlmostEqual(sum(call.args[0] for call in sleep.call_args_list), 0.41)
         finally:
             d.keyboard = old
 
@@ -1491,6 +1497,10 @@ class TestInputIdentity(unittest.TestCase):
     """slot→按键必须用实测映射，且按键前必须通过焦点检查。"""
 
     def setUp(self):
+        for name, value in [('get_foreground_hwnd', 1), ('game_window_identity', (1, 10, 'c:/game/cs2.exe')), ('modifier_conflict', False)]:
+            patch = mock.patch.object(d, name, return_value=value)
+            patch.start()
+            self.addCleanup(patch.stop)
         self.cfg = dict(d.DEFAULT_CONFIG)
         self.cfg["dry_run"] = False
         self.ctl = d.InputController(self.cfg, d.LogBus())

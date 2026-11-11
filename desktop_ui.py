@@ -424,6 +424,8 @@ def settings(app):
     ttk.Button(frame, text='应用外观与模式', command=apply).pack(anchor='w')
     from account_ui import mount_account
     mount_account(frame, app.account)
+    from diagnostics_ui import mount as mount_diagnostics
+    mount_diagnostics(frame, app)
     from client_update_ui import mount as mount_updates
     mount_updates(frame, app)
     status = ThemedScrolledText(frame, height=16, wrap='word', state='disabled')

@@ -22,8 +22,8 @@ import ai_trainer as ai_assist
 from demo_live_dataset import DEFAULT_HORIZON, DEFAULT_STEP, validate_sampling
 
 APP_TITLE = "Yuzi_CS2_AIDirector · 训练工作台"
-APP_SUBTITLE = "CS2 AI 决策模型训练器"
-from client_version import VERSION
+from client_version import VERSION, SLOGAN
+APP_SUBTITLE = SLOGAN
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -80,6 +80,8 @@ class TrainerApp:
         self._dropped_log_lines = 0
         from account_client import default_account
         self.account = default_account()
+        from diagnostics_runtime import attach
+        attach(self)
         self._build()
         self._apply_preferences()
         from training_data_runtime import TrainingDataRuntime
@@ -108,6 +110,8 @@ class TrainerApp:
             self._cal_row.grid_remove()
 
     def _on_tk_exception(self, exc: Any, val: Any, tb: Any) -> None:
+        from diagnostics_runtime import capture_gui
+        capture_gui(self, exc, tb)
         try:
             messagebox.showerror("界面异常", f"{getattr(exc, '__name__', exc)}: {val}",
                                  parent=self.root)
@@ -518,6 +522,7 @@ class TrainerApp:
         threading.Thread(target=worker, daemon=True).start()
 
     def _append(self, text: str) -> None:
+        if getattr(self, "diagnostics", None): self.diagnostics.observe(text)
         from desktop_ui import append_log
         append_log(self.log, text, follow_enabled=getattr(self, '_follow_logs', True))
 
@@ -811,6 +816,7 @@ class TrainerApp:
         if error:
             self.lbl_status.configure(text="训练失败", foreground=self._colors['error'])
             self._append("训练失败：" + error)
+            if getattr(self, 'diagnostics', None): self.diagnostics.capture('error')
             messagebox.showerror("训练失败", error, parent=self.root)
             return
         assert result is not None
@@ -869,6 +875,7 @@ class TrainerApp:
                 return False
             if not self.datasets.close():
                 return False
+            if getattr(self, "diagnostics", None): self.diagnostics.close()
             self.account.close()
             return True
         def done(flushed, error):
@@ -1003,6 +1010,8 @@ def main() -> None:
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
         pass
+    from diagnostics_runtime import bootstrap
+    bootstrap(decision_model_path().parent)
     app=TrainerApp()
     if '--client-update-health' in sys.argv:
         from client_update_install import health_ready

@@ -7,7 +7,7 @@ from pathlib import Path
 
 DEFAULTS = {'theme': 'light', 'developer_mode': False, 'follow_logs': True,
             'font_size': 10, 'remember_window': True, 'director_size': '', 'trainer_size': '',
-            'auto_check_updates': True, 'update_channel': 'stable'}
+            'auto_check_updates': True, 'update_channel': 'stable', 'auto_report_diagnostics': True}
 
 
 def valid(key, value):

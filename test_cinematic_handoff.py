@@ -7,6 +7,12 @@ from test_cs2_ai_director import payload, player
 
 
 class PhysicalHotkeyTests(unittest.TestCase):
+    def setUp(self):
+        for name, value in [('get_foreground_hwnd', 1), ('game_window_identity', (1, 10, 'c:/game/cs2.exe')), ('modifier_conflict', False)]:
+            patch = mock.patch.object(d, name, return_value=value)
+            patch.start()
+            self.addCleanup(patch.stop)
+
     def test_uppercase_config_sends_physical_lowercase_without_shift(self):
         ctl = d.InputController(dict(d.DEFAULT_CONFIG, dry_run=False), d.LogBus())
         ctl.ensure_foreground = lambda: True
@@ -26,6 +32,11 @@ class PhysicalHotkeyTests(unittest.TestCase):
         _, keys = d.split_hotkey("alt+M")
         scan = d.keyboard.key_to_scan_codes(keys[0])[0]
         self.assertEqual(_winkeyboard.scan_code_to_vk[scan], 0x4D)
+        # Physical-modifier ownership cleanup relies on generic aliases using
+        # the left key, as the bundled Windows keyboard backend does.
+        for name, expected in [('alt', 0xA4), ('ctrl', 0xA2), ('shift', 0xA0), ('windows', 0x5B)]:
+            first = d.keyboard.key_to_scan_codes(name)[0]
+            self.assertEqual(_winkeyboard.scan_code_to_vk[first], expected)
 
 
 class CinematicHandoffTests(unittest.TestCase):

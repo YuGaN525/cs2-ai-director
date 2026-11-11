@@ -53,8 +53,8 @@ from typing import Any, Callable, Optional
 # %APPDATA% data and the trainer keep working.
 APP_NAME = "CS2AIDirector"
 APP_TITLE = "Yuzi_CS2_AIDirector"
-APP_SUBTITLE = "CS2 AI 专业导播"
-from client_version import VERSION
+from client_version import VERSION, SLOGAN
+APP_SUBTITLE = SLOGAN
 
 UI_BG = "#f2ead9"
 UI_CARD = "#fffdf8"
@@ -251,7 +251,7 @@ class LogBus:
         self.logger = logging.getLogger("cs2director")
         self.logger.setLevel(logging.INFO)
         self.logger.propagate = False
-        if not self.logger.handlers:
+        if not any(isinstance(handler, RotatingFileHandler) for handler in self.logger.handlers):
             try:
                 fh = RotatingFileHandler(
                     log_path(), maxBytes=2 * 1024 * 1024, backupCount=2, encoding="utf-8"
@@ -853,6 +853,32 @@ def is_game_process(hwnd: int) -> bool:
     return Path(exe).name.lower() == "cs2.exe"
 
 
+def game_window_identity(hwnd: int, cfg: dict) -> Optional[tuple]:
+    """Fresh HWND/PID/full image path; errors deny input, never inspect memory."""
+    if not hwnd or not is_window(hwnd):
+        return None
+    pid = get_window_pid(hwnd)
+    exe = get_process_exe(pid)
+    if not exe or Path(exe).name.casefold() != "cs2.exe":
+        return None
+    normalized = os.path.normcase(os.path.abspath(exe))
+    configured = str(cfg.get("cs2_exe") or "").strip()
+    if configured and normalized != os.path.normcase(os.path.abspath(configured)):
+        return None
+    if get_window_pid(hwnd) != pid:
+        return None
+    return hwnd, pid, normalized
+
+
+def modifier_conflict(owned: set[str]) -> bool:
+    # AsyncKeyState includes our synthetic modifiers. Ignore only modifiers
+    # owned by this transaction; never release unrelated/physical user keys.
+    groups = ((0x12, {"alt"}), (0x11, {"ctrl", "control"}),
+              (0x10, {"shift"}), (0x5B, {"win", "windows", "cmd"}),
+              (0x5C, {"win", "windows", "cmd"}))
+    return any(get_async_key_state(vk) and not (aliases & owned) for vk, aliases in groups)
+
+
 def enumerate_windows() -> list[tuple[int, str]]:
     if not IS_WINDOWS:
         return []
@@ -1024,8 +1050,9 @@ class ManualKeyWatcher:
     """
 
     def __init__(self, on_manual: Callable[[str], None],
-                 is_self_press: Callable[[str], bool], log: LogBus) -> None:
+                 is_self_press: Callable[[str], bool], log: LogBus, foreground_check=None) -> None:
         self._on_manual = on_manual
+        self._foreground_check = foreground_check or (lambda: bool(game_window_identity(get_foreground_hwnd(), {})))
         self._is_self = is_self_press
         self.log = log
         self._hook: Any = None
@@ -1107,6 +1134,8 @@ class ManualKeyWatcher:
             return False
 
     def _handle(self, digit: str) -> None:
+        if not self._foreground_check():
+            return
         now = time.monotonic()
         # alt+1 / ctrl+2 等是 MulNX 运镜宏（指南交互格式 alt+按键），
         # 不能算手动接管，否则每次出生点/包点运镜都会误暂停 AI 10 秒。
@@ -1592,8 +1621,12 @@ class DirectorEngine:
         server.start()  # 绑定失败会抛 RuntimeError，由 GUI 提示
         self.server = server
         try:
+            if IS_WINDOWS and not self.cfg.get("dry_run"):
+                from physical_modifiers import PhysicalModifiers
+                self.input.physical_modifiers = PhysicalModifiers()
+                self.input.physical_modifiers.start()
             self.arbiter.start()
-            self.watcher = ManualKeyWatcher(self._on_manual_key, self.input.is_self_press, self.bus)
+            self.watcher = ManualKeyWatcher(self._on_manual_key, self.input.is_self_press, self.bus, self.input.foreground_is_game)
             self.watcher.start()
         except Exception:
             if self.watcher is not None:
@@ -1603,6 +1636,9 @@ class DirectorEngine:
             server.stop()
             self.server = None
             self.input.release_held_keys()
+            if self.input.physical_modifiers is not None:
+                self.input.physical_modifiers.close()
+                self.input.physical_modifiers = None
             raise
         self._stop.clear()
         if self.timeline is not None:
@@ -1637,6 +1673,9 @@ class DirectorEngine:
             self.watcher.stop()
             self.watcher = None
         self.arbiter.stop()
+        if self.input.physical_modifiers is not None:
+            self.input.physical_modifiers.close()
+            self.input.physical_modifiers = None
         if self.server is not None:
             self.server.stop()
             self.server = None
@@ -2897,6 +2936,8 @@ class DirectorApp:
         fit_window(self.root)
         from preferences import Preferences
         self.preferences = Preferences(app_data_dir())
+        from diagnostics_runtime import attach
+        attach(self)
         from desktop_ui import restore_window
         restore_window(self, 'director', 1060, 850)
         self.root.report_callback_exception = self._on_tk_exception
@@ -2995,6 +3036,8 @@ class DirectorApp:
             self.notebook.add(tab) if prefs['developer_mode'] else self.notebook.hide(tab)
 
     def _on_tk_exception(self, exc: Any, val: Any, tb: Any) -> None:
+        from diagnostics_runtime import capture_gui
+        capture_gui(self, exc, tb)
         """tkinter 回调里的未捕获异常不能只打到 stderr（pythonw 下看不见）。"""
         try:
             self.bus.error(f"GUI 回调异常：{getattr(exc, '__name__', exc)}: {val}")
@@ -4674,6 +4717,7 @@ class DirectorApp:
             if not self.training_data.close():
                 return False
             self.pro.stop()
+            if getattr(self, "diagnostics", None): self.diagnostics.close()
             self.account.close()
             return True
         def done(flushed, error):
@@ -4811,6 +4855,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         except Exception:
             pass
 
+    from diagnostics_runtime import bootstrap
+    bootstrap(app_data_dir())
     cfg = load_config()
     app = DirectorApp(cfg)
     if args.client_update_health:
