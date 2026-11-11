@@ -1,5 +1,5 @@
 {
-  "status": "released; visible frozen-client desktop acceptance passed; real-game validation separate and WeChat causality unproven",
+  "status": "QRC and DIR-FB completed and released; active WeChat investigation removed by user; await user-provided diagnostic report only if issue recurs",
   "websiteCommit": "fc5852474e400f8f4b8721a7fd45b0c98e539f49",
   "unitTests": {
     "passed": 629,
@@ -118,7 +118,6 @@
       "real CS2/MulNX/OBS input",
       "non-game foreground input injection",
       "physical modifier handoff",
-      "WeChat incident causality",
       "G4",
       "physical DPI",
       "four-hour load"
@@ -126,7 +125,12 @@
   },
   "wechatIncident": {
     "affectedVersionUserConfirmed": "1.16.0",
-    "causalityProven": false
+    "causalityProven": false,
+    "activeInvestigation": false,
+    "oldEvidenceRequestCancelled": true,
+    "requiredForRelease": false,
+    "followUp": "Only after user reports a new incident and uploads sanitized application diagnostics",
+    "decisionDate": "2026-11-11"
   },
   "serverRetentionDays": 30,
   "productionHttp": {
@@ -413,5 +417,143 @@
     "newBytes": 4294967296,
     "oldReleasesDeleted": false,
     "secondHealthGatePassed": true
+  },
+  "closeoutVerification": {
+    "passed": true,
+    "checkedAtShanghai": "2026-11-11T12:11:23+08:00",
+    "scope": "Latest committed product code was already deployed; read-only verification, no service replacement",
+    "production": {
+      "passed": true,
+      "commit": "fc5852474e400f8f4b8721a7fd45b0c98e539f49",
+      "worker": "yuzibei/director-worker:dwb-733b449",
+      "bot": {
+        "running": true,
+        "connected": true,
+        "phase": "ready",
+        "mode": "site"
+      },
+      "feeFlags": "true,true,true,false",
+      "modelChannelsUnchanged": true,
+      "bindingsPreserved": true,
+      "diagnosticsEnabled": true,
+      "checkedAt": "2026-11-11T04:11:23.633994+00:00",
+      "artifactFiles": {
+        "api": 105,
+        "web": 203,
+        "admin": 172
+      },
+      "health": {
+        "failures": [],
+        "observed": [
+          "decay",
+          "prediction"
+        ],
+        "mode": "container-observation",
+        "seconds": 300,
+        "passed": true
+      },
+      "zeroWorkerRestartDelta": true,
+      "deploymentAction": "Verified already deployed identical release without restart",
+      "apiImage": "yuzibei-api:dir-fb-20261111",
+      "nginxImage": "yuzibei-nginx:dir-fb-20261111"
+    },
+    "download": {
+      "passed": true,
+      "version": "1.16.3",
+      "releaseId": "f133167f-9b9c-473d-8294-781ffdb19f8f",
+      "bytes": 187833904,
+      "sha256": "7b6199124fa8a66382a01551177515c6e4bec2190f351216541c21b40a90058c",
+      "seconds": 18.617,
+      "content_disposition": "attachment; filename=Yuzi_CS2_AIDirector.exe; filename*=UTF-8''Yuzi_CS2_AIDirector.exe",
+      "scope": "Full file streamed to SHA256; not installed"
+    },
+    "downloadPage": {
+      "passed": true,
+      "checks": [
+        {
+          "width": 390,
+          "slogan": true,
+          "version": "1.16.3",
+          "releaseId": "f133167f-9b9c-473d-8294-781ffdb19f8f"
+        },
+        {
+          "width": 1440,
+          "slogan": true,
+          "version": "1.16.3",
+          "releaseId": "f133167f-9b9c-473d-8294-781ffdb19f8f"
+        }
+      ]
+    },
+    "publicHttp": {
+      "passed": true,
+      "scope": "HTTP and asset loading only, not browser layout",
+      "checks": [
+        {
+          "path": "/api/director/diagnostics/capabilities",
+          "status": 401
+        },
+        {
+          "path": "/api/admin/director-diagnostics",
+          "status": 401
+        },
+        {
+          "path": "/api/health",
+          "status": 200
+        },
+        {
+          "path": "/api/admin/director-beta",
+          "status": 401
+        },
+        {
+          "path": "/api/admin/director-training/sources",
+          "status": 401
+        },
+        {
+          "path": "/api/director/training/datasets/capabilities",
+          "status": 401
+        },
+        {
+          "path": "/api/internal/director-training/claim",
+          "status": 404
+        },
+        {
+          "path": "/api//internal//director-training/claim",
+          "status": 404
+        },
+        {
+          "path": "/api/internal/director-imports/claim",
+          "status": 404
+        },
+        {
+          "url": "https://admin.yuzibei.cn/",
+          "assets": [
+            {
+              "url": "https://admin.yuzibei.cn/admin/static/js/index-CyWh8ivC.js",
+              "status": 200,
+              "sha256": "459ce0176e63906aacd23d451075d89bd2208856405c441b0243c417b65de2a3",
+              "javascript": true
+            }
+          ]
+        },
+        {
+          "url": "https://www.yuzibei.cn/admin/",
+          "assets": [
+            {
+              "url": "https://www.yuzibei.cn/admin/static/js/index-CyWh8ivC.js",
+              "status": 200,
+              "sha256": "459ce0176e63906aacd23d451075d89bd2208856405c441b0243c417b65de2a3",
+              "javascript": true
+            }
+          ]
+        }
+      ]
+    },
+    "signedUpdateVerified": true,
+    "stableSequence": 9,
+    "betaSequence": 2,
+    "qrcCompleted": true,
+    "dirFbCompleted": true,
+    "initialVerificationToolFailure": "Missing temporary remote helper; corrected locally to embed read-only verifier before successful completion",
+    "productionMutations": false
   }
 }

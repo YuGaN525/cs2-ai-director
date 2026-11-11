@@ -64,7 +64,6 @@
   },
   "deferred": [
     "Real foreground-switch input suppression and physical modifier handoff remain untested on desktop",
-    "Third-party WeChat incident causality not established",
     "Existing real CS2/MulNX/OBS quality, G4 and four-hour load acceptance remain independent"
   ],
   "distribution": {
@@ -87,5 +86,24 @@
     },
     "sourceChanged": false,
     "repacked": false
+  },
+  "incidentFollowup": {
+    "causalityEstablished": false,
+    "activeTroubleshootingCancelledByUser": true,
+    "requestOriginalIncidentDetails": false,
+    "resumeWhen": "User reports recurrence and provides this application sanitized diagnostic report ID",
+    "blocksDelivery": false,
+    "historicalEvidencePreserved": true
+  },
+  "releaseRecheck": {
+    "date": "2026-11-11",
+    "githubLatestTag": "v1.16.3",
+    "isDraft": false,
+    "isPrerelease": false,
+    "bothExecutableAssetsMatchRecordedBytesAndSha256": true,
+    "slogan": "一人解放整场比赛",
+    "sloganEvidence": "shared client_version source, matching frozen modules and completed visible GUI",
+    "repacked": false,
+    "newDesktopOrGameTestStarted": false
   }
 }
