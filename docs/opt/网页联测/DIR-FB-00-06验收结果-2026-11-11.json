@@ -1,0 +1,334 @@
+{
+  "status": "released; user-deferred desktop acceptance and unproven WeChat causality remain explicit",
+  "websiteCommit": "fc5852474e400f8f4b8721a7fd45b0c98e539f49",
+  "unitTests": {
+    "passed": 629,
+    "failed": 0
+  },
+  "apiDatabase": {
+    "passed": true,
+    "checks": 59,
+    "database": "localhost/yuzibei_concurrency_diagnostics_20261111"
+  },
+  "browser": {
+    "passed": true,
+    "checks": 30,
+    "layouts": 4,
+    "http": "real localhost"
+  },
+  "navigationChecks": 32,
+  "cleanBuild": {
+    "webTypes": true,
+    "webBuild": true,
+    "adminTypes": true,
+    "adminBuild": true,
+    "linuxMuslApi": true
+  },
+  "migration": {
+    "passed": true,
+    "existingTables": 225,
+    "initializationRuns": 2,
+    "diagnosticMigrationRollback": true,
+    "adminGrantsPreserved": true
+  },
+  "realClientIntegration": {
+    "kinds": [
+      "crash",
+      "error",
+      "manual"
+    ],
+    "sameReceiptOnRetry": true,
+    "syntheticOnly": true
+  },
+  "desktopVisualAcceptance": "deferred by user in program chat",
+  "wechatIncident": {
+    "affectedVersionUserConfirmed": "1.16.0",
+    "causalityProven": false
+  },
+  "serverRetentionDays": 30,
+  "productionHttp": {
+    "passed": true,
+    "scope": "HTTP and asset loading only, not browser layout",
+    "checks": [
+      {
+        "path": "/api/director/diagnostics/capabilities",
+        "status": 401
+      },
+      {
+        "path": "/api/admin/director-diagnostics",
+        "status": 401
+      },
+      {
+        "path": "/api/health",
+        "status": 200
+      },
+      {
+        "path": "/api/admin/director-beta",
+        "status": 401
+      },
+      {
+        "path": "/api/admin/director-training/sources",
+        "status": 401
+      },
+      {
+        "path": "/api/director/training/datasets/capabilities",
+        "status": 401
+      },
+      {
+        "path": "/api/internal/director-training/claim",
+        "status": 404
+      },
+      {
+        "path": "/api//internal//director-training/claim",
+        "status": 404
+      },
+      {
+        "path": "/api/internal/director-imports/claim",
+        "status": 404
+      },
+      {
+        "url": "https://admin.yuzibei.cn/",
+        "assets": [
+          {
+            "url": "https://admin.yuzibei.cn/admin/static/js/index-CyWh8ivC.js",
+            "status": 200,
+            "sha256": "459ce0176e63906aacd23d451075d89bd2208856405c441b0243c417b65de2a3",
+            "javascript": true
+          }
+        ]
+      },
+      {
+        "url": "https://www.yuzibei.cn/admin/",
+        "assets": [
+          {
+            "url": "https://www.yuzibei.cn/admin/static/js/index-CyWh8ivC.js",
+            "status": 200,
+            "sha256": "459ce0176e63906aacd23d451075d89bd2208856405c441b0243c417b65de2a3",
+            "javascript": true
+          }
+        ]
+      }
+    ]
+  },
+  "productionPages": {
+    "passed": true,
+    "checks": [
+      {
+        "key": "home",
+        "width": 390,
+        "resourceErrors": 0
+      },
+      {
+        "key": "home",
+        "width": 1440,
+        "resourceErrors": 0
+      },
+      {
+        "key": "matches",
+        "width": 390,
+        "resourceErrors": 0
+      },
+      {
+        "key": "matches",
+        "width": 1440,
+        "resourceErrors": 0
+      },
+      {
+        "key": "director",
+        "width": 390,
+        "resourceErrors": 0
+      },
+      {
+        "key": "director",
+        "width": 1440,
+        "resourceErrors": 0
+      },
+      {
+        "key": "fees",
+        "width": 390,
+        "resourceErrors": 0
+      },
+      {
+        "key": "fees",
+        "width": 1440,
+        "resourceErrors": 0
+      }
+    ]
+  },
+  "productionAdminLayouts": 4,
+  "artifactFiles": 480,
+  "linuxClone": {
+    "passed": true,
+    "twiceStartup": true,
+    "readOnlyRollback": true,
+    "singleCodeRowBeforeReadonly": true,
+    "zeroCodesRejected": true,
+    "originalTables": 225,
+    "upgradedTables": 226,
+    "diagnosticMigration": true,
+    "operatorPublishAndRetry": false,
+    "database": "localhost/yuzibei_concurrency_dir_fb_linux_20261111",
+    "formalSigningKeyUsed": false,
+    "normalRuntimeMetadata": {
+      "fee_operations": [
+        "last_sweep_at"
+      ],
+      "registration_recheck_jobs": [
+        "status",
+        "next_attempt_at",
+        "updated_at",
+        "attempts",
+        "lease_token",
+        "lease_until"
+      ]
+    }
+  },
+  "production": {
+    "passed": true,
+    "commit": "fc5852474e400f8f4b8721a7fd45b0c98e539f49",
+    "worker": "yuzibei/director-worker:dwb-733b449",
+    "bot": {
+      "running": true,
+      "connected": true,
+      "phase": "ready",
+      "mode": "site"
+    },
+    "feeFlags": "true,true,true,false",
+    "modelChannelsUnchanged": true,
+    "bindingsPreserved": true,
+    "diagnosticsEnabled": true,
+    "health": {
+      "failures": [],
+      "observed": [
+        "decay",
+        "prediction"
+      ],
+      "mode": "container-observation",
+      "seconds": 300,
+      "passed": true
+    },
+    "zeroWorkerRestartDelta": true
+  },
+  "preservation": {
+    "preservation": {
+      "director_data_batches": {
+        "before": 147,
+        "now": 147,
+        "changedOrMissingOldRows": 0
+      },
+      "director_uploads": {
+        "before": 147,
+        "now": 147,
+        "changedOrMissingOldRows": 0
+      },
+      "director_upload_parts": {
+        "before": 147,
+        "now": 147,
+        "changedOrMissingOldRows": 0
+      },
+      "director_ingested_samples": {
+        "before": 11568,
+        "now": 11568,
+        "changedOrMissingOldRows": 0
+      },
+      "director_derived_sources": {
+        "before": 1,
+        "now": 1,
+        "changedOrMissingOldRows": 0
+      },
+      "director_models": {
+        "before": 2,
+        "now": 3,
+        "changedOrMissingOldRows": 0
+      },
+      "director_beta_campaigns": {
+        "before": 0,
+        "now": 0,
+        "changedOrMissingOldRows": 0
+      }
+    },
+    "datasetCount": 3,
+    "datasetRows": 401312,
+    "sourceCount": 113,
+    "billsStillMatching": 7
+  },
+  "healthGates": [
+    {
+      "failures": [],
+      "observed": [
+        "decay",
+        "prediction"
+      ],
+      "mode": "container-observation",
+      "seconds": 300,
+      "passed": true
+    },
+    {
+      "failures": [],
+      "observed": [
+        "decay",
+        "prediction"
+      ],
+      "mode": "container-observation",
+      "seconds": 300,
+      "passed": true
+    }
+  ],
+  "client": {
+    "passed": true,
+    "version": "1.16.3",
+    "releaseId": "f133167f-9b9c-473d-8294-781ffdb19f8f",
+    "bytes": 187833904,
+    "sha256": "7b6199124fa8a66382a01551177515c6e4bec2190f351216541c21b40a90058c",
+    "seconds": 85.158,
+    "content_disposition": "attachment; filename=Yuzi_CS2_AIDirector.exe; filename*=UTF-8''Yuzi_CS2_AIDirector.exe",
+    "scope": "Full file streamed to SHA256; not installed",
+    "sourceCommit": "55fbc0ef6c8dba2b120b866a82e7e723fdaa7eb0",
+    "stableSequence": 9,
+    "betaSequence": 2,
+    "githubRelease": "https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.16.3",
+    "sourceTests": {
+      "passed": 495,
+      "skipped": 4,
+      "failed": 0
+    },
+    "frozenTests": 53,
+    "matchedOwnModules": 68,
+    "pageChecks": {
+      "passed": true,
+      "checks": [
+        {
+          "width": 390,
+          "slogan": true,
+          "version": "1.16.3",
+          "releaseId": "f133167f-9b9c-473d-8294-781ffdb19f8f"
+        },
+        {
+          "width": 1440,
+          "slogan": true,
+          "version": "1.16.3",
+          "releaseId": "f133167f-9b9c-473d-8294-781ffdb19f8f"
+        }
+      ]
+    },
+    "actualExecutables": {
+      "old": {
+        "state": "update_available",
+        "frozen": true,
+        "clientVersion": "1.16.2"
+      },
+      "current": {
+        "state": "up_to_date",
+        "frozen": true,
+        "clientVersion": "1.16.3"
+      }
+    }
+  },
+  "capacityCorrection": {
+    "firstAttempt": "rejected before registration; old channel retained",
+    "oldBytes": 1073741824,
+    "newBytes": 4294967296,
+    "oldReleasesDeleted": false,
+    "secondHealthGatePassed": true
+  }
+}

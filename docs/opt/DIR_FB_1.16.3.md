@@ -1,6 +1,6 @@
 # DIR-FB-00～06：输入保护与诊断日志 1.16.3
 
-日期：2026-11-11。GitHub 正式 1.16.3 已交付；官网实际状态见本文件末尾交付证据。桌面实操由用户明确延期，微信事件因果仍待补证。
+日期：2026-11-11。GitHub 与官网正式 1.16.3 已交付；具体证据见末节。桌面实操由用户明确延期，微信事件因果仍待补证。
 
 用户已确认受影响版本为 **v1.16.0**，反馈为“启动导播后一段时间”“未打开运镜软件”。程序输入缺陷已确认，**微信异地登录/退出的因果关系仍未证实**。未操作微信、读取微信登录资料、启动真实赛事切镜或改变产品资格、模型、额度。
 
@@ -61,4 +61,12 @@ python -B -m unittest discover -p 'test_*.py'
 - 两个 EXE 均为 187,833,904 字节，SHA256 `7b6199124fa8a66382a01551177515c6e4bec2190f351216541c21b40a90058c`。两个文件为同一双入口程序，文件名决定默认入口；GitHub 三个附件（含 SHA256SUMS）服务端 digest 与本机逐一一致。
 - 干净重建后 68 个包内自有模块与已测源码逐一字节码匹配；从最终 EXE 提取的模块在 Python 宿主执行 53 项输入/诊断/宏专项，全部通过。这是冻结代码检查，不替代 bootloader 或可见 GUI 验收。
 - 两个正式 EXE 实际执行 `--check-report`，版本 1.16.3、frozen=true、所有必需依赖及正式信任配置通过；训练器 `--trainer --cli --help` 成功。使用独立验收配置，没有运行真实导播或安装替换。
-- 证据：`build-final.log`、`frozen-evidence.json`、`frozen-tests.log`、`director-self-check.json`、`trainer-self-check.json`、`release-evidence.json`、`github-release.json`。官网交付与签名更新回验正在由两端追加。
+- 证据：`build-final.log`、`frozen-evidence.json`、`frozen-tests.log`、`director-self-check.json`、`trainer-self-check.json`、`release-evidence.json`、`github-release.json`。
+- 官网正式 releaseId `f133167f-9b9c-473d-8294-781ffdb19f8f`，stable 序号 9、beta 序号 2 保持。程序侧使用发行固定公钥独立验签通过，版本、大小、摘要与 GitHub 一致；证据 `production-update-metadata.json`。
+- 实际冻结 1.16.2 EXE 的 `--check-updates-report` 返回 `update_available → 1.16.3`，实际冻结 1.16.3 返回 `up_to_date`；两个报告均 frozen=true、摘要匹配。证据 `old-1.16.2-production-update.json` 和 `current-1.16.3-production-update.json`。没有执行下载替换安装或真实游戏输入。
+- 官网首次发布因历史客户端包 1GiB 存储上限被拒绝，未切换版本。网站把既有配置调整为 4GiB 并保留全部旧包；配置重启后重新完成 300 秒健康门禁，才切换 1.16.3。原模型、训练数据、账号资格和仲裁预算保持；运行及完整公网下载证据由网站专项记录补充。
+- 网站完成公网全文件流式 SHA256 校验，85.158 秒读完 187,833,904 字节，摘要与冻结包、GitHub 及签名清单一致，下载文件名为导播程序。程序侧已读取并核对其证据 `D:/Yuzibei/local-data/dir-fb-20261111/production-file.json`，未重复下载或安装。
+
+机器可读摘要：`DIR_FB_1.16.3.validation.json`。DIR-FB-01～03 的检查/修复与自动化回归已完成；DIR-FB-04 的构建及 GitHub 交付完成，可见桌面部分用户延期；DIR-FB-05 的官网签名更新已完成；DIR-FB-06 记录按两端统一进度同步。DIR-FB-00 仅版本已核定，告警原文/精确时刻/当时输入状态及微信因果仍需用户后续补证，不能标为事件根因已关闭。
+
+网站定稿联测报告与结构化证据原字节保存于 `网页联测/DIR-FB-00-06联合排查与日志上传-2026-11-11.md` 和 `网页联测/DIR-FB-00-06验收结果-2026-11-11.json`。SHA256 分别为 `d5440265ecb7cd4d894a2503dbfa846a431a2068d2190fda398045ecfa259169`、`3deba8fec4096c18ce4a82898621ce69b5d70449c17ef84f9db85123b3f15f13`。

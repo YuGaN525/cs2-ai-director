@@ -1,0 +1,75 @@
+{
+  "version": "1.16.3",
+  "sourceCommit": "55fbc0ef6c8dba2b120b866a82e7e723fdaa7eb0",
+  "githubRelease": "https://github.com/YuGaN525/cs2-ai-director/releases/tag/v1.16.3",
+  "publishedAt": "2026-11-11T02:57:33Z",
+  "artifacts": [
+    {
+      "file": "Yuzi_CS2_AIDirector.exe",
+      "bytes": 187833904,
+      "sha256": "7b6199124fa8a66382a01551177515c6e4bec2190f351216541c21b40a90058c"
+    },
+    {
+      "file": "Yuzi_CS2_AIDecisionTrainer.exe",
+      "bytes": 187833904,
+      "sha256": "7b6199124fa8a66382a01551177515c6e4bec2190f351216541c21b40a90058c"
+    }
+  ],
+  "regression": {
+    "total": 499,
+    "passed": 495,
+    "skipped": 4,
+    "failed": 0
+  },
+  "frozen": {
+    "matchingFirstPartyModules": 68,
+    "tests": 53,
+    "passed": 53,
+    "directorSelfCheck": true,
+    "trainerSelfCheck": true,
+    "trainerCliImports": true,
+    "formalTrustUnchanged": true
+  },
+  "httpIntegration": {
+    "environment": "localhost isolated synthetic device",
+    "kinds": [
+      "manual",
+      "error",
+      "crash"
+    ],
+    "allReceived": true,
+    "sameIdAndBodySameReceipt": true,
+    "ownerGetReceiptMatches": true
+  },
+  "widgets": {
+    "directorLightDark": true,
+    "trainerLightDark": true,
+    "scope": "hidden widget lifecycle, readonly preview and theme/scrollbars; no visible desktop acceptance"
+  },
+  "productionUpdate": {
+    "releaseId": "f133167f-9b9c-473d-8294-781ffdb19f8f",
+    "stableSequence": 9,
+    "pinnedKeySignatureVerified": true,
+    "oldFrozenClient": "update_available",
+    "currentFrozenClient": "up_to_date",
+    "sha256": "7b6199124fa8a66382a01551177515c6e4bec2190f351216541c21b40a90058c",
+    "bytes": 187833904,
+    "fullFileDownload": {
+      "passed": true,
+      "verifiedBy": "website",
+      "seconds": 85.158,
+      "evidence": "D:\\Yuzibei\\local-data\\dir-fb-20261111\\production-file.json",
+      "installed": false
+    }
+  },
+  "deferred": [
+    "Visible desktop interactions and real foreground-switch acceptance explicitly deferred by user",
+    "Third-party WeChat incident causality not established",
+    "Existing real CS2/MulNX/OBS quality, G4 and four-hour load acceptance remain independent"
+  ],
+  "distribution": {
+    "website": "director only",
+    "trainer": "private GitHub only"
+  },
+  "evidenceRoot": "C:\\Users\\Administrator\\DirectorRuns\\release-1.16.3"
+}
