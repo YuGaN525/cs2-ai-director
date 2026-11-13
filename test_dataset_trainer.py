@@ -71,5 +71,42 @@ class DatasetTrainerTests(unittest.TestCase):
             self.assertEqual(_csv_cli(['--csv',str(self.csv),'--out',str(self.root/'model.pkl')],self.app.datasets),1)
         self.assertIsNone(self.app.datasets.store.next(self.binding))
 
+    def test_batch_failure_preserves_prior_receipt_queue_and_stops_later_training(self):
+        import csv
+        import dataset_protocol as p
+        from training_plan import prepare_batches
+        rows=list(csv.DictReader(self.csv.read_text().splitlines()))
+        self.csv.write_bytes(p.csv_bytes([dict(row,match_source_id=f'{i:064x}') for i in range(1,4) for row in rows],p.BASE+p.EXTRA))
+        def plan(*args,**kwargs):return prepare_batches(*args,**kwargs,target_rows=3)
+        def train(csv,out,metrics,**kwargs):
+            if '2' == str(len(self.app.datasets.store.list(self.binding))):raise RuntimeError('second batch failed')
+            return dict(model_json=str(out.with_suffix('.json.gz')),samples=2)
+        with patch('trainer_gui.threading.Thread',side_effect=self.inline_thread),patch('training_plan.prepare_batches',side_effect=plan),patch('trainer_gui.train_from_csv',side_effect=train) as fit:
+            self.app._run_worker(self.csv,self.root/'model.pkl',self.root/'metrics.json',(1,2,2,.25))
+        self.assertEqual(fit.call_count,2)
+        self.assertCountEqual([r['state'] for r in self.app.datasets.store.list(self.binding)],['pending','failed'])
+        error=next(v for kind,v in list(self.app._events.queue) if kind=='error')
+        self.assertIn('已完成 1 批',error)
+        completed=list((self.root/'batch-plans').glob('*/completed.json'))
+        self.assertEqual(len(completed),1)
+
+    def test_ai_search_uses_same_plan_and_preserves_independent_outputs(self):
+        import csv
+        import dataset_protocol as p
+        from training_plan import prepare_batches
+        rows=list(csv.DictReader(self.csv.read_text().splitlines()))
+        self.csv.write_bytes(p.csv_bytes([dict(row,match_source_id=f'{i:064x}') for i in range(1,3) for row in rows],p.BASE+p.EXTRA))
+        def plan(*args,**kwargs):return prepare_batches(*args,**kwargs,target_rows=3)
+        outputs=[]
+        def train(csv,out,metrics,**kwargs):
+            self.assertFalse(kwargs['use_ai']);outputs.append(out)
+            return {'outputs':{'model_json':str(out/'model.json.gz')}}
+        with patch('trainer_gui.threading.Thread',side_effect=self.inline_thread),patch('training_plan.prepare_batches',side_effect=plan),patch('trainer_gui.ai_assist.run_ai_training',side_effect=train):
+            self.app._run_worker(self.csv,self.root/'model.pkl',self.root/'metrics.json',(1,2,2,.25),ai_mode=False)
+        self.assertEqual(len(set(outputs)),2)
+        report=next(v for kind,v in list(self.app._events.queue) if kind=='ai_done')
+        self.assertEqual(report['batch_count'],2)
+        self.assertEqual(len(self.app.datasets.store.list(self.binding)),2)
+
 
 if __name__=='__main__':unittest.main()

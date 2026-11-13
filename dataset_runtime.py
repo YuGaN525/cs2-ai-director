@@ -16,14 +16,35 @@ STATES={'freezing':'正在保存训练输入','ready':'输入已保存','trainin
 ERRORS={'MISSING_GROUP':'缺少候选分组，请从原录像重新解析','CSV_NUMBER':'样本含无效特征或标签','INPUT_CHANGED':'输入快照发生变化，已停止提交','LOCAL_QUOTA':'本地数据存储空间达到限制','DISK_SPACE':'磁盘空间不足','DIRECTOR_DATASET_LIMIT':'样本规模超过服务器当前限额','DIRECTOR_DATASET_DISABLED':'服务器尚未启用训练数据接收','FORBIDDEN':'当前账号没有训练数据提交权限','DIRECTOR_NO_ENTITLEMENT':'产品资格不可用','NETWORK_UNAVAILABLE':'网络不可用，数据已保留等待重试','IDENTITY_CHANGED':'登录状态已变化，提交已暂停','DIRECTOR_DATASET_EXPIRED':'服务器会话已过期，请保留原件并重新发起历史提交'}
 
 
-def describe(row):
+def describe(row, now=None):
     text=STATES.get(row['state'],row['state'])
     if row['paused']:text='已暂停 · '+text
     if row['governance']:
         status=json.loads(row['governance'])['governanceStatus']
         text={'pending-review':'已接收，等待管理员筛选','included':'已纳入训练库，等待管理员主动训练','partially-included':'部分来源已纳入，其余待处理','excluded':'管理员未纳入本批数据','blocked':'管理员处理前需补充来源或兼容信息'}.get(status,text)
     if row['error']:text+=' · '+ERRORS.get(row['error'],'需要处理：'+row['error'])
+    if row['error']=='SERVER_VERIFYING':text=('已暂停 · ' if row['paused'] else '')+'文件已上传，服务器正在校验；收到回执后才算接收完成'
+    if not row['paused'] and row['state']=='pending' and row.get('next_at',0)>(time.time() if now is None else now):
+        remaining=max(1,int(row['next_at']-(time.time() if now is None else now)))
+        text+=f' · 约 {remaining} 秒后自动重试'
+    if row['state']=='package-error':text+=' · 请查看详情并重试整理，无需重新训练'
+    if row['state']=='blocked':text+=' · 恢复登录或权限后点击“重试 / 继续”'
     return text
+
+
+def progress_summary(rows, progress):
+    if not rows:return '暂无训练上传记录。训练成功后排队；接收后仍需管理员筛选和主动训练。'
+    received=sum(r['state']=='received' for r in rows)
+    waiting=sum(not r['paused'] and r['state'] in ('pending','uploading','packaging') for r in rows)
+    attention=sum(r['paused'] or r['state'] in ('package-error','blocked','rejected','failed','cancelled') for r in rows)
+    summary=f'最近 {len(rows)} 批：已接收 {received}，处理中 {waiting}，需处理/已暂停 {attention}。'
+    active=next((r for r in rows if not r['paused'] and r['state']=='uploading'),None)
+    if active:
+        done,total=progress.get(active['id'],(0,0))
+        summary+=f' 当前上传 {done/1048576:.1f}/{total/1048576:.1f} MiB。' if total else ' 正在核对服务器续传状态。'
+    elif waiting:
+        summary+=' '+describe(next(r for r in rows if not r['paused'] and r['state'] in ('pending','packaging')))
+    return summary+' 接收不等于纳入或发布；详情中可暂停、重试。'
 
 
 class DatasetRuntime:
@@ -95,7 +116,7 @@ class DatasetRuntime:
                     receipt=self.client.upload(identity,data,folder,lambda:self.continuing(run_id,identity.binding),lambda done,total:self.progress.update({run_id:(done,total)}))
                     if receipt is None:
                         self.store.upload_failed(run_id,'pending','SERVER_VERIFYING',15);return False
-                    self.store.received(run_id,receipt);self.status='服务器已接收，等待管理员筛选';return True
+                    self.store.received(run_id,receipt);self.progress.pop(run_id,None);self.status='服务器已接收，等待管理员筛选';return True
                 except DatasetFailure as error:
                     state='blocked' if error.status in (401,403) or error.code.startswith('PROTOCOL_') else 'rejected' if error.status in (400,409,410,413,415,422) or 300<=error.status<400 else 'pending'
                     delay=max(error.retry_after,min(3600,5*2**min(row['attempts'],9)))

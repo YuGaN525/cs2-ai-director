@@ -208,14 +208,20 @@ class LiveDatasetTests(unittest.TestCase):
     def test_trainer_cli_default_uses_same_live_settings(self):
         import trainer_gui
         output = self.root / 'cli.csv'
-        runtime = mock.Mock()
-        runtime.begin_training.return_value=('00000000-0000-0000-0000-000000000001',output)
-        with mock.patch('demoparser2.DemoParser', return_value=parser_fixture()), mock.patch('trainer_gui.train_from_csv') as train, redirect_stdout(io.StringIO()):
+        from dataset_runtime import DatasetRuntime
+        from upload_outbox import Binding
+        from types import SimpleNamespace
+        binding=Binding('unbound','local','fixture')
+        runtime=DatasetRuntime(SimpleNamespace(binding=lambda:binding,upload_identity=lambda:None), self.root/'queue',autostart=False)
+        def train(args):
+            frozen=Path(args[args.index('--csv')+1])
+            self.assertEqual(load_dataset(frozen),load_dataset(output))
+            Path(args[args.index('--metrics')+1]).write_text('{}')
+            return 0
+        with mock.patch('demoparser2.DemoParser', return_value=parser_fixture()), mock.patch('train_decision_model.main',side_effect=train) as fit, redirect_stdout(io.StringIO()):
             self.assertEqual(trainer_gui._demo_cli(['--demos', str(self.demo), '--demo-csv', str(output),'--out',str(self.root/'model.pkl')], runtime), 0)
-        runtime.begin_training.assert_called_once_with(output)
-        runtime.capture_training_file.assert_not_called()
-        runtime.succeeded.assert_called_once()
-        train.assert_called_once()
+        fit.assert_called_once()
+        self.assertEqual(runtime.store.list(binding)[0]['state'],'pending')
         manifest = json.loads(output.with_suffix('.csv.manifest.json').read_text(encoding='utf-8'))
         self.assertEqual((manifest['horizon_ticks'], manifest['step_ticks']), (192, 128))
 
@@ -227,20 +233,31 @@ class LiveDatasetTests(unittest.TestCase):
 
     def test_gui_worker_parses_before_recording_and_training(self):
         import trainer_gui
-        app = mock.Mock()
+        from dataset_runtime import DatasetRuntime
+        from upload_outbox import Binding
+        from types import SimpleNamespace
+        binding=Binding('unbound','local','fixture')
+        account=SimpleNamespace(binding=lambda:binding,upload_identity=lambda:None)
+        app=mock.Mock();app.account=account
+        app.datasets=DatasetRuntime(account,self.root/'queue',autostart=False)
+        app._dataset_completed=lambda run,result: app.datasets.succeeded(run,result)
         output = self.root / 'gui.csv'
         calls = []
+        original_freeze=app.datasets.begin_training
         def freeze(path):
-            self.assertTrue(path.with_suffix('.csv.manifest.json').exists())
+            self.assertEqual(len(list((self.root/'imports').glob('*/*.manifest.json'))),1)
+            self.assertEqual(len(list((self.root/'batch-plans').glob('*/plan.json'))),1)
             calls.append('freeze')
-            return '00000000-0000-0000-0000-000000000001',path
-        app.datasets.begin_training.side_effect = freeze
-        with mock.patch('demoparser2.DemoParser', return_value=parser_fixture()), mock.patch('trainer_gui.threading.Thread') as thread, mock.patch('trainer_gui.train_from_csv', side_effect=lambda *a, **k: calls.append('train')):
+            return original_freeze(path)
+        def train(*args,**kwargs):
+            calls.append('train');return {'model_json':str(args[1])}
+        with mock.patch.object(app.datasets,'begin_training',side_effect=freeze), mock.patch('demoparser2.DemoParser', return_value=parser_fixture()), mock.patch('trainer_gui.threading.Thread') as thread, mock.patch('trainer_gui.train_from_csv',side_effect=train):
             thread.side_effect = lambda **kw: mock.Mock(start=kw['target'])
             trainer_gui.TrainerApp._run_worker(app, output, self.root/'model.pkl', self.root/'metrics.json', (100, 50, 4, .25), [str(self.demo)])
         self.assertEqual(calls, ['freeze', 'train'])
         app.training_data.capture_training_file.assert_not_called()
         self.assertEqual(app._events.put.call_args.args[0][0], 'done')
+        self.assertEqual(app.datasets.store.list(binding)[0]['state'],'pending')
 
     def test_worker_training_projection_retains_same_features_and_labels(self):
         import cloud_worker

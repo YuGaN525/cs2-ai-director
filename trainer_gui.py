@@ -88,6 +88,7 @@ class TrainerApp:
         self.training_data = TrainingDataRuntime(identity_provider=self.account.upload_identity, binding_provider=self.account.binding)
         from dataset_runtime import DatasetRuntime
         self.datasets = DatasetRuntime(self.account)
+        self._poll_dataset_status()
         self.account.start()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         schedule(self.root,100, self._poll_events)
@@ -243,7 +244,7 @@ class TrainerApp:
 
         data_shell, data = _card(left)
         data_shell.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        _section(data, "01", "训练数据", "读取导播在线决策日志，训练候选模型。")
+        _section(data, "01", "训练数据", "读取 CSV；大批数据按完整来源分批，每批生成独立候选。")
         form = ttk.Frame(data)
         form.pack(fill="x", pady=(10, 0))
         form.columnconfigure(1, weight=1)
@@ -369,7 +370,7 @@ class TrainerApp:
         self.btn_datasets = ttk.Button(submission, text="查看上传与筛选状态…",
                                       command=lambda: __import__('dataset_ui').open_datasets(self))
         self.btn_datasets.pack(fill='x', pady=(8,0))
-        self.dataset_note=ttk.Label(submission, text='训练成功后自动排队。所有数据均须管理员筛选纳入，再由管理员主动训练。',
+        self.dataset_note=ttk.Label(submission, text='按完整来源分批训练，每批生成独立候选并自动排队。接收后仍需管理员筛选、主动训练及独立发布。',
                   style='Muted.TLabel', wraplength=260, justify='left')
         self.dataset_note._own_wrap=True
         self.dataset_note.pack(fill='x', pady=(8,0))
@@ -444,6 +445,18 @@ class TrainerApp:
                 right.grid_configure(row=0, column=1, padx=0, pady=0, sticky="nsew")
 
         page.bind('<Configure>', _reflow, add='+')
+
+    def _poll_dataset_status(self):
+        from dataset_runtime import progress_summary
+        if self._closing: return
+        binding = self.account.binding()
+        def read():
+            return progress_summary(self.datasets.store.list(binding), dict(self.datasets.progress))
+        def done(value, error):
+            if self._closing or binding != self.account.binding(): return
+            self.dataset_note.configure(text=value if not error else '上传状态暂不可读；本地记录保留，可在上传状态中重试。')
+        self.tasks.submit('trainer-upload-summary', read, done)
+        schedule(self.root, 2000, self._poll_dataset_status)
 
     def _submit_result(self):
         if self._closing or self._training or self._calibrating or self._submitting:
@@ -541,6 +554,8 @@ class TrainerApp:
                 kind, payload = self._events.get_nowait()
                 if kind == "log":
                     self._append(str(payload))
+                elif kind == "phase":
+                    self.lbl_status.configure(text=str(payload), foreground=self._colors["accent"])
                 elif kind == "done":
                     self._done(payload, None)
                 elif kind == "error":
@@ -600,34 +615,74 @@ class TrainerApp:
                     params: tuple[int, int, int, float],
                     demo_paths: Optional[list[str]] = None,
                     horizon: int = DEFAULT_HORIZON,
-                    step: int = DEFAULT_STEP) -> None:
+                    step: int = DEFAULT_STEP, ai_mode=None) -> None:
         min_samples, trees, depth, test_size = params
 
         def worker() -> None:
+            import uuid
+            from training_plan import preflight_demos, prepare_batches
+            from dataset_export import sha_file
+            from device_identity import atomic_write
+            import json
             run_id = None
+            completed = []
+            plan_dir = None
+            binding = self.account.binding() if hasattr(self, 'account') else self.datasets.account.binding()
             try:
+                self._events.put(('phase', '检查容量与完整来源…'))
                 if demo_paths:
                     from demo_dataset import build_demo_csv
-                    self._worker_log("开始解析 demo …")
-                    build_demo_csv(demo_paths, csv_path, horizon=horizon,
-                                   step=step, log=self._worker_log)
-                run_id, frozen_csv = self.datasets.begin_training(csv_path)
-                run_out = out.parent / 'runs' / run_id
-                run_out.mkdir(parents=True, exist_ok=False)
-                result = train_from_csv(
-                    frozen_csv, run_out / out.name, run_out / metrics.name,
-                    min_samples=min_samples, test_size=test_size,
-                    trees=trees, max_depth=depth,
-                    log=self._worker_log,
-                )
-                self._dataset_completed(run_id, result)
-                self._events.put(("done", result))
-            except TrainingError as e:
-                if run_id:self.datasets.failed(run_id)
-                self._events.put(("error", str(e)))
+                    paths = preflight_demos(demo_paths, out.parent, self._worker_log)
+                    # Every parse has its own output; no shared demo_decisions.csv overwrite.
+                    csv_path_local = out.parent / 'imports' / str(uuid.uuid4()) / 'demo_decisions.csv'
+                    build_demo_csv(paths, csv_path_local, horizon=horizon, step=step, log=self._worker_log)
+                else:
+                    csv_path_local = csv_path
+                plan_dir = out.parent / 'batch-plans' / str(uuid.uuid4())
+                plan = prepare_batches(csv_path_local, plan_dir, check_space=self.datasets.store.check_space,
+                                       log=self._worker_log)
+                total = len(plan['batches'])
+                self._worker_log(f'批次计划已保存：{plan_dir / "plan.json"}；各批独立候选，不自动合并或发布。')
+                for index, batch in enumerate(plan['batches'], 1):
+                    if self.datasets.account.binding() != binding:
+                        raise ValueError('账号已变化，后续批次未训练；已有记录仍归原账号。')
+                    self._events.put(('phase', f'训练 {index}/{total} 批 · {batch["rows"]} 行；完成后整理并上传'))
+                    run_id, frozen_csv = self.datasets.begin_training(Path(batch['csv']))
+                    self.datasets.store.get(run_id, binding)
+                    if sha_file(frozen_csv) != batch['sha256']:
+                        raise ValueError('批次输入已变化，请重新规划；未继续训练。')
+                    run_out = out.parent / 'runs' / run_id
+                    run_out.mkdir(parents=True, exist_ok=False)
+                    if ai_mode is None:
+                        result = train_from_csv(
+                            frozen_csv, run_out / out.name, run_out / metrics.name,
+                            min_samples=min_samples, test_size=test_size,
+                            trees=trees, max_depth=depth, log=self._worker_log)
+                    else:
+                        report = ai_assist.run_ai_training(
+                            frozen_csv, run_out, run_out / metrics.name,
+                            min_samples=min_samples, test_size=test_size,
+                            trees=trees, max_depth=depth, use_ai=ai_mode, log=self._worker_log)
+                        result = dict(report.get('outputs') or {}, split_hash=report.get('split_hash'))
+                        report['source_kind'] = batch['sourceKind']
+                    result['source_kind'] = batch['sourceKind']
+                    self._events.put(('phase', f'整理 {index}/{total} 批训练样本…'))
+                    self._dataset_completed(run_id, result)
+                    completed.append({'runId': run_id, 'batch': index, 'model': result.get('model_json')})
+                    atomic_write(plan_dir/'completed.json', json.dumps(completed, ensure_ascii=False).encode('utf-8'))
+                    self._worker_log(f'第 {index}/{total} 批完成，本地/上传运行编号：{run_id}')
+                    run_id = None
+                result['batch_count'] = total
+                result['batch_plan'] = str(plan_dir/'plan.json')
+                if ai_mode is None:
+                    self._events.put(('done', result))
+                else:
+                    report.update(batch_count=total, batch_plan=str(plan_dir/'plan.json'))
+                    self._events.put(('ai_done', report))
             except Exception as e:
-                if run_id:self.datasets.failed(run_id)
-                self._events.put(("error", f"{type(e).__name__}: {e}"))
+                if run_id: self.datasets.failed(run_id)
+                recovery = f'\n批次目录：{plan_dir}。可选择未完成的 batch CSV 重试训练；已完成批次只在上传队列重试。' if plan_dir and (plan_dir/'plan.json').exists() else ''
+                self._events.put(('error', f'{type(e).__name__}: {e}\n已完成 {len(completed)} 批，候选和上传记录保留；后续批次未训练。'+recovery))
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -708,29 +763,8 @@ class TrainerApp:
         use_ai = bool(self.var_ai.get())
         self._begin_training("AI 辅助训练中…" if use_ai else "本地搜索训练中…")
 
-        def worker() -> None:
-            run_id = None
-            try:
-                run_id, frozen_csv = self.datasets.begin_training(csv_path)
-                run_out = out_dir / 'runs' / run_id
-                run_out.mkdir(parents=True, exist_ok=False)
-                report = ai_assist.run_ai_training(
-                    frozen_csv, run_out,
-                    run_out / "decision_model_metrics.json",
-                    min_samples=min_samples, test_size=test_size,
-                    trees=trees, max_depth=depth, use_ai=use_ai,
-                    log=self._worker_log,
-                )
-                self._dataset_completed(run_id, dict(report.get('outputs') or {}, split_hash=report.get('split_hash')))
-                self._events.put(("ai_done", report))
-            except TrainingError as e:
-                if run_id:self.datasets.failed(run_id)
-                self._events.put(("ai_error", str(e)))
-            except Exception as e:  # noqa: BLE001
-                if run_id:self.datasets.failed(run_id)
-                self._events.put(("ai_error", f"{type(e).__name__}: {e}"))
-
-        threading.Thread(target=worker, daemon=True).start()
+        self._run_worker(csv_path, out_dir/'decision_model.pkl',
+                         out_dir/'decision_model_metrics.json', params, ai_mode=use_ai)
 
     def _ai_done(self, report: dict[str, Any]) -> None:
         if (report.get('outputs') or {}).get('model_json'):
@@ -783,6 +817,10 @@ class TrainerApp:
             f"模型：{((report.get('outputs') or {}).get('model_json', ''))}",
             f"报告：{report.get('report_path', '')}",
         ])
+        from training_plan import legacy_notice
+        body.append(legacy_notice(report.get('source_kind')))
+        if report.get('batch_count', 1) > 1:
+            body.append(f"已完成 {report['batch_count']} 批独立候选；此处指标仅为最后一批。完整记录：{report['batch_plan']}")
         from desktop_ui import text_dialog
         text_dialog(self.root, "AI 辅助训练完成 · 本地候选", "\n".join(body)+"\n\n本地训练生成候选，正式执行仍需后台审核与发布。")
 
@@ -836,10 +874,10 @@ class TrainerApp:
                      f"切分={split}，模糊样本={ambiguous}，"
                      f"模型={result.get('algorithm', '')}，JSON={size_mb:.1f}MB，"
                      f"文件={result['model_json']}")
-        warning = ""
-        if ambiguous == 0:
-            warning = ("\n\n注意：ambiguous=0，这份 CSV 可能是旧版生成的；"
-                       "请用当前训练器重新从 .dem 导入后再训练。")
+        from training_plan import legacy_notice
+        warning = legacy_notice(result.get("source_kind"))
+        if result.get("batch_count", 1) > 1:
+            warning += f"\n\n已完成 {result['batch_count']} 批独立候选；此处指标仅为最后一批。完整记录：{result['batch_plan']}"
         if size_mb > 20:
             warning += (f"\n\n注意：模型 JSON 为 {size_mb:.1f}MB，较大；"
                         "启动/推理会变慢，建议在指标接近时优先选 RandomForest。")
@@ -915,15 +953,16 @@ def _demo_cli(args: list[str], runtime=None) -> int:
     ns = parser.parse_args(args)
     run_id = None
     try:
-        build_demo_csv(ns.demos, Path(ns.demo_csv), ns.tick_offset,
+        from training_plan import preflight_demos
+        paths = preflight_demos(ns.demos, Path(ns.demo_csv).parent, print)
+        build_demo_csv(paths, Path(ns.demo_csv), ns.tick_offset,
                        horizon=ns.horizon_ticks, step=ns.step_ticks)
         if runtime is not None:
-            run_id, csv_input = runtime.begin_training(Path(ns.demo_csv))
-            output = Path(ns.out).parent / 'runs' / run_id
-            output.mkdir(parents=True, exist_ok=False)
-        else:
-            csv_input = Path(ns.demo_csv)
-            output = None
+            return _csv_cli(['--csv', ns.demo_csv, '--out', ns.out, '--metrics', ns.metrics,
+                             '--min-samples', str(ns.min_samples), '--test-size', str(ns.test_size),
+                             '--trees', str(ns.trees), '--max-depth', str(ns.max_depth)], runtime)
+        csv_input = Path(ns.demo_csv)
+        output = None
         result = train_from_csv(
             csv_input, output / Path(ns.out).name if output else Path(ns.out),
             output / Path(ns.metrics).name if output else Path(ns.metrics),
@@ -940,7 +979,7 @@ def _demo_cli(args: list[str], runtime=None) -> int:
     return 0
 
 
-def _csv_cli(args, runtime):
+def _csv_cli_single(args, runtime, expected_hash=None, expected_binding=None):
     """GUI and frozen CLI use the same immutable lifecycle; never feed the old sample queue."""
     import json
     def value(flag, default):
@@ -969,6 +1008,10 @@ def _csv_cli(args, runtime):
         model=Path(value('--out',str(decision_model_path())))
         metrics=Path(value('--metrics','decision_model_metrics.json') or 'decision_model_metrics.json')
         run_id,frozen=runtime.begin_training(selected)
+        if expected_binding is not None: runtime.store.get(run_id, expected_binding)
+        if expected_hash is not None:
+            from dataset_export import sha_file
+            if sha_file(frozen) != expected_hash: raise ValueError('批次输入已变化，未开始训练')
         output=model.parent/'runs'/run_id;output.mkdir(parents=True,exist_ok=False)
         arguments=replace(arguments,'--csv',frozen)
         arguments=replace(arguments,'--out',output/model.name)
@@ -981,6 +1024,42 @@ def _csv_cli(args, runtime):
     except Exception as error:
         if run_id:runtime.failed(run_id)
         print('训练未完成：'+str(error),file=sys.stderr);return 1
+
+
+def _csv_cli(args, runtime):
+    """Plan complete sources before invoking the existing per-run frozen CLI."""
+    if '--help' in args or '-h' in args:
+        return _csv_cli_single(args, runtime)
+    import uuid
+    from training_plan import prepare_batches
+    def value(flag, default):
+        for i, arg in enumerate(args):
+            if arg.startswith(flag+'='): return arg.split('=',1)[1]
+            if arg == flag: return args[i+1]
+        return default
+    try:
+        path = Path(value('--csv', str(decision_csv_path())))
+        out = Path(value('--out', str(decision_model_path()))).parent
+        plan = prepare_batches(path, out/'batch-plans'/str(uuid.uuid4()),
+                               check_space=runtime.store.check_space, log=print)
+        binding = runtime.account.binding()
+        for index, batch in enumerate(plan['batches'], 1):
+            if runtime.account.binding() != binding: raise ValueError('账号已变化，后续批次未训练')
+            from dataset_export import sha_file
+            if sha_file(Path(batch['csv'])) != batch['sha256']: raise ValueError('批次输入已变化')
+            arguments=[]; skip=False
+            for arg in args:
+                if skip: skip=False; continue
+                if arg=='--csv': skip=True; continue
+                if arg.startswith('--csv='): continue
+                arguments.append(arg)
+            print(f"训练 {index}/{len(plan['batches'])} 批：{batch['rows']} 行，每批独立候选")
+            code = _csv_cli_single(arguments+['--csv',batch['csv']], runtime, batch['sha256'], binding)
+            if code: return code
+        return 0
+    except Exception as error:
+        print('训练未完成；已有候选和上传记录保留：'+str(error), file=sys.stderr)
+        return 1
 
 
 def main() -> None:

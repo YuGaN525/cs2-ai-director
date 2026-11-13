@@ -1,0 +1,48 @@
+{
+  "date": "2026-11-13",
+  "status": "candidate source; not packaged or deployed",
+  "officialVersionUnchanged": "1.16.3",
+  "regression": {
+    "total": 510,
+    "passed": 506,
+    "skipped": 4,
+    "failed": 0,
+    "seconds": 69.643
+  },
+  "targeted": {
+    "tests": 41,
+    "passed": 41
+  },
+  "demoIntegration": {
+    "tests": 21,
+    "passed": 21
+  },
+  "jointLocalhostHttp": {
+    "checks": 171,
+    "passed": true,
+    "report": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\yuzibei-director-flow-20261113\\identity\\program-batches.json",
+    "sha256": "862922b35c9370649b9f746d4dc834fd9b431c01ee4a4f7ebcaf8653bc06c4a0",
+    "batches": 3,
+    "rowsPerBatch": 2,
+    "immutableReceipts": true,
+    "duplicateRowsChecked": true,
+    "cloudTrainingJobs": 0
+  },
+  "regressionEvidence": "C:\\Users\\Administrator\\DirectorRuns\\training-opt-20261113\\regression-final.log",
+  "regressionSha256": "bbf70d9e8872f39eed9dc8c7a6042a6529ec2701547586cf123c3747722e9be3",
+  "sourceSha256": {
+    "training_plan.py": "0e8091884af05a60ff1ef3afd1a770a9927f4340a399f3d1269b02f235359659",
+    "trainer_gui.py": "1ab4d9670f02c8519fa6836b1ac7c235c238a4fda4952002be3731992c6f15e5",
+    "dataset_runtime.py": "8f26329854412c9c5571fbfa2c8b21ee4c7a27d0be20e6ad0d46bf524bd930a2",
+    "dataset_store.py": "0979d133177e4eb942679375d116fa94055fabde5866088f4e84d3c6eb4fc34c",
+    "test_training_plan.py": "acfcc1631918448c80cf48c6e15836b3979f88ed1b16e224e49231d93823238f",
+    "test_dataset_trainer.py": "2488d60a18daf8e0c708d00e6034397e631d1bad4be48e6b5f8c28ef2a8bf0b7",
+    "test_dataset_store.py": "8e167f5bfc386a589be2d529d827b8ba3b0aee0288889d77c04b185da697a37a",
+    "test_demo_live_dataset.py": "7a373538d6e1aac8fea5241ec868521ce7da0fbd6e6d7b1f5d956a8d8bb44095"
+  },
+  "frozenV1ContractChanged": false,
+  "newGameOrWechatTest": false,
+  "candidateExeBuilt": false,
+  "productionChanged": false,
+  "modelPublished": false
+}

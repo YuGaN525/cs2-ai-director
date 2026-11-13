@@ -71,5 +71,20 @@ class DatasetStoreTests(unittest.TestCase):
         with self.assertRaisesRegex(p.Invalid,'GOVERNANCE_CHANGED'):self.store.save_governance(rid,{'revision':2,'status':'excluded'})
         self.assertEqual(json.loads(self.store.get(rid)['receipt']),receipt)
 
+    def test_resume_preserves_server_backoff_and_package_retry_clears_pause(self):
+        rid=self.success()
+        self.store.upload_failed(rid,'pending','NETWORK_UNAVAILABLE',120)
+        due=self.store.get(rid)['next_at']
+        self.store.set_paused(rid,self.binding,True)
+        self.store.retry(rid,self.binding)
+        self.assertEqual(self.store.get(rid)['next_at'],due)
+        self.assertFalse(self.store.get(rid)['paused'])
+        self.assertIsNone(self.store.next(self.binding))
+        with self.store.transaction() as db:
+            db.execute("UPDATE runs SET state='package-error',paused=1 WHERE id=?",(rid,))
+        self.assertIsNotNone(self.store.retry(rid,self.binding))
+        self.assertFalse(self.store.get(rid)['paused'])
+        self.assertEqual(self.store.get(rid)['state'],'pending')
+
 
 if __name__=='__main__':unittest.main()

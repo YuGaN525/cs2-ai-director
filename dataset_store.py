@@ -182,7 +182,14 @@ class DatasetStore:
 
     def retry(self,run_id,binding):
         row=self.get(run_id,binding)
-        if row['state'] in ('package-error','packaging'):return self.package(run_id)
+        if row['state'] in ('package-error','packaging'):
+            data=self.package(run_id)
+            if data:self.set_paused(run_id,binding,False)
+            return data
+        # A pending server retry/backoff remains binding even after an explicit resume.
+        if row['state']=='pending':
+            self.set_paused(run_id,binding,False)
+            return
         with self.transaction() as db:
             db.execute("UPDATE runs SET paused=0,next_at=0,error='',state=CASE WHEN state IN ('blocked','rejected') THEN 'pending' ELSE state END,updated=? WHERE id=?",(self.clock(),run_id))
 
