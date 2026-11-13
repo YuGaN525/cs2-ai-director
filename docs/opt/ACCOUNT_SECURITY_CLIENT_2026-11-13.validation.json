@@ -1,6 +1,6 @@
 {
   "date": "2026-11-13",
-  "status": "candidate source; website service integration pending",
+  "status": "candidate source; isolated website HTTP/PostgreSQL integration passed",
   "officialVersionUnchanged": "1.16.3",
   "scope": [
     "SEC-21 client",
@@ -32,8 +32,19 @@
   },
   "newSecurityTests": 20,
   "websiteHttpDatabaseIntegration": {
-    "status": "pending website isolated service",
-    "productionUsed": false
+    "status": "passed",
+    "total": 57,
+    "passed": 57,
+    "report": "docs/opt/ACCOUNT_SECURITY_CLIENT_2026-11-13.http.json",
+    "sha256": "54b65a09b8b72e65da1a0b96190f3a237fd7162008cf0dc0ec8dffa3651ec8b1",
+    "baseUrl": "http://127.0.0.1:5163",
+    "productionUsed": false,
+    "realSignedModelOrLeaseTested": false,
+    "priorServerFindings": [
+      "idempotent timestamp precision",
+      "mixed-scheme security error envelope"
+    ],
+    "serverFindingsRetested": true
   },
   "sourceSha256": {
     "account_activity.py": "441444c18fa337790fe23db2ef410a9d6f4315a144ff4c090e34d3304aceab06",
@@ -53,12 +64,14 @@
     "upload_governance.py": "e5e0d0cb00a2083904d37bf1f4125351a51d613cc6ad06d454145af712f55a56",
     "upload_worker.py": "61f80cba5a861c9a15788c043058950c3a3fac6acd20010edaee7b8bdff443f8",
     "test_account_security.py": "6345d083ccc59918df47c4bb3aac1321fc4c31fc0cde9f395313b1bccf3f155e",
-    "contracts/account-security-v1/director.json": "8629109dfa38648b75538b1b46746bffddbc32c6d0b6461b13e1cdd1ee14ba2f"
+    "contracts/account-security-v1/director.json": "8629109dfa38648b75538b1b46746bffddbc32c6d0b6461b13e1cdd1ee14ba2f",
+    "tools/check_account_security_http.py": "e74ceb18010e738c7747e27d5dc0404de453ea52f62e49b303675310cf3c4cae"
   },
   "candidateExeBuilt": false,
   "productionChanged": false,
   "modelPublished": false,
   "newGameOrWechatTest": false,
   "originalLeaseAndDeviceKeyPreserved": true,
-  "backgroundRequestsCountAsActivity": false
+  "backgroundRequestsCountAsActivity": false,
+  "sourceCommit": "a8910408935445d1238e3cd57dbd5cfc8ee7aab2"
 }
