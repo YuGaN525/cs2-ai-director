@@ -4377,6 +4377,7 @@ class DirectorApp:
             messagebox.showerror("启动失败", str(e))
             return
         self.engine = engine
+        self.account.record_activity_async('director.start')
         self.btn_start.configure(state="disabled")
         self.btn_stop.configure(state="normal")
         self.lbl_conn.configure(text="GSI：等待数据…", foreground=self._colors['accent'])

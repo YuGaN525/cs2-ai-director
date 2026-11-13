@@ -222,8 +222,10 @@ class Diagnostics:
             self.store.finish(row, receipt=receipt)
             self.last_status = '服务器已接收，保留 30 天'
         except DiagnosticFailure as error:
+            from account_security import notify_account
+            security_message=notify_account(self.account,error,identity)
             self.store.finish(row, status=error.status, retry_after=error.retry_after)
-            self.last_status = '报告被拒绝，请查看队列' if error.status in (400, 409, 413, 422) else '暂未上传，已保留本地等待重试'
+            self.last_status = security_message or ('报告被拒绝，请查看队列' if error.status in (400, 409, 413, 422) else '暂未上传，已保留本地等待重试')
         except (OSError, ValueError, TypeError):
             self.store.finish(row, status=0)
             self.last_status = '暂未上传，已保留本地等待重试'

@@ -9,6 +9,7 @@ import urllib.request
 import uuid
 from upload_outbox import Binding
 from upload_protocol import API_VERSION, ProtocolError, verify_receipt
+from account_security import response_code
 
 
 class UploadFailure(Exception):
@@ -41,7 +42,7 @@ class TrainingUploadClient:
                 return value['data']
         except urllib.error.HTTPError as error:
             status=error.code
-            try:code=json.loads(error.read(65536)).get('code') or 'http_'+str(status)
+            try:code=response_code(json.loads(error.read(65536)),status)
             except (ValueError,TypeError):code='http_'+str(status)
             finally:error.close()
             raise UploadFailure(status,code)
@@ -137,11 +138,14 @@ class UploadWorker:
             receipt=self.client.upload(current,batch)
             self.outbox.acknowledge(batch,receipt);self.status='已接收，等待管理员筛选';return True
         except UploadFailure as error:
+            from account_security import notify_account
+            security_message=notify_account(getattr(self.identity_provider,'__self__',None),error,identity)
             rejected=error.status in (400,409,413,415,422) or 300<=error.status<400
             blocked=error.status in (401,403)
             delay=min(3600,5*2**min(batch['attempts'],9))+random.uniform(0,3)
             self.outbox.fail(batch,error.code,retry_after=delay,blocked=blocked,rejected=rejected)
             self.status=('需要恢复登录/权限' if blocked else '数据被拒绝，已保留' if rejected else '离线或服务暂不可用，等待补传')
+            if security_message:self.status=security_message
         except ProtocolError:
             self.outbox.fail(batch,'protocol_or_receipt_mismatch',blocked=True);self.status='协议或回执不匹配，数据已保留'
         return False

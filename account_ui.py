@@ -10,8 +10,8 @@ def mount_account(parent,account):
     row=ttk.Frame(frame);row.pack(fill='x')
     label=ttk.Label(row,text=account.status,wraplength=700,style='Body.TLabel')
     label.pack(side='left',fill='x',expand=True)
-    ttk.Button(row,text='登录网站账号',command=account.login_async,
-               style='Accent.TButton').pack(side='left',padx=(10,6))
+    login=ttk.Button(row,text='登录网站账号',command=account.login_async,style='Accent.TButton')
+    login.pack(side='left',padx=(10,6))
     ttk.Button(row,text='退出账号',command=lambda:threading.Thread(target=account.logout,daemon=True).start()).pack(side='left')
     note=ttk.Label(frame,text='本应用采集及你主动导入的训练数据先保存在本机；登录后自动上传当前账号的待传记录，用于导播模型训练。',
               wraplength=960,style='Caption.TLabel')
@@ -24,6 +24,9 @@ def mount_account(parent,account):
     def poll():
         if not frame.winfo_exists():return
         label.configure(text=account.status)
+        code=getattr(account,'security_code','')
+        login.configure(text={'EMAIL_REAUTH_REQUIRED':'去网站验证邮箱','SESSION_REVOKED':'重新授权',
+                              'ACCOUNT_SECURITY_FROZEN':'解冻后重新验证','DEVICE_SECURITY_BLOCKED':'解封后重新验证'}.get(code,'登录网站账号'))
         schedule(frame,500,poll)
     schedule(frame,500,poll)
     return frame

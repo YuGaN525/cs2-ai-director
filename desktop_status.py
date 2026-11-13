@@ -13,6 +13,8 @@ ACCOUNT_REASONS = {
     'local_validation_required': '本地许可或模型校验未通过',
     'ready': '可执行正式导播',
 }
+from account_security import MESSAGES
+ACCOUNT_REASONS.update(MESSAGES)
 
 
 def snapshot(app):

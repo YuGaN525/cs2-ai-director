@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-13",
+  "status": "candidate source; website service integration pending",
+  "officialVersionUnchanged": "1.16.3",
+  "scope": [
+    "SEC-21 client",
+    "SEC-28 client",
+    "SEC-32 client"
+  ],
+  "regression": {
+    "total": 530,
+    "passed": 526,
+    "skipped": 4,
+    "failed": 0,
+    "seconds": 75.098,
+    "evidence": "C:\\Users\\Administrator\\DirectorRuns\\security-candidate-final.log",
+    "sha256": "a50538ecca3f584b2ec57c5d8db8f8facd88544a88a57fc5d06727528d16519f",
+    "note": "Complete suite before final one-line late-lease security guard; the affected modules were then revalidated."
+  },
+  "finalTargeted": {
+    "tests": 55,
+    "passed": 55,
+    "seconds": 2.648,
+    "evidence": "C:\\Users\\Administrator\\DirectorRuns\\security-final-targeted.log",
+    "sha256": "84dc74ee7a477275e57eeeb3b5c546bd261235c6c03efc743fef266e5c8e8d59",
+    "modules": [
+      "test_account_security",
+      "test_account_client",
+      "test_model_runtime"
+    ],
+    "overlapsRegression": true
+  },
+  "newSecurityTests": 20,
+  "websiteHttpDatabaseIntegration": {
+    "status": "pending website isolated service",
+    "productionUsed": false
+  },
+  "sourceSha256": {
+    "account_activity.py": "441444c18fa337790fe23db2ef410a9d6f4315a144ff4c090e34d3304aceab06",
+    "account_security.py": "43661f464b1ba1d3601d439c85ae0247040cf3cd027a1531f8b05c66a32f39cb",
+    "account_client.py": "24e5be7672917578a51cf59bc0316ee2ea666e9f3670db26e4ee5defcbc3dd0e",
+    "account_ui.py": "b11f7176b373cc444a78e6fb527b601300a9756a8373a9c02ee90d1f94f4d901",
+    "arbitration_runtime.py": "6ebf7e5074b53ed93dbeb5c47711188ab899ab9961890856facd82810919487c",
+    "cs2_ai_director.py": "fc2519f8b367d8c254be8557411527a335aeeccb44d6ba31380975436e657cc4",
+    "dataset_runtime.py": "72c99a5521b2f2d08f8b511753b016e980dadeaf1dbf4b3cbb46f9c6975aaaf5",
+    "dataset_transport.py": "71bbdec9047d7c153d6a2fe5ee63af270ed5b28eac12725036e383d8850718cc",
+    "desktop_status.py": "b55f9987cbf36d73cb001792b408786616809f07c8ee28993937d03b712174a7",
+    "diagnostics_client.py": "50c2982c75b882538c3993cf0c264a2fa61b0d10027789ef21f949ecd46e32e3",
+    "diagnostics_runtime.py": "d1145bb8226c601d4a3f325dc510bbfd8711c526f6a87e6f635ad8ae4d2f9d06",
+    "model_runtime.py": "c6e695b90c1d87f2ab9ed96f18927ce3142583d26f0fd93c4fcb28407dfe1f60",
+    "trainer_gui.py": "e90926eca6ce49de12880d35e28b24afef7b5e6484c0e469b54461f6f0e45a7e",
+    "training_submission.py": "b3e5a252597486302cbd5a0569aad955da7c3b9a75c8429b38d4bbd153a98cc7",
+    "upload_governance.py": "e5e0d0cb00a2083904d37bf1f4125351a51d613cc6ad06d454145af712f55a56",
+    "upload_worker.py": "61f80cba5a861c9a15788c043058950c3a3fac6acd20010edaee7b8bdff443f8",
+    "test_account_security.py": "6345d083ccc59918df47c4bb3aac1321fc4c31fc0cde9f395313b1bccf3f155e",
+    "contracts/account-security-v1/director.json": "8629109dfa38648b75538b1b46746bffddbc32c6d0b6461b13e1cdd1ee14ba2f"
+  },
+  "candidateExeBuilt": false,
+  "productionChanged": false,
+  "modelPublished": false,
+  "newGameOrWechatTest": false,
+  "originalLeaseAndDeviceKeyPreserved": true,
+  "backgroundRequestsCountAsActivity": false
+}

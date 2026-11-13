@@ -9,11 +9,13 @@ import time
 from client_update_lock import FileLock
 from dataset_store import DatasetStore,safe_error
 from dataset_transport import DatasetClient,DatasetFailure
+from account_security import MESSAGES, notify_account
 import dataset_protocol as p
 
 
 STATES={'freezing':'正在保存训练输入','ready':'输入已保存','training':'训练中或上次训练未完成','failed':'训练未完成，不自动上传','packaging':'正在整理训练数据','package-error':'训练已完成，数据整理需处理','pending':'等待上传','uploading':'正在上传','blocked':'登录或权限待恢复','rejected':'数据被拒绝，原件保留','received':'已接收，等待管理员筛选','cancelled':'上传已取消，本地数据保留'}
 ERRORS={'MISSING_GROUP':'缺少候选分组，请从原录像重新解析','CSV_NUMBER':'样本含无效特征或标签','INPUT_CHANGED':'输入快照发生变化，已停止提交','LOCAL_QUOTA':'本地数据存储空间达到限制','DISK_SPACE':'磁盘空间不足','DIRECTOR_DATASET_LIMIT':'样本规模超过服务器当前限额','DIRECTOR_DATASET_DISABLED':'服务器尚未启用训练数据接收','FORBIDDEN':'当前账号没有训练数据提交权限','DIRECTOR_NO_ENTITLEMENT':'产品资格不可用','NETWORK_UNAVAILABLE':'网络不可用，数据已保留等待重试','IDENTITY_CHANGED':'登录状态已变化，提交已暂停','DIRECTOR_DATASET_EXPIRED':'服务器会话已过期，请保留原件并重新发起历史提交'}
+ERRORS.update(MESSAGES)
 
 
 def describe(row, now=None):
@@ -97,7 +99,7 @@ class DatasetRuntime:
         fingerprint=hashlib.sha256((str(identity.binding)+identity.access_token).encode()).hexdigest()
         if fingerprint!=self._fingerprint:
             with self.store.transaction() as db:
-                db.execute("UPDATE runs SET state='pending',next_at=0 WHERE account=? AND origin=? AND device=? AND state='blocked' AND error IN ('IDENTITY_CHANGED','DIRECTOR_DEVICE_UNAUTHORIZED','DIRECTOR_REAUTH_REQUIRED','FORBIDDEN','DIRECTOR_NO_ENTITLEMENT')",self.store.actor(identity.binding))
+                db.execute("UPDATE runs SET state='pending',next_at=0 WHERE account=? AND origin=? AND device=? AND state='blocked' AND error IN ('IDENTITY_CHANGED','DIRECTOR_DEVICE_UNAUTHORIZED','DIRECTOR_REAUTH_REQUIRED','FORBIDDEN','DIRECTOR_NO_ENTITLEMENT','ACCOUNT_SECURITY_FROZEN','DEVICE_SECURITY_BLOCKED','EMAIL_REAUTH_REQUIRED','SESSION_REVOKED')",self.store.actor(identity.binding))
             self._fingerprint=fingerprint
         try:
             with FileLock(self.store.root/'upload-worker.lock',timeout=0):
@@ -118,6 +120,7 @@ class DatasetRuntime:
                         self.store.upload_failed(run_id,'pending','SERVER_VERIFYING',15);return False
                     self.store.received(run_id,receipt);self.progress.pop(run_id,None);self.status='服务器已接收，等待管理员筛选';return True
                 except DatasetFailure as error:
+                    notify_account(self.account,error,identity)
                     state='blocked' if error.status in (401,403) or error.code.startswith('PROTOCOL_') else 'rejected' if error.status in (400,409,410,413,415,422) or 300<=error.status<400 else 'pending'
                     delay=max(error.retry_after,min(3600,5*2**min(row['attempts'],9)))
                     self.store.upload_failed(run_id,state,error.code,delay)
@@ -135,7 +138,8 @@ class DatasetRuntime:
                 data=p.loads(row['descriptor'].encode());receipt=json.loads(row['receipt'])
                 value=self.client.governance(identity,data,receipt,lambda:self.continuing(row['id'],identity.binding))
                 self.store.save_governance(row['id'],value)
-            except (DatasetFailure,ValueError,OSError):pass  # Durable receipt is unchanged; retry read later.
+            except DatasetFailure as error:notify_account(self.account,error,identity)
+            except (ValueError,OSError):pass  # Durable receipt is unchanged; retry read later.
             return False
         return False
 

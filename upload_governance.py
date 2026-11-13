@@ -61,7 +61,10 @@ class CaptureGovernance:
                         p.require(source['revision']>=previous[key]['revision'],'GOVERNANCE_ROLLBACK')
                         p.require(source['revision']!=previous[key]['revision'] or source==previous[key],'GOVERNANCE_CHANGED')
                 db.execute('INSERT INTO capture_governance VALUES(?,?,?) ON CONFLICT(batch_id) DO UPDATE SET value=excluded.value,checked=excluded.checked',(row['id'],json.dumps(value,sort_keys=True),time.time()))
-        except (UploadFailure,ValueError,TypeError,KeyError):pass  # Old servers and network failures never alter receipts.
+        except UploadFailure as error:
+            from account_security import notify_account
+            notify_account(getattr(self.client.identity_provider,'__self__',None),error,identity)
+        except (ValueError,TypeError,KeyError):pass  # Old servers and network failures never alter receipts.
 
     def summary(self,binding):
         with closing(self.outbox.connect()) as db:

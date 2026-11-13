@@ -10,11 +10,12 @@ import uuid
 from diagnostics_privacy import MAX_LOG_BYTES, SUMMARIES, sanitize_log
 from diagnostics_store import binding_key
 from upload_worker import NoRedirect
+from account_security import response_code
 
 
 class DiagnosticFailure(Exception):
-    def __init__(self, status=0, retry_after=0):
-        self.status, self.retry_after = status, retry_after
+    def __init__(self, status=0, retry_after=0, code=''):
+        self.status, self.retry_after, self.code = status, retry_after, code
         super().__init__('diagnostic_http_'+str(status))
 
 
@@ -68,8 +69,10 @@ class DiagnosticClient:
             try:
                 retry = max(0, min(30*86400, int(header))) if header.isdigit() else max(0, min(30*86400, parsedate_to_datetime(header).timestamp()-time.time()))
             except (ValueError, TypeError, OverflowError): pass
-            error.close()
-            raise DiagnosticFailure(error.code, retry) from None
+            try:code=response_code(json.loads(error.read(65536)),error.code)
+            except (ValueError,TypeError):code='http_'+str(error.code)
+            finally:error.close()
+            raise DiagnosticFailure(error.code, retry, code) from None
         except (urllib.error.URLError, OSError, TimeoutError):
             raise DiagnosticFailure() from None
         except (ValueError, TypeError, KeyError):

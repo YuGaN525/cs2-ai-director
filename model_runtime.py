@@ -167,7 +167,8 @@ class ModelManager:
         if meta['model_id'] in state['revoked']:raise ModelError('model_revoked')
         try:self._download(client,token,meta)
         except urllib.error.HTTPError as error:
-            try:code=json.loads(error.read(65536)).get('code') or 'model_download_http_error'
+            from account_security import response_code
+            try:code=response_code(json.loads(error.read(65536)),error.code)
             except (ValueError,TypeError):code='model_download_http_error'
             finally:error.close()
             raise ModelNetworkError(error.code,code)

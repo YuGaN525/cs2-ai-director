@@ -226,6 +226,8 @@ class SubmissionClient:
                 code = 'http_'+str(status)
             finally:
                 error.close()
+            from account_security import notify_account
+            notify_account(self.account,SubmissionError(code,status),current)
             raise SubmissionError(code,status) from None
         except (urllib.error.URLError,TimeoutError,OSError):
             raise SubmissionError('network_unavailable') from None
@@ -244,6 +246,8 @@ class SubmissionClient:
 
 def explain_error(error):
     if isinstance(error,SubmissionError):
+        from account_security import is_security_error,MESSAGES
+        if is_security_error(error.code,error.status):return MESSAGES[error.code]
         if error.status == 401:
             return '登录已失效或账号已切换，请重新登录后重试。'
         if error.status == 403:

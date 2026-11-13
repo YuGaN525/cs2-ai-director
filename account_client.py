@@ -17,6 +17,7 @@ from offline_runtime import CachedModel
 from model_runtime import ModelNetworkError
 from upload_outbox import Binding
 from upload_worker import UploadIdentity, NoRedirect
+from account_security import ERROR_STATUS, MESSAGES, response_code, is_security_error
 
 
 class AccountError(Exception):
@@ -39,14 +40,18 @@ class AccountClient:
                 if len(body)>131072:raise AccountError('response_too_large')
                 result=json.loads(body)
         except urllib.error.HTTPError as error:
-            try:result=json.loads(error.read(65536));code=result.get('error') or result.get('code') or 'http_'+str(error.code)
+            try:result=json.loads(error.read(65536));code=response_code(result,error.code)
             except Exception:code='http_'+str(error.code)
             finally:error.close()
             raise AccountError(code,error.code)
         except (OSError,urllib.error.URLError,TimeoutError):raise AccountError('network_unavailable')
         except (ValueError,KeyError):raise AccountError('invalid_response')
+        if not isinstance(result,dict):raise AccountError('invalid_response')
         if raw:return result
-        if result.get('success') is not True:raise AccountError(result.get('code','invalid_response'))
+        if result.get('success') is not True:
+            code=response_code(result,0)
+            raise AccountError('invalid_response' if code=='http_0' else code)
+        if 'data' not in result:raise AccountError('invalid_response')
         return result['data']
 
 
@@ -62,11 +67,14 @@ class DesktopAccount:
         if model_keys is not None:
             from model_runtime import ModelManager
             self.model_manager=ModelManager(self.session,Path(model_path).parent,model_keys,clock)
-        self.lock=threading.RLock();self.tokens=None;self.status='未登录网站账号'
+        self.lock=threading.RLock();self.tokens=None;self.status='未登录网站账号';self.security_code=''
+        self._denied_generation=None;self._denied_code=''
         self.stop_event=threading.Event();self.cancel_event=threading.Event();self.thread=None
         self.sync_requested=threading.Event()
         self.pending=None;self.last_renew=0
         self._login_running=False;self._flow_generation=None
+        self._activity_running=False
+        self.activity_status='尚未记录手动启动'
         self._signed_out_requested=False
         self._local_ready=False;self._local_expiry=0;self._local_wall=clock();self._local_mono=time.monotonic()
         self._local_model_hash=''
@@ -77,6 +85,13 @@ class DesktopAccount:
     def _reload(self):
         try:self.tokens=self.session._read(self.auth_path)
         except Exception:self.tokens=None
+        self.security_code=(self.tokens or {}).get('security_error','')
+        if self.security_code not in ERROR_STATUS:self.security_code=''
+        if self.tokens and self.tokens.get('local_generation')==self._denied_generation:
+            self.security_code=self._denied_code or self.security_code
+        if self.security_code:
+            self.status=MESSAGES[self.security_code]
+            self._local_ready=False;self._local_reason=self.security_code
 
     @staticmethod
     def _expires(value):return datetime.fromisoformat(value.replace('Z','+00:00')).timestamp()
@@ -88,6 +103,7 @@ class DesktopAccount:
         if not value['access_token'].startswith('d1_') or not value['refresh_token'].startswith('dr1_'):raise AccountError('invalid_response')
         value.setdefault('local_generation',(self.tokens or {}).get('local_generation') or str(uuid.uuid4()))
         self.session._write(self.auth_path,value);self.tokens=value
+        self.security_code=self._denied_code if value['local_generation']==self._denied_generation else ''
 
     def binding(self):
         tokens=self.tokens
@@ -97,7 +113,7 @@ class DesktopAccount:
 
     def upload_identity(self):
         tokens=self.tokens
-        if self._signed_out_requested or not tokens or not tokens.get('account_id') or self._expires(tokens['access_expires_at'])<=self.clock():return None
+        if self.security_code or self._signed_out_requested or not tokens or not tokens.get('account_id') or self._expires(tokens['access_expires_at'])<=self.clock():return None
         binding=Binding(tokens['account_id'],self.session.origin,tokens['device_id'])
         return UploadIdentity(binding,tokens['access_token'])
 
@@ -145,7 +161,13 @@ class DesktopAccount:
                         if error.code=='network_unavailable':interval=min(60,interval*2);continue
                         raise
                 self.status='设备登录已取消或过期'
-            except Exception as error:self.status='登录未完成：'+(error.code if isinstance(error,AccountError) else 'local_error')
+            except Exception as error:
+                if isinstance(error,AccountError) and is_security_error(error.code,error.status):
+                    with self.session._transaction():
+                        self._reload()
+                        if (self.tokens or {}).get('local_generation','')==self._flow_generation:
+                            self._security_rejected_locked(error.code)
+                else:self.status='登录未完成：'+(error.code if isinstance(error,AccountError) else 'local_error')
             finally:
                 self.pending=None
                 with self.lock:self._login_running=False
@@ -156,23 +178,112 @@ class DesktopAccount:
         state=self.session._read(self.session.path) if self.session.path.exists() else {}
         state['blocked']=reason;self.session._write(self.session.path,state);self._local_ready=False;self._local_reason=reason
 
+    def _security_rejected_locked(self,code):
+        # Preserve signed envelope/deadline and device key; replace only invalid tokens.
+        self.security_code=code;self._local_ready=False;self._local_reason=code
+        self._denied_generation=(self.tokens or {}).get('local_generation')
+        self._denied_code=code
+        self._block_current(code)
+        self.session._write(self.auth_path,{'local_generation':str(uuid.uuid4()),'security_error':code})
+        self._reload()
+        self.cancel_event.set();self.pending=None
+
+    def handle_security_error(self,code,status,identity):
+        if not is_security_error(code,status) or identity is None:return False
+        # Stop input and new transfers before waiting on another process's credential lock.
+        tokens=self.tokens
+        if (not tokens or tokens.get('access_token')!=identity.access_token
+                or self.binding()!=identity.binding):return False
+        generation=tokens.get('local_generation')
+        self._denied_generation=generation;self._denied_code=code
+        self.security_code=code;self._local_ready=False;self._local_reason=code
+        with self.session._transaction():
+            self._reload()
+            if (not self.tokens or self.tokens.get('local_generation')!=generation
+                    or self.binding()!=identity.binding):return False
+            self._security_rejected_locked(code)
+        return True
+
     def logout(self):
         self.cancel_event.set()
         self._signed_out_requested=True
         self._local_ready=False
         with self.session._transaction():
             self._reload();old=self.tokens
-            self._block_current('signed_out')
-            self.session._write(self.auth_path,{'local_generation':str(uuid.uuid4())});self.tokens=None;self.status='已退出账号，原队列保留'
+            if self.security_code:
+                self._security_rejected_locked(self.security_code)
+            else:
+                self._block_current('signed_out')
+                self.session._write(self.auth_path,{'local_generation':str(uuid.uuid4())});self.tokens=None;self.status='已退出账号，原队列保留'
         if old and old.get('access_token'):
             try:self.client.call('logout',{},old['access_token'])
             except AccountError:pass
+
+    def _activity_identity_current(self,identity,generation):
+        with self.session._transaction():
+            self._reload()
+            return (not self.stop_event.is_set() and identity is not None
+                    and self.upload_identity()==identity
+                    and (self.tokens or {}).get('local_generation','')==generation)
+
+    def record_activity(self,action,*,identity=None,generation=None):
+        """Synchronous integration/worker entry. Call only for an explicit user start."""
+        from account_activity import ACTIONS,PURPOSE,validate_challenge,validate_receipt
+        if action not in ACTIONS:raise ValueError('unsupported_activity_action')
+        if generation is None:
+            with self.session._transaction():
+                self._reload();identity=self.upload_identity()
+                generation=(self.tokens or {}).get('local_generation','')
+        if not self._activity_identity_current(identity,generation):
+            return {'recorded':False,'reason':self.security_code or 'login_required'}
+        try:
+            challenge=self.client.call('security/activity/challenge',{'action':action},identity.access_token)
+            challenge_id,payload=validate_challenge(challenge,action,self.clock())
+            if not self._activity_identity_current(identity,generation):
+                return {'recorded':False,'reason':'local_session_changed'}
+            proof=self.session.sign_proof(PURPOSE,payload)
+            if not self._activity_identity_current(identity,generation):
+                return {'recorded':False,'reason':'local_session_changed'}
+            receipt=validate_receipt(self.client.call('security/activity/confirm',
+                {'challengeId':challenge_id,'proof':proof},identity.access_token))
+            if not self._activity_identity_current(identity,generation):
+                return {'recorded':False,'reason':'local_session_changed'}
+            self.activity_status='网站已记录本次手动启动'
+            return receipt
+        except AccountError as error:
+            if is_security_error(error.code,error.status):
+                self.handle_security_error(error.code,error.status,identity)
+            self.activity_status='网站暂不支持活跃记录' if error.status==404 else '本次活跃未记录，不自动重试'
+            return {'recorded':False,'reason':'unsupported' if error.status==404 else error.code}
+        except (ValueError,KeyError,TypeError,IdentityError,OSError):
+            self.activity_status='本次活跃回执无效，未确认记录'
+            return {'recorded':False,'reason':'invalid_response'}
+
+    def record_activity_async(self,action):
+        """Bounded, nonblocking UI hook. Never called by a background service."""
+        from account_activity import ACTIONS
+        if action not in ACTIONS:raise ValueError('unsupported_activity_action')
+        with self.lock:
+            identity=self.upload_identity()
+            if self._activity_running or identity is None or self.stop_event.is_set():return False
+            generation=(self.tokens or {}).get('local_generation','')
+            self._activity_running=True
+        def work():
+            try:self.record_activity(action,identity=identity,generation=generation)
+            finally:
+                with self.lock:self._activity_running=False
+        try:threading.Thread(target=work,name='explicit-device-activity',daemon=True).start()
+        except RuntimeError:
+            with self.lock:self._activity_running=False
+            return False
+        return True
 
     def sync_once(self):
         # A shared OS lock spans refresh exchange and replacement, preventing director/trainer
         # from refreshing the same token concurrently. Network work is only on this background path.
         with self.session._transaction():
             self._reload()
+            if self.security_code:return
             if not self.tokens or not self.tokens.get('account_id'):self.tokens=None;return
             try:
                 if self._expires(self.tokens['access_expires_at'])<=self.clock()+60:
@@ -180,7 +291,9 @@ class DesktopAccount:
                     # Avoid nesting device file lock: the outer transaction already owns it.
                     proof=__import__('device_identity').b64(self.session._device().sign(('yuzi-director-refresh-v1\0'+refresh).encode()))
                     self._save_tokens(self.client.call('token/refresh',{'refreshToken':refresh,'proof':proof},raw=True))
+                    if self.security_code:self._security_rejected_locked(self.security_code);return
                 token=self.tokens['access_token']
+                identity=UploadIdentity(self.binding(),token)
                 if self.model_manager is not None:self.model_manager.select_account(self.tokens['account_id'])
                 entitlement=self.client.call('me/entitlement',token=token)
                 if not entitlement['enabled']:
@@ -189,6 +302,8 @@ class DesktopAccount:
                 if not digest and self.model_manager is None:self.status='账号资格有效，等待正式模型';return
                 # Release shared transaction before install_verified_lease, which owns its own lock.
             except AccountError as error:
+                if is_security_error(error.code,error.status):
+                    self._security_rejected_locked(error.code);return
                 if error.status in (401,403):
                     self._block_current('reauth_required');self.session._write(self.auth_path,{'local_generation':str(uuid.uuid4())});self.tokens=None
                 self.status='暂时离线，按本地凭据检查' if error.status==0 else '需要重新登录或恢复资格：'+error.code
@@ -209,7 +324,7 @@ class DesktopAccount:
             with self.session._transaction():
                 # A concurrent logout/account switch cannot be undone by a late network response.
                 self._reload()
-                if not self.tokens or self.tokens.get('access_token')!=token:return
+                if self.security_code or not self.tokens or self.tokens.get('access_token')!=token:return
                 self.session._install_verified_lease_locked(envelope,self.tokens['account_id'])
             self.status='登录与设备绑定有效，离线凭据已续签168小时'+('；'+self.model_manager.status if self.model_manager else '');self.last_renew=self.clock();self.check_local()
         except IdentityError:
@@ -218,6 +333,8 @@ class DesktopAccount:
             self.check_local()
             self.status='离线许可续签未通过验证，请核对系统时间或重新登录；当前执行资格以本机有效凭据为准'
         except (AccountError,ModelNetworkError) as error:
+            if is_security_error(error.code,error.status):
+                self.handle_security_error(error.code,error.status,identity);return
             self.status='等待服务端批准正式模型' if error.code=='DIRECTOR_MODEL_REQUIRED' else '续签未完成：'+error.code
             if error.status in (401,403) or error.code=='DIRECTOR_MODEL_REQUIRED':
                 with self.session._transaction():
@@ -229,7 +346,9 @@ class DesktopAccount:
         allowed = self.allowed()
         now = max(self.clock(), self._local_wall + max(0, time.monotonic()-self._local_mono))
         local_reason = self._local_reason
-        if self.pending is not None:
+        if self.security_code and self.pending is None:
+            reason=self.security_code
+        elif self.pending is not None:
             reason = 'login_pending'
         elif allowed:
             reason = 'ready'
@@ -250,7 +369,7 @@ class DesktopAccount:
         else:
             reason = 'local_validation_required'
         manager = self.model_manager
-        return {'logged_in': bool(self.tokens), 'login_pending': self.pending is not None,
+        return {'logged_in': bool(self.tokens and self.tokens.get('account_id')), 'login_pending': self.pending is not None,
                 'allowed': allowed, 'reason_code': reason,
                 'lease_expires_at': self._local_expiry if self._local_expiry else None,
                 'remaining_seconds': max(0, int(self._local_expiry-now)) if allowed else 0,
@@ -261,12 +380,13 @@ class DesktopAccount:
     def allowed(self):
         # No network, credential IO or waiting on network-held locks in the input loop.
         effective=max(self.clock(),self._local_wall+max(0,time.monotonic()-self._local_mono))
-        return bool(self._local_ready and self.tokens and self._local_model_hash and self.model.current_hash()==self._local_model_hash
+        return bool(not self.security_code and self._local_ready and self.tokens and self._local_model_hash and self.model.current_hash()==self._local_model_hash
                     and effective<self._local_expiry and self.clock()>=self._local_wall-2)
 
     def check_local(self):
         try:
             with self.session._transaction():self._reload()
+            if self.security_code:return
             if not self.tokens or not self.tokens.get('account_id'):
                 self.tokens=None;self._local_ready=False;return
             if self.model_manager is not None:
@@ -336,7 +456,7 @@ def main(argv=None):
     account=default_account()
     try:
         account.sync_once();account.check_local()
-        result={'logged_in':bool(account.tokens),'execution_allowed':account.allowed(),'status':account.status,
+        result={'logged_in':account.status_snapshot()['logged_in'],'execution_allowed':account.allowed(),'status':account.status,
                 'binding':{'origin':account.binding().origin,'account_id':account.binding().account,'device_id':account.binding().device}}
         atomic_write(args.report,canonical(result));return 0
     finally:account.close()

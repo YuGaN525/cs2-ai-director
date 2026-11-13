@@ -88,6 +88,17 @@ class PlatformProvider:
         self.policy = None
         self.summary = None
 
+    def _call(self,*args,**kwargs):
+        identity=self.account.upload_identity()
+        if identity is None or identity.access_token!=kwargs.get('token'):
+            raise ArbitrationError('账号已切换或登录已失效')
+        try:return self.client.call(*args,**kwargs)
+        except Exception as error:
+            from account_security import notify_account
+            message=notify_account(self.account,error,identity)
+            if message:raise ArbitrationError(message) from None
+            raise
+
     def _identity(self):
         identity = self.account.upload_identity()
         if not self.account.allowed() or identity is None:
@@ -96,8 +107,8 @@ class PlatformProvider:
 
     def prepare(self):
         identity = self._identity()
-        policy = self.client.call('arbitration/policy', token=identity.access_token)
-        budget = self.client.call('arbitration/device-budget', token=identity.access_token)
+        policy = self._call('arbitration/policy', token=identity.access_token)
+        budget = self._call('arbitration/device-budget', token=identity.access_token)
         if self._identity().binding != identity.binding:
             raise ArbitrationError('账号已切换')
         if not policy.get('configured') or not policy.get('enabled'):
@@ -112,7 +123,7 @@ class PlatformProvider:
     def read_budget(self):
         """Reading allowance does not enable a provider or require its API key."""
         identity = self._identity()
-        budget = self.client.call('arbitration/device-budget',token=identity.access_token)
+        budget = self._call('arbitration/device-budget',token=identity.access_token)
         if self._identity().binding != identity.binding:
             raise ArbitrationError('账号已切换')
         self.summary = budget
@@ -123,7 +134,7 @@ class PlatformProvider:
         if self.policy is None:
             self.prepare()
         body = dict(request, policyVersion=self.policy['version'])
-        result = self.client.call('arbitration/requests', body, token=identity.access_token)
+        result = self._call('arbitration/requests', body, token=identity.access_token)
         if self._identity().binding != identity.binding:
             raise ArbitrationError('账号已切换')
         for key in ('requestId', 'sessionId', 'generation', 'roundKey', 'policyVersion'):
@@ -136,7 +147,7 @@ class PlatformProvider:
 
     def observe(self, request_id, state, elapsed_ms):
         identity = self._identity()
-        self.client.call('arbitration/requests/'+str(uuid.UUID(request_id))+'/observation',
+        self._call('arbitration/requests/'+str(uuid.UUID(request_id))+'/observation',
                          {'state':state,'elapsedMs':min(120000,max(0,int(elapsed_ms)))},token=identity.access_token)
 
 

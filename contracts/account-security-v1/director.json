@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "errors": {
+    "ACCOUNT_SECURITY_FROZEN": {"httpStatus":403,"automaticRetry":false,"recovery":"super_admin"},
+    "DEVICE_SECURITY_BLOCKED": {"httpStatus":403,"automaticRetry":false,"recovery":"super_admin"},
+    "EMAIL_REAUTH_REQUIRED": {"httpStatus":403,"automaticRetry":false,"recovery":"website_login_then_manual_device_authorization"},
+    "SESSION_REVOKED": {"httpStatus":401,"automaticRetry":false,"recovery":"manual_device_authorization"}
+  },
+  "errorEnvelope": {"success":false,"code":"ACCOUNT_SECURITY_FROZEN","message":"账号暂时冻结，请联系超级管理员核实","data":null},
+  "activity": {
+    "authentication":"existing DirectorDevice Bearer credential; existing Ed25519 device key",
+    "actions":["director.start","trainer.start"],
+    "challengePath":"/api/director/security/activity/challenge",
+    "challengeMethod":"POST",
+    "challengeRequest":{"action":"director.start"},
+    "challengeResponse":{"success":true,"code":"OK","message":"ok","data":{"challengeId":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","nonce":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","action":"director.start","expiresAt":"2026-11-13T12:02:00Z","signingPayload":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:director.start"}},
+    "confirmPath":"/api/director/security/activity/confirm",
+    "confirmMethod":"POST",
+    "confirmRequest":{"challengeId":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","proof":"standard-base64-Ed25519-signature"},
+    "signaturePurpose":"yuzi-director-activity-v1",
+    "signedBytes":"UTF8(signaturePurpose + U+0000 + signingPayload)",
+    "challengeTtlSeconds":120,
+    "confirmResponse":{"success":true,"code":"OK","message":"ok","data":{"recorded":true,"recordedAt":"2026-11-13T12:00:05Z"}},
+    "rules":["Only explicit user start actions; never background heartbeat/refresh/lease/poll/upload/logging","Server validates action/account/device/nonce/expiry and signature, and records server UTC time","Same device confirming the same consumed challenge is idempotent and must not advance recordedAt","Expired or conflicting challenge is rejected; activity never clears frozen/revoked/reauth states","Client may treat 404 on an older website as unsupported; never simulate successful server recording","Existing refresh/lease/poll signature formats and offline lease expiry remain unchanged"]
+  }
+}

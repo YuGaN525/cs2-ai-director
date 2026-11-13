@@ -610,6 +610,7 @@ class TrainerApp:
         self.log.configure(state="normal")
         self.log.delete("1.0", "end")
         self.log.configure(state="disabled")
+        self.account.record_activity_async('trainer.start')
 
     def _run_worker(self, csv_path: Path, out: Path, metrics: Path,
                     params: tuple[int, int, int, float],

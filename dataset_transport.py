@@ -105,6 +105,8 @@ class DatasetClient:
                 if not isinstance(code,str) or not re.fullmatch('[A-Za-z0-9_]{1,80}',code):code='HTTP_'+str(status)
             except Exception:code='HTTP_'+str(status)
             finally:error.close()
+            from account_security import notify_account
+            notify_account(getattr(self.identity_provider,'__self__',None),DatasetFailure(code,status,delay),identity)
             raise DatasetFailure(code,status,delay) from None
         except (urllib.error.URLError,TimeoutError,OSError):raise DatasetFailure('NETWORK_UNAVAILABLE') from None
         except (TypeError,KeyError,ValueError) as error:raise DatasetFailure('PROTOCOL_'+type(error).__name__) from None
