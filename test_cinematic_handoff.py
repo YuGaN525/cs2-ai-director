@@ -112,7 +112,7 @@ class CinematicHandoffTests(unittest.TestCase):
         self.engine._handle_triggers(self.snap(rnd=2), 102.0)
         self.assertEqual(self.send.call_args_list, [
             mock.call("alt+p", double=False),
-            mock.call(self.engine.cfg["hlae_spawn_ct_key"], double=True)])
+            mock.call(self.engine.cfg["hlae_spawn_ct_key"], double=True, cancel_event=mock.ANY)])
 
     def test_cancel_or_revoked_authorization_never_bypassed_for_handoff(self):
         self.start_spawn()

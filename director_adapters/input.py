@@ -17,6 +17,8 @@ class InputControllerAdapter:
         self.log = log
         self.authorization_gate = authorization_gate
         self.cancel_event = None
+        self._action_cancel_event = None
+        self.hotkey_started = False
         self._held_keys = set()
         self._held_order = []
         self._target = None
@@ -40,7 +42,8 @@ class InputControllerAdapter:
                 pass
 
     def _authorized(self):
-        if self.cancel_event is not None and self.cancel_event.is_set():
+        if ((self.cancel_event is not None and self.cancel_event.is_set())
+                or (self._action_cancel_event is not None and self._action_cancel_event.is_set())):
             self.release_held_keys()
             return False
         if self.authorization_gate is None:
@@ -221,9 +224,10 @@ class InputControllerAdapter:
                 self.release_held_keys()
                 self._target = None
 
-    def send_hotkey(self, hotkey: str, double: bool = False) -> bool:
+    def send_hotkey(self, hotkey: str, double: bool = False, *, cancel_event=None) -> bool:
         """发送 MulNX 快捷键；double=True 时连按两次（间隔可配）。"""
-        if not self._authorized():
+        self.hotkey_started = False
+        if (cancel_event is not None and cancel_event.is_set()) or not self._authorized():
             return False
         hotkey = (hotkey or "").strip()
         if not hotkey:
@@ -252,6 +256,7 @@ class InputControllerAdapter:
         if not keys:
             return False
         with self._send_lock:
+            self._action_cancel_event = cancel_event
             try:
                 if not self._begin():
                     return False
@@ -265,6 +270,7 @@ class InputControllerAdapter:
                             if i:
                                 self._wait(max(0.0, interval - hold))
                             self._press("keyboard", keys[0])
+                            self.hotkey_started = True
                             self._wait(hold)
                             self._release("keyboard", keys[0])
                         if mods:
@@ -275,6 +281,7 @@ class InputControllerAdapter:
                                 self._wait(interval)
                             for key in mods + keys:
                                 self._press("keyboard", key)
+                                if key in keys: self.hotkey_started = True
                             for key in reversed(mods + keys):
                                 self._release("keyboard", key)
                     return True
@@ -283,6 +290,7 @@ class InputControllerAdapter:
                         if i:
                             self._wait(interval)
                         self._press("direct", hotkey.lower())
+                        self.hotkey_started = True
                         self._wait(hold)
                         self._release("direct", hotkey.lower())
                     return True
@@ -297,3 +305,4 @@ class InputControllerAdapter:
             finally:
                 self.release_held_keys()
                 self._target = None
+                self._action_cancel_event = None

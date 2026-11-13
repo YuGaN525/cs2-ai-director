@@ -473,7 +473,7 @@ class TriggerTracker:
             self._auto_round += 1
         return f"{snap.map_name}#auto{self._auto_round}"
 
-    def poll(self, snap: Snapshot, now: float) -> list[TriggerEvent]:
+    def poll(self, snap: Snapshot, now: float, *, ignore_retry=False) -> list[TriggerEvent]:
         events: list[TriggerEvent] = []
         key = self.round_key(snap)
         retry = float(self.cfg["trigger_retry_seconds"])
@@ -481,7 +481,7 @@ class TriggerTracker:
         # 出生点运镜：freezetime 触发一次
         if snap.phase == "freezetime" and key not in self._fired_round:
             last = self._attempt.get("r:" + key)
-            if last is None or now - last >= retry:
+            if ignore_retry or last is None or now - last >= retry:
                 self._attempt["r:" + key] = now
                 events.append(TriggerEvent("round", key))
 
@@ -491,7 +491,7 @@ class TriggerTracker:
             cd = bomb.countdown
             if 0 < cd <= float(self.cfg["bomb_cam_countdown"]) and key not in self._fired_bomb:
                 last = self._attempt.get("b:" + key)
-                if last is None or now - last >= retry:
+                if ignore_retry or last is None or now - last >= retry:
                     self._attempt["b:" + key] = now
                     events.append(TriggerEvent("bomb", key))
 
@@ -1557,6 +1557,9 @@ class DirectorEngine:
         self._bomb_cam_until = 0.0
         self._cinematic_request: Optional[dict[str, Any]] = None
         self._cinematic_retry_at = 0.0
+        self._cinematic_control_lock = threading.Lock()
+        self._cinematic_cancel = threading.Event()
+        if not cfg.get('cinematics_enabled', True): self._cinematic_cancel.set()
         self._stale_active = False
         self._last_spectate_log = 0.0
         self._last_trigger_fail = 0.0
@@ -1700,7 +1703,23 @@ class DirectorEngine:
 
     def status(self) -> dict[str, Any]:
         with self._status_lock:
-            return dict(self._status)
+            status = dict(self._status)
+        status['cinematics_enabled'] = self.cinematics_enabled()
+        request = self._cinematic_request
+        status['cinematic_pending_stop'] = bool(request and request['cancel'].is_set())
+        return status
+
+    def cinematics_enabled(self) -> bool:
+        return not self._cinematic_cancel.is_set()
+
+    def set_cinematics_enabled(self, enabled: bool) -> None:
+        # UI never waits on the send lock. A cancelled generation stays cancelled
+        # even if the user quickly enables the next generation again.
+        with self._cinematic_control_lock:
+            if enabled:
+                if self._cinematic_cancel.is_set(): self._cinematic_cancel = threading.Event()
+            else:
+                self._cinematic_cancel.set()
 
     # ---- 手动接管 ----
     def _on_manual_key(self, digit: str) -> None:
@@ -1824,6 +1843,8 @@ class DirectorEngine:
             return
         now = time.monotonic()
         snap = self.store.get()
+        request = self._cinematic_request
+        if request and request['cancel'].is_set(): self._handoff_cinematic(snap, now)
         packets, _ = self.store.stats()
         status: dict[str, Any] = {
             "running": True,
@@ -2075,19 +2096,23 @@ class DirectorEngine:
         self._last_scores = (snap.score_ct, snap.score_t)
 
     # ---- 运镜 ----
-    def _handoff_cinematic(self, snap: Snapshot, now: float) -> bool:
+    def _handoff_cinematic(self, snap: Optional[Snapshot], now: float) -> bool:
         """结束本程序请求的宏，再允许 POV；不干预未由本程序触发的预览。"""
         request = self._cinematic_request
         if request is None:
             return True
         reason = ""
-        if now < self._manual_until:
+        if request['cancel'].is_set():
+            reason = "用户关闭自动运镜"
+        elif request.get('interrupted'):
+            reason = "运镜输入中断"
+        elif now < self._manual_until:
             reason = "人工接管"
-        elif (snap.map_name, snap.round_num) != request["round"]:
+        elif snap is not None and (snap.map_name, snap.round_num) != request["round"]:
             reason = "回合或地图变化"
-        elif request["kind"] == "round" and snap.phase != "freezetime":
+        elif snap is not None and request["kind"] == "round" and snap.phase != "freezetime":
             reason = "出生点阶段结束"
-        elif request["kind"] == "bomb" and snap.phase != "live":
+        elif snap is not None and request["kind"] == "bomb" and snap.phase != "live":
             reason = "包点阶段结束"
         elif now >= request["until"]:
             reason = "运镜保护时间结束"
@@ -2106,6 +2131,13 @@ class DirectorEngine:
         return True
 
     def _handle_triggers(self, snap: Snapshot, now: float) -> None:
+        cancel = self._cinematic_cancel
+        if cancel.is_set():
+            # Observe disabled opportunities so re-enabling does not replay them.
+            for event in self.triggers.poll(snap, now, ignore_retry=True):
+                self.triggers.confirm(event, count=False)
+            self._handoff_cinematic(snap, now)
+            return
         if not self._handoff_cinematic(snap, now) or now < self._manual_until:
             return
         # 按用户要求，不再用“是否观战视角”阻断运镜/切换。
@@ -2166,13 +2198,15 @@ class DirectorEngine:
                 continue
             double = str(self.cfg.get(mode_key, "double")).lower() == "double"
             mode_txt = "双击" if double else "单次"
-            ok = self.input.send_hotkey(str(hotkey), double=double)
-            if ok:
-                self._cinematic_request = {
+            request = {
                     "kind": ev.kind, "round": (snap.map_name, snap.round_num),
+                    "cancel": cancel,
                     "until": now + (30.0 if ev.kind == "round" else
                                     max(0.0, float(self.cfg["bomb_cam_grace"]))),
                 }
+            ok = self.input.send_hotkey(str(hotkey), double=double, cancel_event=cancel)
+            if ok:
+                self._cinematic_request = request
                 self._cinematic_retry_at = 0.0
                 self.triggers.confirm(ev)
                 if ev.kind == "round":
@@ -2204,7 +2238,14 @@ class DirectorEngine:
                             "bomb_cam", now,
                             expires_at=now + max(1.5, grace) + 1.0)
             else:
-                if now - self._last_trigger_fail > 3.0:
+                if self.input.hotkey_started:
+                    request['interrupted'] = True
+                    self._cinematic_request = request
+                    self._cinematic_retry_at = 0.0
+                    self.triggers.confirm(ev, count=False)
+                elif cancel.is_set():
+                    self.triggers.confirm(ev, count=False)
+                if not self.input.hotkey_started and not cancel.is_set() and now - self._last_trigger_fail > 3.0:
                     self._last_trigger_fail = now
                     self.bus.warning(f"{ev.kind} 运镜快捷键发送失败，稍后重试（窗口未聚焦？）")
 
@@ -2988,7 +3029,12 @@ class DirectorApp:
             value=str(cfg.get("obs_narrative_source", "")))
         self.var_pro_enabled = tk.BooleanVar(value=bool(cfg.get("event_actions_enabled", True)))
         self.var_pause_hotkey = tk.StringVar(value=str(cfg.get("pause_hotkey", "ctrl+alt+p")))
-        self._pause_hotkey_handle: Any = None
+        self.var_director_hotkey = tk.StringVar(value=str(cfg.get('director_toggle_hotkey', 'ctrl+alt+d')))
+        self.var_cinematics_hotkey = tk.StringVar(value=str(cfg.get('cinematics_toggle_hotkey', 'ctrl+alt+m')))
+        self.var_cinematics = tk.BooleanVar(value=bool(cfg.get('cinematics_enabled', True)))
+        from desktop_hotkeys import ControlHotkeys
+        self._control_hotkeys = ControlHotkeys(keyboard if HAS_KEYBOARD else None)
+        self._shortcuts_note = ''
         self.var_api = tk.StringVar(value='')
         self.var_mode = tk.StringVar(value='off')
         from arbitration_runtime import PersonalKeyStore
@@ -3011,7 +3057,7 @@ class DirectorApp:
         self.account.start()
         self.pro.obs.authorization_gate = self.account
         self.decision_logger.mature_sink = self.training_data.recorder.offer
-        self._register_pause_hotkey()
+        self._register_control_hotkeys()
         self._update_model_label()
         self._refresh_deps()
         self._refresh_gsi_status()
@@ -3061,27 +3107,60 @@ class DirectorApp:
             selectcolor="#ffffff", bd=0, highlightthickness=0,
             font=("Microsoft YaHei UI", 9), anchor="w", **kwargs)
 
-    def _unregister_pause_hotkey(self) -> None:
-        if self._pause_hotkey_handle is None:
-            return
-        try:
-            keyboard.remove_hotkey(self._pause_hotkey_handle)
-        except Exception:
-            pass
-        self._pause_hotkey_handle = None
+    def _unregister_control_hotkeys(self) -> None:
+        self._control_hotkeys.close()
 
-    def _register_pause_hotkey(self) -> None:
-        self._unregister_pause_hotkey()
-        hotkey = self.var_pause_hotkey.get().strip()
-        if not hotkey or not HAS_KEYBOARD or keyboard is None:
-            return
+    def _register_control_hotkeys(self) -> None:
         try:
-            self._pause_hotkey_handle = keyboard.add_hotkey(
-                hotkey, self._on_pause_hotkey, suppress=False)
-            self.bus.info(f"暂停热键已注册：{hotkey}（按一次开始，再按一次结束）")
-        except Exception as e:
-            self._pause_hotkey_handle = None
-            self.bus.warning(f"暂停热键注册失败：{hotkey}：{type(e).__name__}: {e}")
+            failed = self._control_hotkeys.configure(self.cfg)
+            active = self._control_hotkeys.registered
+            self._shortcuts_note = '松开触发 · 启停导播：'+active.get('director', '未启用').upper()+' · 运镜：'+active.get('cinematics', '未启用').upper()
+            if failed:
+                self.bus.warning('快捷键未注册：'+'、'.join(failed)+'；仍可使用界面按钮。')
+        except ValueError as error:
+            self.bus.warning('控制快捷键未更新：'+str(error))
+            self._shortcuts_note = '快捷键配置有误，请在配置页修改后保存。'
+        self._refresh_cinematic_controls()
+
+    def _poll_control_hotkeys(self) -> None:
+        generation = self._control_hotkeys.generation
+        for action in self._control_hotkeys.drain():
+            if self._closing or self._control_hotkeys.generation != generation: break
+            if action == 'director': self._toggle_director()
+            elif action == 'cinematics': self._toggle_cinematics()
+            elif action == 'pause': self._on_pause_hotkey()
+
+    def _toggle_director(self) -> None:
+        if self._closing or getattr(self, '_starting', False) or 'stop' in self.tasks.running: return
+        if self.engine is None: self._start()
+        else: self._stop()
+
+    def _toggle_cinematics(self) -> None:
+        self._set_cinematics_enabled(not self.var_cinematics.get())
+
+    def _set_cinematics_enabled(self, enabled: bool) -> None:
+        if self._closing: return
+        enabled = bool(enabled)
+        if enabled and self.engine is not None and any(not str(self.engine.cfg.get(key) or '').strip() for key in
+                ('hlae_spawn_ct_key','hlae_spawn_t_key','hlae_bomb_a_key','hlae_bomb_b_key')):
+            self.var_cinematics.set(False)
+            self._refresh_cinematic_controls()
+            messagebox.showwarning('运镜尚未配置', '当前导播没有完整的 MulNX 运镜配置。请停止导播、补齐运镜键后重新启动；玩家视角切换可继续使用。', parent=self.root)
+            return
+        self.var_cinematics.set(enabled)
+        self.cfg['cinematics_enabled'] = enabled
+        if self.engine is not None: self.engine.set_cinematics_enabled(enabled)
+        self._refresh_cinematic_controls()
+        self.bus.info('自动运镜已'+('开启' if enabled else '关闭')+'；玩家视角自动切换保持。')
+        try: save_config(copy.deepcopy(self.cfg))
+        except Exception as error: self.bus.warning('运镜开关本次已生效，但未保存：'+type(error).__name__)
+
+    def _refresh_cinematic_controls(self) -> None:
+        enabled = bool(self.var_cinematics.get())
+        pending = bool(self.engine and self.engine.status().get('cinematic_pending_stop'))
+        self.btn_cinematics.configure(text='运镜：'+('开启' if enabled else '关闭'))
+        note = '等待 CS2 前台停止本程序的运镜预览 · ' if pending else ''
+        self.lbl_control_shortcuts.configure(text=note+self._shortcuts_note)
 
     def _on_pause_hotkey(self) -> None:
         try:
@@ -3797,6 +3876,19 @@ class DirectorApp:
                   foreground="#555555", wraplength=920, justify="left").grid(
             row=2, column=0, columnspan=3, sticky="w", pady=(6, 0))
 
+        self._checkbutton(lf2, '自动运镜（出生点、包点；切换后立即生效）', self.var_cinematics,
+                          command=lambda: self._set_cinematics_enabled(self.var_cinematics.get())).grid(
+                              row=3, column=0, sticky='w', pady=(10, 0))
+        for row_index, label, variable in (
+                (4, '启动 / 停止导播', self.var_director_hotkey),
+                (5, '开启 / 关闭运镜', self.var_cinematics_hotkey)):
+            shortcut_row = ttk.Frame(lf2)
+            shortcut_row.grid(row=row_index, column=0, sticky='ew', pady=(6, 0))
+            ttk.Label(shortcut_row, text=label, width=20).pack(side='left')
+            ttk.Entry(shortcut_row, textvariable=variable, width=22).pack(side='left', padx=(4, 0))
+        ttk.Label(lf2, text='快捷键留空可停用，保存后生效；松开按键触发。关闭运镜后仍自动选择玩家视角。',
+                  style='Caption.TLabel', wraplength=840).grid(row=6, column=0, sticky='w', pady=(6, 0))
+
         # 3) AI
         lf3 = ttk.LabelFrame(settings, text="3. 云端仲裁与本地模型", padding=10)
         lf3.grid(row=3, column=0, sticky="ew", pady=(0, 8))
@@ -3861,8 +3953,10 @@ class DirectorApp:
         self._developer_widgets = [lf5] + self._pro_developer_widgets
 
         # 6) 控制条（始终可见）
-        ctrl = ttk.Frame(body)
-        ctrl.grid(row=1, column=0, sticky="ew", pady=(12, 8))
+        ctrl_shell = ttk.Frame(body)
+        ctrl_shell.grid(row=1, column=0, sticky="ew", pady=(12, 8))
+        ctrl = ttk.Frame(ctrl_shell)
+        ctrl.pack(fill='x')
         self.btn_start = ttk.Button(
             ctrl, text="▶ 启动导播", command=self._start, style="Accent.TButton")
         self.btn_start.pack(side="left")
@@ -3870,11 +3964,16 @@ class DirectorApp:
             ctrl, text="■ 停止", command=self._stop, state="disabled",
             style="Stop.TButton")
         self.btn_stop.pack(side="left", padx=6)
+        self.btn_cinematics = ttk.Button(ctrl, text='运镜：'+('开启' if self.var_cinematics.get() else '关闭'),
+                                         command=self._toggle_cinematics)
+        self.btn_cinematics.pack(side='left', padx=(0, 6))
         ttk.Separator(ctrl, orient="vertical").pack(
             side="left", fill="y", padx=10, pady=3)
         ttk.Button(ctrl, text="保存配置", command=self._save_only).pack(side="left")
         ttk.Button(ctrl, text="设置中心",
                    command=lambda: open_settings(self)).pack(side="left", padx=4)
+        self.lbl_control_shortcuts = ttk.Label(ctrl_shell, text='', style='Caption.TLabel', wraplength=900)
+        self.lbl_control_shortcuts.pack(fill='x', pady=(5, 0))
 
         # 7) 运行状态（始终可见）
         status_box = ttk.LabelFrame(body, text="运行状态", padding=(12, 5))
@@ -4239,6 +4338,9 @@ class DirectorApp:
         cfg["obs_password"] = self.var_obs_pwd.get()
         cfg["event_actions_enabled"] = bool(self.var_pro_enabled.get())
         cfg["pause_hotkey"] = self.var_pause_hotkey.get().strip() or "ctrl+alt+p"
+        cfg['director_toggle_hotkey'] = self.var_director_hotkey.get().strip()
+        cfg['cinematics_toggle_hotkey'] = self.var_cinematics_hotkey.get().strip()
+        cfg['cinematics_enabled'] = bool(self.var_cinematics.get())
         cfg["narrative_enabled"] = bool(self.var_narrative_enabled.get())
         cfg["obs_narrative_enabled"] = bool(self.var_obs_narrative_enabled.get())
         cfg["obs_narrative_source"] = self.var_obs_narrative_source.get().strip()
@@ -4262,6 +4364,13 @@ class DirectorApp:
             cfg["manual_pause_seconds"] = DEFAULT_CONFIG["manual_pause_seconds"]
         cfg["utility_cam_enabled"] = bool(self.var_utility_cam.get())
         cfg.update(checked)
+        from desktop_hotkeys import control_bindings, CONTROLS
+        parser = keyboard.parse_hotkey if HAS_KEYBOARD and keyboard is not None else None
+        control_bindings(cfg, parser)
+        if self.engine is not None:
+            active = dict(self.engine.cfg)
+            active.update({field:cfg[field] for field, _, _ in CONTROLS.values()})
+            control_bindings(active, parser)  # Live macro bindings stay immutable until restart.
         return cfg
 
     def _apply_runtime_cfg(self, cfg):
@@ -4288,6 +4397,7 @@ class DirectorApp:
         ):
             value = str(cfg[key]).strip()
             if not value:
+                if not cfg.get('cinematics_enabled', True): continue
                 messagebox.showerror("配置错误", f"{label}快捷键不能为空。")
                 return False
             if value in DIGITS:
@@ -4298,8 +4408,8 @@ class DirectorApp:
                 return False
         keys = [str(cfg[k]).strip().lower() for k in
                 ("hlae_spawn_ct_key", "hlae_spawn_t_key",
-                 "hlae_bomb_a_key", "hlae_bomb_b_key")]
-        if len(set(keys)) < 4:
+                 "hlae_bomb_a_key", "hlae_bomb_b_key") if str(cfg.get(k) or '').strip()]
+        if len(set(keys)) < len(keys):
             if not messagebox.askyesno("确认", "CT/T 出生点或 A/B 包点中有重复快捷键，确定继续？"):
                 return False
         from arbitration_runtime import owner_of
@@ -4333,6 +4443,13 @@ class DirectorApp:
         return True
 
     def _start(self) -> None:
+        if self.engine is not None or self._closing or getattr(self, '_starting', False) or 'stop' in self.tasks.running:
+            return
+        self._starting = True
+        try: self._start_director()
+        finally: self._starting = False
+
+    def _start_director(self) -> None:
         if self.engine is not None or self._closing:
             return
         if 'model-check' in self.tasks.running or 'model-load' in self.tasks.running:
@@ -4356,7 +4473,7 @@ class DirectorApp:
         self.cfg = copy.deepcopy(cfg)
         self._apply_runtime_cfg(cfg)
         cfg = self._runtime_cfg
-        self._register_pause_hotkey()
+        self._register_control_hotkeys()
         try:
             from offline_runtime import create_local_engine
             if not self.account.acquire_execution():
@@ -4510,10 +4627,10 @@ class DirectorApp:
             self.cfg = cfg
             if self.engine is None:
                 self._apply_runtime_cfg(cfg)
-                self._register_pause_hotkey()
+            self._register_control_hotkeys()
             self.bus.info(f"配置已保存：{config_path()}")
             self._refresh_gsi_status()
-            messagebox.showinfo("保存配置", f"已保存到：\n{config_path()}\n运行中的导播保持原配置，下次启动应用。")
+            messagebox.showinfo("保存配置", f"已保存到：\n{config_path()}\n控制快捷键已更新；其他运行参数下次启动应用。")
         except Exception as e:
             messagebox.showerror("保存配置", f"保存失败：{e}")
 
@@ -4522,6 +4639,8 @@ class DirectorApp:
         if self._closing:
             return
         try:
+            self._poll_control_hotkeys()
+            self._refresh_cinematic_controls()
             self._drain_logs()
             running = self.engine.status() if self.engine else {}
             self.workspace_status.configure(text=(
@@ -4692,9 +4811,10 @@ class DirectorApp:
             schedule(self.root, 100, self._on_close)
             return
         self._closing = True
-        self._unregister_pause_hotkey()
+        self._unregister_control_hotkeys()
         self.btn_start.configure(state='disabled')
         self.btn_stop.configure(state='disabled')
+        self.btn_cinematics.configure(state='disabled')
         self.lbl_conn.configure(text='正在停止并保存本地记录…')
         try:
             draft = self._collect_cfg()
@@ -4729,7 +4849,8 @@ class DirectorApp:
                 self._closing = False
                 self.btn_start.configure(state='normal' if self.engine is None else 'disabled')
                 self.btn_stop.configure(state='normal' if self.engine is not None else 'disabled')
-                self._register_pause_hotkey()
+                self.btn_cinematics.configure(state='normal')
+                self._register_control_hotkeys()
                 schedule(self.root, 200, self._poll)
                 messagebox.showerror('关闭未完成', str(error) if error else self.training_data.status_text(), parent=self.root)
                 return

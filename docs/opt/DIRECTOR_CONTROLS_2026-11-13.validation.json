@@ -1,0 +1,51 @@
+{
+  "date": "2026-11-13",
+  "status": "candidate source; not packaged or deployed",
+  "officialVersionUnchanged": "1.16.3",
+  "defaults": {
+    "cinematics_enabled": true,
+    "director_toggle_hotkey": "ctrl+alt+d",
+    "cinematics_toggle_hotkey": "ctrl+alt+m"
+  },
+  "regression": {
+    "total": 545,
+    "passed": 541,
+    "skipped": 4,
+    "failed": 0,
+    "seconds": 170.505,
+    "evidence": "C:\\Users\\Administrator\\DirectorRuns\\director-controls-full-20261113.log",
+    "sha256": "bb48fb6012adb856ae967085ad6eccdd0d2d61b35aac344c53bcf38236408dbc",
+    "note": "Full suite before final missing-MulNX configuration guards; affected code then revalidated by 45 tests and 15 hidden Tk checks."
+  },
+  "finalTargeted": {
+    "total": 45,
+    "passed": 45,
+    "evidence": "C:\\Users\\Administrator\\DirectorRuns\\control-new-tests.log",
+    "sha256": "78fb793bd7b048d8fc5cc1e833cd2df3961ebc0b9a95c09aaec010eb968aa5b7",
+    "overlapsRegression": true
+  },
+  "newControlTests": 17,
+  "hiddenTk": {
+    "total": 15,
+    "passed": 15,
+    "evidence": "C:\\Users\\Administrator\\DirectorRuns\\director-control-ui-20261113.json",
+    "sha256": "b981a5c65cf3a0e5154c6474f8a99458b9175c70c2a6f084faaaa71fcd6e50c7",
+    "scope": "hidden Tk components with synthetic account/hooks; no physical keyboard, real game or visual screenshot acceptance"
+  },
+  "sourceSha256": {
+    "cs2_ai_director.py": "45be1f19cf45786fc58b2921d60d05947a89119f77a4515764d951e72b5a81c5",
+    "desktop_hotkeys.py": "e25953386b8f0c462f00519bdbdd48b46328e64da4cf68340bf9361471dd0f2b",
+    "director_adapters/input.py": "c374824874b5dc5d2dd7fc94131813cfe060688d6ffde2ac4b3bbe516fad9f4a",
+    "director_core/config.py": "e5898a4d19acda8f1c11400604bf38e4a1e2491d84b6227d65ff3fd93eb8506c",
+    "test_director_controls.py": "202e508ce0cbbe565d52e1eb41d906286afdedf899c0c702d2a1217e4f662072",
+    "test_cinematic_handoff.py": "2536cca8a340a4c6f26b13eae61ccf18b7a2ddbb16c96f08bd031e7bfe34338b",
+    "test_cs2_ai_director.py": "98294185a79ffd7be59e656bb6a8a144496a2269c3aa14e31de6e7e8ccc6abce",
+    "tools/check_director_control_ui.py": "08ee0cfa4a087e54f3cde883c27320e7ee12e82e9b02c93ffd8d4fe0e13ced41",
+    "tools/ui_matrix.py": "29dba4ddbe02c076b8f6c6b2dd2e459a791581f827d5cea9e4b38a5b155d943a",
+    "tools/ui_latency.py": "8c935a1d313bd7d0350491d3e0d403830067da8a6d34af5f3bb45843220c1bc2"
+  },
+  "realGameOrPhysicalKeyboardTested": false,
+  "visibleLayoutOrPackagedExeTested": false,
+  "productionChanged": false,
+  "candidateExeBuilt": false
+}

@@ -562,7 +562,7 @@ class TestBombTriggerSelection(unittest.TestCase):
     def _run(self, map_name, pos, rnd=1):
         cfg, eng = self._engine()
         calls = []
-        eng.input.send_hotkey = lambda key, double=False: calls.append((key, double)) or True  # type: ignore[assignment]
+        eng.input.send_hotkey = lambda key, double=False, **kwargs: calls.append((key, double)) or True  # type: ignore[assignment]
         eng._handle_triggers(self._snap(map_name, pos, rnd), time.monotonic())
         return calls, eng
 
@@ -595,7 +595,7 @@ class TestBombCamPolicy(unittest.TestCase):
         })
         eng = d.DirectorEngine(cfg, d.LogBus())
         calls = []
-        eng.input.send_hotkey = lambda key, double=False: calls.append((key, double)) or True  # type: ignore[assignment]
+        eng.input.send_hotkey = lambda key, double=False, **kwargs: calls.append((key, double)) or True  # type: ignore[assignment]
         players = [player(1, "CT", hp=hp)]
         if hp > 0:
             players.append(player(2, "T", hp=100, pos=enemy_pos))
@@ -657,7 +657,7 @@ class TestSpawnTriggerSelection(unittest.TestCase):
     def _run(self, winner, default_side="CT"):
         eng = self._engine(winner, default_side)
         calls = []
-        eng.input.send_hotkey = lambda key, double=False: calls.append((key, double)) or True  # type: ignore[assignment]
+        eng.input.send_hotkey = lambda key, double=False, **kwargs: calls.append((key, double)) or True  # type: ignore[assignment]
         eng._handle_triggers(self._snap(), time.monotonic())
         return calls, eng
 

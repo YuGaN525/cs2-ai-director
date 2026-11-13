@@ -16,7 +16,7 @@ with tempfile.TemporaryDirectory() as root:
     account.binding.return_value=Binding('unbound','local','fixture')
     account.upload_identity.return_value=None
     account.status_snapshot.return_value=dict(allowed=False,logged_in=False,reason_code='login_required',remaining_seconds=0,last_verified_at=None,model_state='未登录')
-    with mock.patch('account_client.default_account',return_value=account),mock.patch.object(d.DirectorApp,'_register_pause_hotkey'),mock.patch.object(d.DirectorApp,'_unregister_pause_hotkey'):
+    with mock.patch('account_client.default_account',return_value=account),mock.patch.object(d.DirectorApp,'_register_control_hotkeys'),mock.patch.object(d.DirectorApp,'_unregister_control_hotkeys'):
         for cls,args in ((d.DirectorApp,(dict(d.DEFAULT_CONFIG),)),(trainer_gui.TrainerApp,())):
             app=cls(*args)
             app.root.report_callback_exception=lambda *error:errors.append(str(error))
