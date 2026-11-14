@@ -1,0 +1,330 @@
+{
+  "runId": "55aef785-cbbe-42f0-a307-123bbbb103a8",
+  "baseUrl": "http://127.0.0.1:5163",
+  "actors": [
+    "user4",
+    "user5"
+  ],
+  "checks": [
+    {
+      "name": "authenticated localhost fixture ready",
+      "passed": true
+    },
+    {
+      "name": "device authorization keeps requested synthetic owner",
+      "passed": true
+    },
+    {
+      "name": "device authorization keeps requested synthetic owner",
+      "passed": true
+    },
+    {
+      "name": "device authorization keeps requested synthetic owner",
+      "passed": true
+    },
+    {
+      "name": "background entitlement and local validation do not count as activity",
+      "passed": true
+    },
+    {
+      "name": "DesktopAccount director.start signature accepted by real server",
+      "passed": true
+    },
+    {
+      "name": "replayed confirmation preserves first receipt and activity time",
+      "passed": true
+    },
+    {
+      "name": "DesktopAccount trainer.start signature accepted by real server",
+      "passed": true
+    },
+    {
+      "name": "cross-device confirmation is rejected",
+      "passed": true
+    },
+    {
+      "name": "cross-account confirmation is rejected",
+      "passed": true
+    },
+    {
+      "name": "wrong device signature is rejected",
+      "passed": true
+    },
+    {
+      "name": "expired unconsumed challenge is rejected",
+      "passed": true
+    },
+    {
+      "name": "EMAIL_REAUTH_REQUIRED on me/entitlement",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "EMAIL_REAUTH_REQUIRED"
+      }
+    },
+    {
+      "name": "EMAIL_REAUTH_REQUIRED on me/devices",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "EMAIL_REAUTH_REQUIRED"
+      }
+    },
+    {
+      "name": "EMAIL_REAUTH_REQUIRED on me/lease",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "EMAIL_REAUTH_REQUIRED"
+      }
+    },
+    {
+      "name": "EMAIL_REAUTH_REQUIRED on token/refresh",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "EMAIL_REAUTH_REQUIRED"
+      }
+    },
+    {
+      "name": "EMAIL_REAUTH_REQUIRED on security/activity/challenge",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "EMAIL_REAUTH_REQUIRED"
+      }
+    },
+    {
+      "name": "EMAIL_REAUTH_REQUIRED invalidates current client identity",
+      "passed": true
+    },
+    {
+      "name": "EMAIL_REAUTH_REQUIRED persists across restart with same key",
+      "passed": true
+    },
+    {
+      "name": "rejected background and start requests do not postpone 14-day threshold",
+      "passed": true
+    },
+    {
+      "name": "inactive website login demands email without issuing tokens",
+      "passed": true
+    },
+    {
+      "name": "synthetic mailbox proof completes website login",
+      "passed": true
+    },
+    {
+      "name": "website email verification alone does not reactivate local client",
+      "passed": true
+    },
+    {
+      "name": "device authorization keeps requested synthetic owner",
+      "passed": true
+    },
+    {
+      "name": "manual device reauthorization restores identity without key rotation",
+      "passed": true
+    },
+    {
+      "name": "ACCOUNT_SECURITY_FROZEN on me/entitlement",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "ACCOUNT_SECURITY_FROZEN"
+      }
+    },
+    {
+      "name": "ACCOUNT_SECURITY_FROZEN on me/devices",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "ACCOUNT_SECURITY_FROZEN"
+      }
+    },
+    {
+      "name": "ACCOUNT_SECURITY_FROZEN on me/lease",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "ACCOUNT_SECURITY_FROZEN"
+      }
+    },
+    {
+      "name": "ACCOUNT_SECURITY_FROZEN on token/refresh",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "ACCOUNT_SECURITY_FROZEN"
+      }
+    },
+    {
+      "name": "ACCOUNT_SECURITY_FROZEN on security/activity/challenge",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "ACCOUNT_SECURITY_FROZEN"
+      }
+    },
+    {
+      "name": "ACCOUNT_SECURITY_FROZEN invalidates current client identity",
+      "passed": true
+    },
+    {
+      "name": "ACCOUNT_SECURITY_FROZEN persists across restart with same key",
+      "passed": true
+    },
+    {
+      "name": "manual-release freeze does not expire or accept activity",
+      "passed": true
+    },
+    {
+      "name": "frozen account cannot get new website authorization",
+      "passed": true
+    },
+    {
+      "name": "super admin explicitly releases synthetic restriction",
+      "passed": true
+    },
+    {
+      "name": "device authorization keeps requested synthetic owner",
+      "passed": true
+    },
+    {
+      "name": "device authorization keeps requested synthetic owner",
+      "passed": true
+    },
+    {
+      "name": "DEVICE_SECURITY_BLOCKED on me/entitlement",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "DEVICE_SECURITY_BLOCKED"
+      }
+    },
+    {
+      "name": "DEVICE_SECURITY_BLOCKED on me/devices",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "DEVICE_SECURITY_BLOCKED"
+      }
+    },
+    {
+      "name": "DEVICE_SECURITY_BLOCKED on me/lease",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "DEVICE_SECURITY_BLOCKED"
+      }
+    },
+    {
+      "name": "DEVICE_SECURITY_BLOCKED on token/refresh",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "DEVICE_SECURITY_BLOCKED"
+      }
+    },
+    {
+      "name": "DEVICE_SECURITY_BLOCKED on security/activity/challenge",
+      "passed": true,
+      "detail": {
+        "httpStatus": 403,
+        "code": "DEVICE_SECURITY_BLOCKED"
+      }
+    },
+    {
+      "name": "DEVICE_SECURITY_BLOCKED invalidates current client identity",
+      "passed": true
+    },
+    {
+      "name": "DEVICE_SECURITY_BLOCKED persists across restart with same key",
+      "passed": true
+    },
+    {
+      "name": "device-specific restriction leaves a different authorized device available",
+      "passed": true
+    },
+    {
+      "name": "restriction does not affect the other synthetic account",
+      "passed": true
+    },
+    {
+      "name": "blocked key rejected before device poll",
+      "passed": true
+    },
+    {
+      "name": "device ban never rotates local key",
+      "passed": true
+    },
+    {
+      "name": "super admin explicitly releases synthetic restriction",
+      "passed": true
+    },
+    {
+      "name": "device authorization keeps requested synthetic owner",
+      "passed": true
+    },
+    {
+      "name": "SESSION_REVOKED on me/entitlement",
+      "passed": true,
+      "detail": {
+        "httpStatus": 401,
+        "code": "SESSION_REVOKED"
+      }
+    },
+    {
+      "name": "SESSION_REVOKED on me/devices",
+      "passed": true,
+      "detail": {
+        "httpStatus": 401,
+        "code": "SESSION_REVOKED"
+      }
+    },
+    {
+      "name": "SESSION_REVOKED on me/lease",
+      "passed": true,
+      "detail": {
+        "httpStatus": 401,
+        "code": "SESSION_REVOKED"
+      }
+    },
+    {
+      "name": "SESSION_REVOKED on token/refresh",
+      "passed": true,
+      "detail": {
+        "httpStatus": 401,
+        "code": "SESSION_REVOKED"
+      }
+    },
+    {
+      "name": "SESSION_REVOKED on security/activity/challenge",
+      "passed": true,
+      "detail": {
+        "httpStatus": 401,
+        "code": "SESSION_REVOKED"
+      }
+    },
+    {
+      "name": "SESSION_REVOKED invalidates current client identity",
+      "passed": true
+    },
+    {
+      "name": "SESSION_REVOKED persists across restart with same key",
+      "passed": true
+    }
+  ],
+  "total": 57,
+  "passed": 57,
+  "errorType": null,
+  "failedCheck": null,
+  "productionChanged": false,
+  "realSignedModelOrLeaseTested": false,
+  "activityReplay": {
+    "firstRecordedAt": "2026-11-14T07:18:08.215688Z",
+    "replayedRecordedAt": "2026-11-14T07:18:08.215688Z",
+    "firstActivityAt": "2026-11-14T07:18:08.216332",
+    "replayedActivityAt": "2026-11-14T07:18:08.216332"
+  }
+}

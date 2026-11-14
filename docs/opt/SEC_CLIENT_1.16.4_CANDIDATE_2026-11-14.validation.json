@@ -1,0 +1,145 @@
+{
+  "version": "1.16.4",
+  "sourceCommit": "6bc7850bd22f9f8f508bcf00f43733b2fc42a5af",
+  "artifacts": [
+    {
+      "file": "Yuzi_CS2_AIDirector.exe",
+      "bytes": 187920611,
+      "sha256": "bc872e2f9d83c917687b2b149d09459755a85b009d26911dfb15b497d858c6db"
+    },
+    {
+      "file": "Yuzi_CS2_AIDecisionTrainer.exe",
+      "bytes": 187920611,
+      "sha256": "bc872e2f9d83c917687b2b149d09459755a85b009d26911dfb15b497d858c6db"
+    }
+  ],
+  "directorSelfCheck": "passed",
+  "trainerSelfCheck": "passed",
+  "frozenTrainerImports": "passed",
+  "websiteAsset": "Yuzi_CS2_AIDirector.exe",
+  "trainerDistribution": "private GitHub only",
+  "status": "local candidate only; no executable asset publication or website change",
+  "regression": {
+    "total": 547,
+    "passed": 543,
+    "skipped": 4,
+    "seconds": 75.534
+  },
+  "frozen": {
+    "matchingFirstPartyModules": 72,
+    "tests": 109,
+    "passed": 109,
+    "formalTrustMatches": true,
+    "execution": "Extracted frozen code in Python host, fake input backends; native hook install/close without input; not visible desktop acceptance"
+  },
+  "widgets": {
+    "total": 15,
+    "passed": 15,
+    "scope": "extracted package modules, hidden Tk with fake account/hooks; not visual or physical input acceptance"
+  },
+  "http": {
+    "total": 57,
+    "passed": 57,
+    "reportSha256": "e31ce7734e095f29d88a2d41e2e4d6dea446e4cfb8337f167e9c2a10746444b5",
+    "runId": "55aef785-cbbe-42f0-a307-123bbbb103a8",
+    "scope": "extracted package client modules under Python host against localhost synthetic fixture"
+  },
+  "productionReadOnlyUpdate": {
+    "old1163": "up_to_date",
+    "candidate1164": "ahead_of_channel",
+    "target": "1.16.3",
+    "installed": false
+  },
+  "compatibilityWindow": {
+    "appliesTo": "legacy website JWT/refresh/Demo sessions, not DirectorDevice version expiration",
+    "startBeijing": "2026-11-14 14:21:14",
+    "endBeijing": "2026-11-28 14:21:14",
+    "directorMinimumVersionEnforced": false,
+    "source": "website coordination 2026-11-14"
+  },
+  "distribution": {
+    "website": "unchanged 1.16.3; director only",
+    "trainer": "local candidate, future private GitHub only"
+  },
+  "evidenceRoot": "C:\\Users\\Administrator\\DirectorRuns\\sec-candidate-1.16.4-20261114",
+  "evidence": [
+    {
+      "path": "regression.log",
+      "sha256": "79affacd581e459736a31a0ed7c04d4ba7044ee7cd16863339f26b899fe0611d",
+      "bytes": 15338
+    },
+    {
+      "path": "build.log",
+      "sha256": "b797d3fadbfdea454015ba935f99ff527742e61476e7b89f2ff8f7fc2d1b2f54",
+      "bytes": 51059
+    },
+    {
+      "path": "frozen-evidence.json",
+      "sha256": "9067795cd4ac50cddab5cacb5dc92e82f82c23279e1a936e70305cc97c0b4df2",
+      "bytes": 12280
+    },
+    {
+      "path": "frozen-tests.log",
+      "sha256": "8692c285c4bb3207b58a1d789b45ac620575c49ac2a1bff871ae34abdf63e45c",
+      "bytes": 17531
+    },
+    {
+      "path": "director-self-check.json",
+      "sha256": "e7b4d94794a2f7cb3e4bfacf99209785158113955f3f83a1fa982775ab08e5b9",
+      "bytes": 2149
+    },
+    {
+      "path": "trainer-self-check.json",
+      "sha256": "e7b4d94794a2f7cb3e4bfacf99209785158113955f3f83a1fa982775ab08e5b9",
+      "bytes": 2149
+    },
+    {
+      "path": "frozen-widgets.json",
+      "sha256": "b981a5c65cf3a0e5154c6474f8a99458b9175c70c2a6f084faaaa71fcd6e50c7",
+      "bytes": 1662
+    },
+    {
+      "path": "frozen-widgets-final.log",
+      "sha256": "fad398f1beae0e577d5987d070a9445cefee7317f1169d99f30cb16fef95a090",
+      "bytes": 34
+    },
+    {
+      "path": "http/program-security-http.json",
+      "sha256": "e31ce7734e095f29d88a2d41e2e4d6dea446e4cfb8337f167e9c2a10746444b5",
+      "bytes": 8479
+    },
+    {
+      "path": "frozen-http.log",
+      "sha256": "cbe2e7df180a10dc4b6d0935896ba1897faa2d5c3f99cc5c769f8868ea005185",
+      "bytes": 3168
+    },
+    {
+      "path": "old-1.16.3-production-update.json",
+      "sha256": "dd80c206d7c6e31bbf5508728302d01267cb9eba5eb04017a3c17ccacea9af01",
+      "bytes": 585
+    },
+    {
+      "path": "candidate-1.16.4-production-update.json",
+      "sha256": "f18090f9ece8437ea5fd26edae8feb8987968b8be0bf004499ca543cd25bc809",
+      "bytes": 591
+    },
+    {
+      "path": "check-frozen.py",
+      "sha256": "0640dd3e7060ffeabb275e0d991c68d3bab5474213f15de41e840c33e80ec529",
+      "bytes": 4856
+    },
+    {
+      "path": "check-release.ps1",
+      "sha256": "a8e8f970674ab436f630817fc5f2442029e78483722f0b84d0acebae37ac21d2",
+      "bytes": 1955
+    }
+  ],
+  "deferred": [
+    "client formal publication authorization",
+    "production real email acceptance (website)",
+    "native executable interactive device login and install replacement",
+    "visible GUI and physical shortcuts",
+    "real CS2/MulNX/OBS, G4, extended load",
+    "formal signed offline model/lease acceptance"
+  ]
+}
